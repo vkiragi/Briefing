@@ -326,6 +326,11 @@ class SportsFetcher:
                 home_score = home_team.get('score', '0')
                 away_score = away_team.get('score', '0')
 
+            # Extract detailed game status info (period/quarter and time)
+            period = status.get('period')
+            display_clock = status.get('displayClock', '')
+            clock_seconds = status.get('clock', 0)
+
             game_info = {
                 'home_team': home_team.get('team', {}).get('displayName', 'Unknown'),
                 'home_score': home_score,
@@ -335,6 +340,9 @@ class SportsFetcher:
                 'completed': completed,
                 'date': self._parse_timestamp(event.get('date')),
                 'state': state,
+                'period': period,
+                'display_clock': display_clock,
+                'clock_seconds': clock_seconds,
             }
 
             return game_info

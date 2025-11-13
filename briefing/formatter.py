@@ -82,6 +82,57 @@ class OutputFormatter:
                 )
                 console.print(panel)
 
+    def _format_game_status(self, game: Dict, sport: str) -> str:
+        """
+        Format detailed game status with quarter/period and time for live games.
+
+        Args:
+            game: Game dictionary with status info
+            sport: Sport name (e.g., 'nba', 'nfl')
+
+        Returns:
+            Formatted status string
+        """
+        status = game.get('status', 'Unknown')
+        state = game.get('state', '')
+
+        # Only show detailed info for in-progress games
+        if state != 'in':
+            return status
+
+        period = game.get('period')
+        display_clock = game.get('display_clock', '')
+
+        if not period:
+            return status
+
+        # Format period/quarter based on sport
+        period_labels = {
+            'nba': {1: '1st Q', 2: '2nd Q', 3: '3rd Q', 4: '4th Q', 5: 'OT'},
+            'nfl': {1: '1st Q', 2: '2nd Q', 3: '3rd Q', 4: '4th Q', 5: 'OT'},
+            'nhl': {1: '1st', 2: '2nd', 3: '3rd', 4: 'OT'},
+            'mlb': {1: 'Top 1st', 2: 'Bot 1st', 3: 'Top 2nd', 4: 'Bot 2nd'},  # Simplified
+        }
+
+        sport_labels = period_labels.get(sport.lower(), {})
+
+        if sport.lower() in ['nba', 'nfl', 'nhl']:
+            period_label = sport_labels.get(period, f'Period {period}')
+            if display_clock:
+                return f"{period_label} - {display_clock}"
+            else:
+                return period_label
+        elif sport.lower() == 'mlb':
+            # For baseball, just show the inning
+            inning = (period + 1) // 2
+            half = 'Top' if period % 2 == 1 else 'Bot'
+            return f"{half} {inning}"
+        else:
+            # Generic format for other sports
+            if display_clock:
+                return f"Period {period} - {display_clock}"
+            return status
+
     def print_sports_scores(self, sport: str, games: List[Dict]):
         """
         Print sports scores in a formatted table.
@@ -130,11 +181,14 @@ class OutputFormatter:
             else:
                 score_display = f"{away_score} - {home_score}"
 
+            # Get detailed status with quarter/time if available
+            status_display = self._format_game_status(game, sport)
+
             table.add_row(
                 game['away_team'],
                 score_display,
                 game['home_team'],
-                game['status'],
+                status_display,
                 game['date']
             )
 
@@ -193,11 +247,14 @@ class OutputFormatter:
 
                 score_display = f"{away_score} - {home_score}"
 
+                # Get detailed status with quarter/period and time
+                status_display = self._format_game_status(game, sport)
+
                 table.add_row(
                     game['away_team'],
                     score_display,
                     game['home_team'],
-                    f"🔴 {game['status']}",
+                    f"🔴 {status_display}",
                     game['date']
                 )
 
