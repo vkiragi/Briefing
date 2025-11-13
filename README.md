@@ -414,14 +414,6 @@ export PATH="$HOME/.local/bin:$PATH"
 - Some sports may not have active games during off-season
 - Check if ESPN's API is accessible from your location
 
-### Issue: Colors not displaying
-
-**Solution:**
-
-- Make sure your terminal supports ANSI colors
-- Try using a different terminal emulator
-- Use the `--no-color` flag if colors are causing issues
-
 ### Issue: HTTP 429 "Too Many Requests" errors
 
 **Solution:**
