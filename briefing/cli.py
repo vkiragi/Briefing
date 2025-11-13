@@ -327,6 +327,8 @@ def handle_help_command(formatter: OutputFormatter):
 [bold yellow]SPORTS COMMANDS:[/bold yellow]
   [green]briefing sports --sport nfl --scores[/green]    Get NFL scores
   [green]briefing sports --sport nba --scores[/green]    Get NBA scores
+  [green]briefing sports --sport tennis-atp-singles --scores[/green] Get ATP men's singles scores
+  [green]briefing sports --sport tennis-atp-doubles --scores[/green] Get ATP men's doubles scores
   [green]briefing sports --sport nfl --schedule[/green]  Get NFL upcoming schedule
   [green]briefing sports --sport nba --standings[/green] Get NBA standings (2025-26 season)
   [green]briefing sports --sport mlb --standings[/green] Get MLB standings (2025 season)
@@ -346,7 +348,8 @@ def handle_help_command(formatter: OutputFormatter):
   [green]briefing --no-links[/green]                     Hide article links
 
 [bold yellow]AVAILABLE SPORTS:[/bold yellow]
-  • nfl, nba, mlb, nhl, soccer, ncaaf, ncaab, f1, tennis-atp, tennis-wta
+  • nfl, nba, mlb, nhl, soccer, ncaaf, ncaab, f1
+  • tennis-atp-singles, tennis-atp-doubles, tennis-wta-singles, tennis-wta-doubles
 
 [bold yellow]AVAILABLE NEWS SOURCES:[/bold yellow]
   • bbc, cnn, nytimes, guardian, aljazeera, techcrunch, hackernews
@@ -359,6 +362,10 @@ def handle_help_command(formatter: OutputFormatter):
   [dim]# F1 fan[/dim]
   [green]briefing sports --sport f1 --standings[/green]
   [green]briefing sports --sport f1 --races[/green]
+
+  [dim]# Tennis fan[/dim]
+  [green]briefing sports --sport tennis-atp-singles --scores[/green]
+  [green]briefing sports --sport tennis-wta-singles --scores[/green]
 
   [dim]# Sports updates[/dim]
   [green]briefing sports --sport nfl --scores --news[/green]
