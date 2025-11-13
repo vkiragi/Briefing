@@ -23,8 +23,8 @@ pip install -e .
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/briefing-cli.git
-cd briefing-cli
+git clone https://github.com/vkiragi/briefing.git
+cd briefing
 
 # Install dependencies
 pip install -r requirements.txt
@@ -125,9 +125,28 @@ briefing sports --sport mlb --news
 # Limit number of results
 briefing sports --sport nhl --scores --limit 5
 
+# Get only live/in-progress games
+briefing sports --sport nfl --live
+
+# Auto-refresh live scores every 5 seconds (default)
+briefing sports --sport nba --live --watch
+
+# Auto-refresh live scores with custom interval (in seconds)
+briefing sports --sport mlb --live --watch 10
+
 # List available sports
 briefing sports --list-sports
 ```
+
+**Live Score Tracking:**
+
+The `--live` flag shows only games that are currently in progress. Combine it with `--watch` for real-time auto-refreshing scores:
+
+- `--live` - Show only live/in-progress games
+- `--watch` - Auto-refresh every 5 seconds (default)
+- `--watch N` - Auto-refresh every N seconds (e.g., `--watch 10` for 10-second intervals)
+
+Press `Ctrl+C` to stop the live watch mode.
 
 **Available Sports:**
 - `nfl` - National Football League
@@ -212,6 +231,19 @@ briefing sports --sport nba --scores
 ```bash
 # Get comprehensive NBA updates
 briefing sports --sport nba --scores --news --limit 15
+```
+
+### Track Live Games
+
+```bash
+# Watch live NFL games with auto-refresh
+briefing sports --sport nfl --live --watch
+
+# Track live NBA games refreshing every 10 seconds
+briefing sports --sport nba --live --watch 10
+
+# Check live games once (no auto-refresh)
+briefing sports --sport mlb --live
 ```
 
 ### Quick News Check
@@ -343,8 +375,8 @@ Potential features for future versions:
 ## Support
 
 For issues, questions, or contributions, please visit:
-- GitHub Issues: https://github.com/yourusername/briefing-cli/issues
-- Documentation: https://github.com/yourusername/briefing-cli/wiki
+- GitHub Issues: https://github.com/vkiragi/briefing/issues
+- Documentation: https://github.com/vkiragi/briefing/wiki
 
 ---
 

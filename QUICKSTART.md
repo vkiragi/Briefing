@@ -3,12 +3,14 @@
 ## Installation (5 minutes)
 
 ### Step 1: Install the package
+
 ```bash
 # From the project directory
 pip install -e .
 ```
 
 ### Step 2: Verify installation
+
 ```bash
 briefing --version
 ```
@@ -18,6 +20,7 @@ You should see: `briefing 1.0.0`
 ## Basic Usage
 
 ### Get News
+
 ```bash
 # List available news sources
 briefing news --list-sources
@@ -30,6 +33,7 @@ briefing news --sources bbc techcrunch
 ```
 
 ### Get Sports Updates
+
 ```bash
 # List available sports
 briefing sports --list-sports
@@ -76,14 +80,15 @@ briefing sports --sport nfl --scores --limit 5
 briefing sports --sport nba --live
 briefing sports --sport nfl --live
 
-# Watch mode - auto-refresh live scores every 30 seconds
+# Watch mode - auto-refresh live scores every 5 seconds
 briefing sports --sport nba --live --watch
 
-# Watch mode with custom interval (10 seconds)
-briefing sports --sport nfl --live --watch 10
+# Watch mode with custom interval (X seconds)
+briefing sports --sport nfl --live --watch {X}
 ```
 
 ### Get Everything
+
 ```bash
 # Get comprehensive briefing (news + sports)
 briefing all
@@ -94,6 +99,7 @@ briefing all
 Briefing uses a configuration file at `~/.config/briefing/config.json` (or `~/.briefing_config.json` as fallback).
 
 ### Default Configuration
+
 ```json
 {
   "news": {
@@ -114,11 +120,13 @@ Briefing uses a configuration file at `~/.config/briefing/config.json` (or `~/.b
 ### Customize Your Briefing
 
 1. Copy the example config:
+
    ```bash
    cp config.example.json ~/.config/briefing/config.json
    ```
 
 2. Edit to your preferences:
+
    ```bash
    nano ~/.config/briefing/config.json
    ```
@@ -156,16 +164,19 @@ alias tech="briefing news --sources techcrunch hackernews"
 ## Tips
 
 1. **Hide Links**: Use `--no-links` to get cleaner output
+
    ```bash
    briefing --no-links news --sources bbc
    ```
 
 2. **Disable Colors**: Use `--no-color` for plain text output
+
    ```bash
    briefing --no-color news
    ```
 
 3. **Pipe to File**: Save your briefing for later
+
    ```bash
    briefing all > daily-briefing.txt
    ```
@@ -179,6 +190,7 @@ alias tech="briefing news --sources techcrunch hackernews"
 ## Available Sources
 
 ### News Sources
+
 - `bbc` - BBC News
 - `cnn` - CNN Top Stories
 - `nytimes` - New York Times
@@ -188,6 +200,7 @@ alias tech="briefing news --sources techcrunch hackernews"
 - `hackernews` - Hacker News
 
 ### Sports
+
 - `nfl` - National Football League
 - `nba` - National Basketball Association (supports `--standings`)
 - `mlb` - Major League Baseball (supports `--standings`)
@@ -206,15 +219,19 @@ alias tech="briefing news --sources techcrunch hackernews"
 ## Troubleshooting
 
 ### Command not found
+
 Make sure your Python scripts directory is in your PATH:
+
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ### Permission errors
+
 If you get permission errors with the config file, the tool will automatically fallback to `~/.briefing_config.json` in your home directory.
 
 ### No data showing
+
 - Check your internet connection
 - Some sources may be temporarily unavailable
 - Try a different source or sport
@@ -222,6 +239,7 @@ If you get permission errors with the config file, the tool will automatically f
 ## Examples
 
 ### Morning Routine
+
 ```bash
 briefing news --sources bbc
 briefing sports --sport nfl --scores
@@ -231,11 +249,13 @@ briefing sports --sport nfl --schedule  # Check upcoming games
 ```
 
 ### Tech News Focus
+
 ```bash
 briefing news --sources techcrunch hackernews
 ```
 
 ### Sports Fan
+
 ```bash
 briefing sports --sport nfl --scores --news
 briefing sports --sport nba --scores --news
@@ -244,6 +264,7 @@ briefing sports --sport nfl --schedule  # See upcoming games
 ```
 
 ### F1 Fan
+
 ```bash
 # Get current driver standings
 briefing sports --sport f1 --standings
@@ -256,6 +277,7 @@ briefing sports --sport f1 --news
 ```
 
 ### MLB Fan
+
 ```bash
 # Get current MLB standings
 briefing sports --sport mlb --standings
@@ -271,6 +293,7 @@ briefing sports --sport mlb --news
 ```
 
 ### Premier League Fan
+
 ```bash
 # Get Premier League standings
 briefing sports --sport epl --standings
@@ -286,6 +309,7 @@ briefing sports --sport epl --news
 ```
 
 ### La Liga Fan
+
 ```bash
 # Get La Liga standings
 briefing sports --sport laliga --standings
@@ -301,6 +325,7 @@ briefing sports --sport laliga --news
 ```
 
 ### Champions League Fan
+
 ```bash
 # Get Champions League standings
 briefing sports --sport ucl --standings
