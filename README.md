@@ -92,6 +92,7 @@ briefing news --no-links
 ```
 
 **Available News Sources:**
+
 - `bbc` - BBC News
 - `cnn` - CNN Top Stories
 - `nytimes` - New York Times
@@ -101,6 +102,7 @@ briefing news --no-links
 - `hackernews` - Hacker News
 
 You can also use custom RSS feed URLs:
+
 ```bash
 briefing news --sources https://example.com/feed.rss
 ```
@@ -148,6 +150,7 @@ Press `Ctrl+C` to stop the live watch mode.
 **⚠️ Rate Limit Warning:**
 
 This tool uses free public APIs with rate limits. Please use responsibly:
+
 - **ESPN API**: Unofficial endpoint - excessive requests may result in IP throttling/blocking from ESPN's API
 - **F1 API**: Limited to 500 requests/hour (unauthenticated)
 - **Recommended**: Use refresh intervals of 30+ seconds to avoid rate limits
@@ -155,6 +158,7 @@ This tool uses free public APIs with rate limits. Please use responsibly:
 - **For production/multiple users**: Implement server-side caching (see Contributing section)
 
 **Available Sports:**
+
 - `nfl` - National Football League
 - `nba` - National Basketball Association
 - `mlb` - Major League Baseball
@@ -162,6 +166,8 @@ This tool uses free public APIs with rate limits. Please use responsibly:
 - `soccer` - Premier League
 - `ncaaf` - NCAA Football
 - `ncaab` - NCAA Basketball
+- `tennis-atp` - ATP Men's Tennis (singles and doubles)
+- `tennis-wta` - WTA Women's Tennis (singles and doubles)
 
 ### All Command
 
@@ -172,12 +178,14 @@ briefing all
 ```
 
 This fetches:
+
 - News from your default sources
 - Scores from your default sports
 
 ## Configuration
 
 Briefing uses a configuration file to store your preferences. The config file is located at:
+
 - Linux/macOS: `~/.config/briefing/config.json`
 - Windows: `%APPDATA%\briefing\config.json`
 
@@ -317,6 +325,7 @@ python -m briefing sports --sport nfl --scores
 This tool uses **free public APIs** that have rate limits to prevent abuse:
 
 #### ESPN API (site.api.espn.com)
+
 - **Type**: Unofficial/undocumented internal API
 - **Rate Limits**: Not officially documented
 - **Risk**: Excessive requests may result in:
@@ -326,6 +335,7 @@ This tool uses **free public APIs** that have rate limits to prevent abuse:
 - **Best Practice**: Keep refresh intervals at 30+ seconds
 
 #### Jolpica F1 API (api.jolpi.ca)
+
 - **Type**: Free public API (Ergast mirror)
 - **Rate Limits**:
   - 4 requests per second
@@ -334,25 +344,31 @@ This tool uses **free public APIs** that have rate limits to prevent abuse:
 - **Note**: One user watching with 5-second refresh = 720 requests/hour (exceeds limit)
 
 #### RSS Feeds
+
 - **Type**: Public syndication feeds
 - **Rate Limits**: Varies by source (generally lenient)
 - **Best Practice**: Most sources expect 5-15 minute intervals
 
 ### For Personal Use
+
 The default settings are fine for individual use. Just be mindful:
+
 - Don't leave `--watch` running for hours unnecessarily
 - Use 30+ second intervals for F1 live tracking
 - Avoid running multiple instances simultaneously
 
 ### For Production/Multiple Users
+
 If you're deploying this as a service for multiple users:
 
 1. **Implement Server-Side Caching**:
+
    - Cache API responses for 30-60 seconds
    - Share cached data among all users
    - Use Redis or in-memory cache
 
 2. **Consider Paid APIs**:
+
    - SportsDataIO
    - API-Sports (freemium)
    - The Odds API
@@ -376,6 +392,7 @@ If you're deploying this as a service for multiple users:
 ### Issue: Command not found after installation
 
 **Solution:** Make sure your Python scripts directory is in your PATH:
+
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 export PATH="$HOME/.local/bin:$PATH"
@@ -384,6 +401,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ### Issue: RSS feed fails to fetch
 
 **Solution:** Some RSS feeds may be temporarily unavailable or require specific user agents. The tool includes retry logic, but you can try:
+
 - Checking your internet connection
 - Using a different news source
 - Waiting a few minutes and trying again
@@ -391,6 +409,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ### Issue: Sports data not showing
 
 **Solution:**
+
 - Ensure the sport is spelled correctly (use `--list-sports`)
 - Some sports may not have active games during off-season
 - Check if ESPN's API is accessible from your location
@@ -398,6 +417,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ### Issue: Colors not displaying
 
 **Solution:**
+
 - Make sure your terminal supports ANSI colors
 - Try using a different terminal emulator
 - Use the `--no-color` flag if colors are causing issues
@@ -405,6 +425,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ### Issue: HTTP 429 "Too Many Requests" errors
 
 **Solution:**
+
 - You've hit the API rate limit (most common with F1 API)
 - **For F1**: Wait an hour or use longer refresh intervals (30+ seconds)
 - **For ESPN**: Reduce request frequency or wait for throttling to clear
@@ -414,6 +435,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ### Issue: ESPN API returns errors or empty results
 
 **Solution:**
+
 - ESPN's unofficial API may have changed endpoints
 - Try again in a few minutes (temporary issues are common)
 - Check your internet connection
@@ -446,6 +468,7 @@ MIT License - see LICENSE file for details
 ## Future Enhancements
 
 Potential features for future versions:
+
 - Weather information
 - Stock market updates
 - Cryptocurrency prices
@@ -459,9 +482,8 @@ Potential features for future versions:
 ## Support
 
 For issues, questions, or contributions, please visit:
+
 - GitHub Issues: https://github.com/vkiragi/briefing/issues
 - Documentation: https://github.com/vkiragi/briefing/wiki
 
 ---
-
-**Made with ❤️ for terminal enthusiasts**
