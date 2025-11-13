@@ -88,12 +88,14 @@ class SportsFetcher:
                 for event in events:
                     groupings = event.get('groupings', [])
 
-                    # Organize competitions by grouping
+                    # Organize competitions by grouping and sort by date (newest first)
                     grouping_competitions = []
                     for grouping in groupings:
                         grouping_name = grouping.get('grouping', {}).get('displayName', '')
                         competitions = grouping.get('competitions', [])
-                        grouping_competitions.append((grouping_name, competitions))
+                        # Sort by date in descending order (most recent first)
+                        sorted_competitions = sorted(competitions, key=lambda c: c.get('date', ''), reverse=True)
+                        grouping_competitions.append((grouping_name, sorted_competitions))
 
                     # Interleave competitions from different groupings (singles/doubles)
                     max_len = max(len(comps) for _, comps in grouping_competitions) if grouping_competitions else 0
@@ -211,7 +213,7 @@ class SportsFetcher:
                 for event in events:
                     groupings = event.get('groupings', [])
 
-                    # Organize scheduled competitions by grouping
+                    # Organize scheduled competitions by grouping and sort by date (newest first)
                     grouping_competitions = []
                     for grouping in groupings:
                         grouping_name = grouping.get('grouping', {}).get('displayName', '')
@@ -223,8 +225,10 @@ class SportsFetcher:
                             state = status_type.get('state', 'pre')
                             if state == 'pre':
                                 scheduled_comps.append(comp)
-                        if scheduled_comps:
-                            grouping_competitions.append((grouping_name, scheduled_comps))
+                        # Sort by date in descending order (most recent first)
+                        sorted_scheduled = sorted(scheduled_comps, key=lambda c: c.get('date', ''), reverse=True)
+                        if sorted_scheduled:
+                            grouping_competitions.append((grouping_name, sorted_scheduled))
 
                     # Interleave competitions from different groupings
                     max_len = max(len(comps) for _, comps in grouping_competitions) if grouping_competitions else 0
@@ -363,7 +367,7 @@ class SportsFetcher:
                 for event in events:
                     groupings = event.get('groupings', [])
 
-                    # Organize live competitions by grouping
+                    # Organize live competitions by grouping and sort by date (newest first)
                     grouping_competitions = []
                     for grouping in groupings:
                         grouping_name = grouping.get('grouping', {}).get('displayName', '')
@@ -375,8 +379,10 @@ class SportsFetcher:
                             state = status_type.get('state', '')
                             if state == 'in':
                                 live_comps.append(comp)
-                        if live_comps:
-                            grouping_competitions.append((grouping_name, live_comps))
+                        # Sort by date in descending order (most recent first)
+                        sorted_live = sorted(live_comps, key=lambda c: c.get('date', ''), reverse=True)
+                        if sorted_live:
+                            grouping_competitions.append((grouping_name, sorted_live))
 
                     # Interleave competitions from different groupings
                     max_len = max(len(comps) for _, comps in grouping_competitions) if grouping_competitions else 0
@@ -484,6 +490,7 @@ class SportsFetcher:
             if state == 'pre':
                 home_score = 'TBD'
                 away_score = 'TBD'
+                set_scores_str = None  # No set scores for pre-game
             elif is_tennis:
                 # For tennis, count sets won from linescores
                 home_linescores = home_team.get('linescores', [])
