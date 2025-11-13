@@ -1,0 +1,22 @@
+{
+  "news": {
+    "default_sources": [
+      "bbc",
+      "cnn",
+      "techcrunch"
+    ],
+    "timeout": 10
+  },
+  "sports": {
+    "default_sports": [
+      "nfl",
+      "nba",
+      "mlb"
+    ],
+    "timeout": 10
+  },
+  "display": {
+    "use_color": true,
+    "show_links": true
+  }
+}
