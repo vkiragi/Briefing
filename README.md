@@ -87,9 +87,6 @@ briefing news --sources bbc cnn techcrunch
 # List available sources
 briefing news --list-sources
 
-# Disable colored output
-briefing news --no-color
-
 # Hide article links
 briefing news --no-links
 ```
