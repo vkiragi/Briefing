@@ -77,12 +77,57 @@ class SportsFetcher:
             data = response.json()
 
             games = []
-            events = data.get('events', [])[:limit]
+            events = data.get('events', [])
 
-            for event in events:
-                game_info = self._parse_game(event)
-                if game_info:
-                    games.append(game_info)
+            # Check if this is tennis (has groupings instead of direct competitions)
+            is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta']
+
+            if is_tennis:
+                # Tennis has events -> groupings -> competitions structure
+                # Interleave singles and doubles to show both types
+                for event in events:
+                    groupings = event.get('groupings', [])
+
+                    # Organize competitions by grouping
+                    grouping_competitions = []
+                    for grouping in groupings:
+                        grouping_name = grouping.get('grouping', {}).get('displayName', '')
+                        competitions = grouping.get('competitions', [])
+                        grouping_competitions.append((grouping_name, competitions))
+
+                    # Interleave competitions from different groupings (singles/doubles)
+                    max_len = max(len(comps) for _, comps in grouping_competitions) if grouping_competitions else 0
+                    for i in range(max_len):
+                        for grouping_name, competitions in grouping_competitions:
+                            if i < len(competitions):
+                                competition = competitions[i]
+                                # Create a modified event with the competition
+                                tennis_event = {
+                                    'name': event.get('name', ''),
+                                    'competitions': [competition],
+                                    'date': competition.get('date', event.get('date')),
+                                    'status': competition.get('status', {}),
+                                }
+                                game_info = self._parse_game(tennis_event)
+                                if game_info:
+                                    # Add tournament name and match type for context
+                                    game_info['tournament'] = event.get('name', 'Unknown Tournament')
+                                    game_info['match_type'] = grouping_name
+                                    games.append(game_info)
+
+                                if len(games) >= limit:
+                                    break
+                        if len(games) >= limit:
+                            break
+
+                    if len(games) >= limit:
+                        break
+            else:
+                # Standard sports structure
+                for event in events[:limit]:
+                    game_info = self._parse_game(event)
+                    if game_info:
+                        games.append(game_info)
 
             return games
 
@@ -157,20 +202,70 @@ class SportsFetcher:
             games = []
             events = data.get('events', [])
 
-            # Filter for upcoming games only (state == 'pre')
-            for event in events:
-                status = event.get('status', {})
-                status_type = status.get('type', {})
-                state = status_type.get('state', 'pre')
+            # Check if this is tennis (has groupings instead of direct competitions)
+            is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta']
 
-                # Only include pre-game (scheduled) events
-                if state == 'pre':
-                    game_info = self._parse_game(event)
-                    if game_info:
-                        games.append(game_info)
+            if is_tennis:
+                # Tennis has events -> groupings -> competitions structure
+                # Interleave singles and doubles to show both types
+                for event in events:
+                    groupings = event.get('groupings', [])
+
+                    # Organize scheduled competitions by grouping
+                    grouping_competitions = []
+                    for grouping in groupings:
+                        grouping_name = grouping.get('grouping', {}).get('displayName', '')
+                        competitions = grouping.get('competitions', [])
+                        scheduled_comps = []
+                        for comp in competitions:
+                            status = comp.get('status', {})
+                            status_type = status.get('type', {})
+                            state = status_type.get('state', 'pre')
+                            if state == 'pre':
+                                scheduled_comps.append(comp)
+                        if scheduled_comps:
+                            grouping_competitions.append((grouping_name, scheduled_comps))
+
+                    # Interleave competitions from different groupings
+                    max_len = max(len(comps) for _, comps in grouping_competitions) if grouping_competitions else 0
+                    for i in range(max_len):
+                        for grouping_name, competitions in grouping_competitions:
+                            if i < len(competitions):
+                                competition = competitions[i]
+                                tennis_event = {
+                                    'name': event.get('name', ''),
+                                    'competitions': [competition],
+                                    'date': competition.get('date', event.get('date')),
+                                    'status': competition.get('status', {}),
+                                }
+                                game_info = self._parse_game(tennis_event)
+                                if game_info:
+                                    game_info['tournament'] = event.get('name', 'Unknown Tournament')
+                                    game_info['match_type'] = grouping_name
+                                    games.append(game_info)
+
+                                if len(games) >= limit:
+                                    break
+                        if len(games) >= limit:
+                            break
 
                     if len(games) >= limit:
                         break
+            else:
+                # Filter for upcoming games only (state == 'pre')
+                for event in events:
+                    status = event.get('status', {})
+                    status_type = status.get('type', {})
+                    state = status_type.get('state', 'pre')
+
+                    # Only include pre-game (scheduled) events
+                    if state == 'pre':
+                        game_info = self._parse_game(event)
+                        if game_info:
+                            games.append(game_info)
+
+                        if len(games) >= limit:
+                            break
 
             # If no upcoming games in current scoreboard, try fetching future dates
             if not games:
@@ -259,20 +354,70 @@ class SportsFetcher:
             games = []
             events = data.get('events', [])
 
-            # Filter for live games only (state == 'in')
-            for event in events:
-                status = event.get('status', {})
-                status_type = status.get('type', {})
-                state = status_type.get('state', '')
+            # Check if this is tennis (has groupings instead of direct competitions)
+            is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta']
 
-                # Only include in-progress (live) events
-                if state == 'in':
-                    game_info = self._parse_game(event)
-                    if game_info:
-                        games.append(game_info)
+            if is_tennis:
+                # Tennis has events -> groupings -> competitions structure
+                # Interleave singles and doubles to show both types
+                for event in events:
+                    groupings = event.get('groupings', [])
+
+                    # Organize live competitions by grouping
+                    grouping_competitions = []
+                    for grouping in groupings:
+                        grouping_name = grouping.get('grouping', {}).get('displayName', '')
+                        competitions = grouping.get('competitions', [])
+                        live_comps = []
+                        for comp in competitions:
+                            status = comp.get('status', {})
+                            status_type = status.get('type', {})
+                            state = status_type.get('state', '')
+                            if state == 'in':
+                                live_comps.append(comp)
+                        if live_comps:
+                            grouping_competitions.append((grouping_name, live_comps))
+
+                    # Interleave competitions from different groupings
+                    max_len = max(len(comps) for _, comps in grouping_competitions) if grouping_competitions else 0
+                    for i in range(max_len):
+                        for grouping_name, competitions in grouping_competitions:
+                            if i < len(competitions):
+                                competition = competitions[i]
+                                tennis_event = {
+                                    'name': event.get('name', ''),
+                                    'competitions': [competition],
+                                    'date': competition.get('date', event.get('date')),
+                                    'status': competition.get('status', {}),
+                                }
+                                game_info = self._parse_game(tennis_event)
+                                if game_info:
+                                    game_info['tournament'] = event.get('name', 'Unknown Tournament')
+                                    game_info['match_type'] = grouping_name
+                                    games.append(game_info)
+
+                                if len(games) >= limit:
+                                    break
+                        if len(games) >= limit:
+                            break
 
                     if len(games) >= limit:
                         break
+            else:
+                # Standard sports structure - filter for live games only (state == 'in')
+                for event in events:
+                    status = event.get('status', {})
+                    status_type = status.get('type', {})
+                    state = status_type.get('state', '')
+
+                    # Only include in-progress (live) events
+                    if state == 'in':
+                        game_info = self._parse_game(event)
+                        if game_info:
+                            games.append(game_info)
+
+                        if len(games) >= limit:
+                            break
 
             # If no live games, return a message
             if not games:
@@ -318,13 +463,65 @@ class SportsFetcher:
             state = status_type.get('state', 'pre')
             completed = status_type.get('completed', False)
 
-            # Get scores - show TBD if game hasn't started
+            # Check if this is tennis (has roster or athlete instead of team)
+            # Tennis doubles: 'roster.displayName', Singles: 'athlete.displayName', Regular sports: 'team.displayName'
+            is_tennis = 'roster' in home_team or 'athlete' in home_team
+
+            if 'roster' in home_team:
+                # Tennis doubles
+                home_name = home_team.get('roster', {}).get('shortDisplayName') or home_team.get('roster', {}).get('displayName', 'Unknown')
+                away_name = away_team.get('roster', {}).get('shortDisplayName') or away_team.get('roster', {}).get('displayName', 'Unknown')
+            elif 'athlete' in home_team:
+                # Tennis singles
+                home_name = home_team.get('athlete', {}).get('displayName', 'Unknown')
+                away_name = away_team.get('athlete', {}).get('displayName', 'Unknown')
+            else:
+                # Regular team sports
+                home_name = home_team.get('team', {}).get('displayName', 'Unknown')
+                away_name = away_team.get('team', {}).get('displayName', 'Unknown')
+
+            # Get scores - tennis uses linescores (sets won), other sports use score field
             if state == 'pre':
                 home_score = 'TBD'
                 away_score = 'TBD'
+            elif is_tennis:
+                # For tennis, count sets won from linescores
+                home_linescores = home_team.get('linescores', [])
+                away_linescores = away_team.get('linescores', [])
+
+                home_sets_won = sum(1 for ls in home_linescores if ls.get('winner', False))
+                away_sets_won = sum(1 for ls in away_linescores if ls.get('winner', False))
+
+                home_score = str(home_sets_won)
+                away_score = str(away_sets_won)
+
+                # Build set-by-set score string (e.g., "6-4, 4-6, 7-6(3)")
+                # Note: Scores are shown from away player's perspective (away-home)
+                set_scores = []
+                for i in range(len(home_linescores)):
+                    if i < len(away_linescores):
+                        home_games = int(home_linescores[i].get('value', 0))
+                        away_games = int(away_linescores[i].get('value', 0))
+
+                        # Check for tiebreak - winner of the set has the tiebreak score
+                        home_tiebreak = home_linescores[i].get('tiebreak')
+                        away_tiebreak = away_linescores[i].get('tiebreak')
+
+                        if home_tiebreak is not None or away_tiebreak is not None:
+                            # Show tiebreak score (the winner's tiebreak score is what's recorded)
+                            tb = home_tiebreak if home_tiebreak is not None else away_tiebreak
+                            # Always show away-home to match the score column
+                            set_scores.append(f"{away_games}-{home_games}({int(tb)})")
+                        else:
+                            # Regular set - show away-home
+                            set_scores.append(f"{away_games}-{home_games}")
+
+                set_scores_str = ", ".join(set_scores) if set_scores else ""
             else:
+                # Regular sports use score field
                 home_score = home_team.get('score', '0')
                 away_score = away_team.get('score', '0')
+                set_scores_str = None  # Not tennis, no set scores
 
             # Extract detailed game status info (period/quarter and time)
             period = status.get('period')
@@ -332,9 +529,9 @@ class SportsFetcher:
             clock_seconds = status.get('clock', 0)
 
             game_info = {
-                'home_team': home_team.get('team', {}).get('displayName', 'Unknown'),
+                'home_team': home_name,
                 'home_score': home_score,
-                'away_team': away_team.get('team', {}).get('displayName', 'Unknown'),
+                'away_team': away_name,
                 'away_score': away_score,
                 'status': status_type.get('description', 'Unknown'),
                 'completed': completed,
@@ -344,6 +541,10 @@ class SportsFetcher:
                 'display_clock': display_clock,
                 'clock_seconds': clock_seconds,
             }
+
+            # Add set scores for tennis
+            if is_tennis and set_scores_str:
+                game_info['set_scores'] = set_scores_str
 
             return game_info
 

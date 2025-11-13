@@ -147,52 +147,130 @@ class OutputFormatter:
             console.print(f"[yellow]No games found for {sport}[/yellow]")
             return
 
-        console.print(f"\n[bold green]🏆 {sport.upper()} Scores[/bold green]\n")
+        # Check if this is tennis and has match_type field
+        is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta'] and any(game.get('match_type') for game in games)
 
-        table = Table(
-            show_header=True,
-            header_style="bold magenta",
-            box=box.ROUNDED,
-            expand=True  # Expand to full width
-        )
-        table.add_column("Away Team", style="cyan", no_wrap=True)
-        table.add_column("Score", justify="center", style="yellow")
-        table.add_column("Home Team", style="cyan", no_wrap=True)
-        table.add_column("Status", style="green")
-        table.add_column("Date", style="dim")
+        if is_tennis:
+            # Group games by match type (singles/doubles)
+            grouped_games = {}
+            for game in games:
+                match_type = game.get('match_type', 'Unknown')
+                if match_type not in grouped_games:
+                    grouped_games[match_type] = []
+                grouped_games[match_type].append(game)
 
-        for game in games:
-            away_score = game['away_score']
-            home_score = game['home_score']
+            # Define order: Singles first, then Doubles
+            match_type_order = []
+            for key in grouped_games.keys():
+                if 'Singles' in key:
+                    match_type_order.insert(0, key)  # Put singles at the beginning
+                else:
+                    match_type_order.append(key)  # Put doubles at the end
 
-            # Highlight winning team if game is completed (and not TBD)
-            if game.get('completed') and away_score != 'TBD' and home_score != 'TBD':
-                try:
-                    if int(away_score) > int(home_score):
-                        away_score = f"[bold green]{away_score}[/bold green]"
-                    elif int(home_score) > int(away_score):
-                        home_score = f"[bold green]{home_score}[/bold green]"
-                except ValueError:
-                    pass
+            # Print each group separately in the defined order
+            for match_type in match_type_order:
+                type_games = grouped_games[match_type]
+                console.print(f"\n[bold green]🏆 {sport.upper()} - {match_type}[/bold green]\n")
 
-            # Format score display
-            if away_score == 'TBD' or home_score == 'TBD':
-                score_display = f"[dim]{away_score} - {home_score}[/dim]"
-            else:
-                score_display = f"{away_score} - {home_score}"
+                table = Table(
+                    show_header=True,
+                    header_style="bold magenta",
+                    box=box.ROUNDED,
+                    expand=False
+                )
+                table.add_column("Away Player(s)", style="cyan", no_wrap=False, max_width=25)
+                table.add_column("Score", justify="center", style="yellow", width=7)
+                table.add_column("Home Player(s)", style="cyan", no_wrap=False, max_width=25)
+                table.add_column("Sets", style="magenta", no_wrap=False, max_width=20)
+                table.add_column("Tournament", style="blue", no_wrap=False, max_width=30)
+                table.add_column("Status", style="green", width=10)
+                table.add_column("Date", style="dim", no_wrap=False, max_width=18)
 
-            # Get detailed status with quarter/time if available
-            status_display = self._format_game_status(game, sport)
+                for game in type_games:
+                    away_score = game['away_score']
+                    home_score = game['home_score']
 
-            table.add_row(
-                game['away_team'],
-                score_display,
-                game['home_team'],
-                status_display,
-                game['date']
+                    # Highlight winning player if game is completed (and not TBD)
+                    if game.get('completed') and away_score != 'TBD' and home_score != 'TBD':
+                        try:
+                            if int(away_score) > int(home_score):
+                                away_score = f"[bold green]{away_score}[/bold green]"
+                            elif int(home_score) > int(away_score):
+                                home_score = f"[bold green]{home_score}[/bold green]"
+                        except ValueError:
+                            pass
+
+                    # Format score display
+                    if away_score == 'TBD' or home_score == 'TBD':
+                        score_display = f"[dim]{away_score} - {home_score}[/dim]"
+                    else:
+                        score_display = f"{away_score} - {home_score}"
+
+                    status_display = self._format_game_status(game, sport)
+
+                    # Get set scores and tournament if available
+                    set_scores = game.get('set_scores', '-')
+                    tournament = game.get('tournament', 'Unknown')
+
+                    table.add_row(
+                        game['away_team'],
+                        score_display,
+                        game['home_team'],
+                        set_scores,
+                        tournament,
+                        status_display,
+                        game['date']
+                    )
+
+                console.print(table)
+        else:
+            # Standard display for non-tennis sports
+            console.print(f"\n[bold green]🏆 {sport.upper()} Scores[/bold green]\n")
+
+            table = Table(
+                show_header=True,
+                header_style="bold magenta",
+                box=box.ROUNDED,
+                expand=True
             )
+            table.add_column("Away Team", style="cyan", no_wrap=True)
+            table.add_column("Score", justify="center", style="yellow")
+            table.add_column("Home Team", style="cyan", no_wrap=True)
+            table.add_column("Status", style="green")
+            table.add_column("Date", style="dim")
 
-        console.print(table)
+            for game in games:
+                away_score = game['away_score']
+                home_score = game['home_score']
+
+                # Highlight winning team if game is completed (and not TBD)
+                if game.get('completed') and away_score != 'TBD' and home_score != 'TBD':
+                    try:
+                        if int(away_score) > int(home_score):
+                            away_score = f"[bold green]{away_score}[/bold green]"
+                        elif int(home_score) > int(away_score):
+                            home_score = f"[bold green]{home_score}[/bold green]"
+                    except ValueError:
+                        pass
+
+                # Format score display
+                if away_score == 'TBD' or home_score == 'TBD':
+                    score_display = f"[dim]{away_score} - {home_score}[/dim]"
+                else:
+                    score_display = f"{away_score} - {home_score}"
+
+                # Get detailed status with quarter/time if available
+                status_display = self._format_game_status(game, sport)
+
+                table.add_row(
+                    game['away_team'],
+                    score_display,
+                    game['home_team'],
+                    status_display,
+                    game['date']
+                )
+
+            console.print(table)
 
     def print_live_scores(self, sport: str, games: List[Dict]):
         """

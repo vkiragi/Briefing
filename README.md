@@ -465,20 +465,6 @@ MIT License - see LICENSE file for details
 - Sports data from ESPN's public JSON endpoints
 - Terminal formatting powered by [Rich](https://github.com/Textualize/rich)
 
-## Future Enhancements
-
-Potential features for future versions:
-
-- Weather information
-- Stock market updates
-- Cryptocurrency prices
-- Calendar integration
-- Email delivery of briefings
-- Custom feed priorities
-- Saved searches
-- Historical data
-- Interactive TUI mode
-
 ## Support
 
 For issues, questions, or contributions, please visit:
