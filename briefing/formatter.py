@@ -148,7 +148,7 @@ class OutputFormatter:
             return
 
         # Check if this is tennis and has match_type field
-        is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta'] and any(game.get('match_type') for game in games)
+        is_tennis = sport.lower().startswith('tennis-') and any(game.get('match_type') for game in games)
 
         if is_tennis:
             # Group games by match type (singles/doubles)

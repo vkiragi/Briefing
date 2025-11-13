@@ -27,8 +27,10 @@ class SportsFetcher:
         'ncaaf': 'football/college-football',
         'ncaab': 'basketball/mens-college-basketball',
         'f1': 'racing/f1',  # Formula 1
-        'tennis-atp': 'tennis/atp',  # ATP Men's Tennis
-        'tennis-wta': 'tennis/wta',  # WTA Women's Tennis
+        'tennis-atp-singles': 'tennis/atp',  # ATP Men's Singles
+        'tennis-atp-doubles': 'tennis/atp',  # ATP Men's Doubles
+        'tennis-wta-singles': 'tennis/wta',  # WTA Women's Singles
+        'tennis-wta-doubles': 'tennis/wta',  # WTA Women's Doubles
     }
 
     def __init__(self, timeout: int = 10):
@@ -80,11 +82,14 @@ class SportsFetcher:
             events = data.get('events', [])
 
             # Check if this is tennis (has groupings instead of direct competitions)
-            is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta']
+            is_tennis = sport.lower().startswith('tennis-')
+
+            # Determine if we need to filter by singles or doubles
+            filter_singles = sport.lower().endswith('-singles')
+            filter_doubles = sport.lower().endswith('-doubles')
 
             if is_tennis:
                 # Tennis has events -> groupings -> competitions structure
-                # Interleave singles and doubles to show both types
                 for event in events:
                     groupings = event.get('groupings', [])
 
@@ -92,6 +97,13 @@ class SportsFetcher:
                     grouping_competitions = []
                     for grouping in groupings:
                         grouping_name = grouping.get('grouping', {}).get('displayName', '')
+
+                        # Filter based on match type if specified
+                        if filter_singles and 'Singles' not in grouping_name:
+                            continue
+                        if filter_doubles and 'Doubles' not in grouping_name:
+                            continue
+
                         competitions = grouping.get('competitions', [])
                         # Sort by date in descending order (most recent first)
                         sorted_competitions = sorted(competitions, key=lambda c: c.get('date', ''), reverse=True)
@@ -205,11 +217,14 @@ class SportsFetcher:
             events = data.get('events', [])
 
             # Check if this is tennis (has groupings instead of direct competitions)
-            is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta']
+            is_tennis = sport.lower().startswith('tennis-')
+
+            # Determine if we need to filter by singles or doubles
+            filter_singles = sport.lower().endswith('-singles')
+            filter_doubles = sport.lower().endswith('-doubles')
 
             if is_tennis:
                 # Tennis has events -> groupings -> competitions structure
-                # Interleave singles and doubles to show both types
                 for event in events:
                     groupings = event.get('groupings', [])
 
@@ -217,6 +232,13 @@ class SportsFetcher:
                     grouping_competitions = []
                     for grouping in groupings:
                         grouping_name = grouping.get('grouping', {}).get('displayName', '')
+
+                        # Filter based on match type if specified
+                        if filter_singles and 'Singles' not in grouping_name:
+                            continue
+                        if filter_doubles and 'Doubles' not in grouping_name:
+                            continue
+
                         competitions = grouping.get('competitions', [])
                         scheduled_comps = []
                         for comp in competitions:
@@ -359,11 +381,14 @@ class SportsFetcher:
             events = data.get('events', [])
 
             # Check if this is tennis (has groupings instead of direct competitions)
-            is_tennis = sport.lower() in ['tennis-atp', 'tennis-wta']
+            is_tennis = sport.lower().startswith('tennis-')
+
+            # Determine if we need to filter by singles or doubles
+            filter_singles = sport.lower().endswith('-singles')
+            filter_doubles = sport.lower().endswith('-doubles')
 
             if is_tennis:
                 # Tennis has events -> groupings -> competitions structure
-                # Interleave singles and doubles to show both types
                 for event in events:
                     groupings = event.get('groupings', [])
 
@@ -371,6 +396,13 @@ class SportsFetcher:
                     grouping_competitions = []
                     for grouping in groupings:
                         grouping_name = grouping.get('grouping', {}).get('displayName', '')
+
+                        # Filter based on match type if specified
+                        if filter_singles and 'Singles' not in grouping_name:
+                            continue
+                        if filter_doubles and 'Doubles' not in grouping_name:
+                            continue
+
                         competitions = grouping.get('competitions', [])
                         live_comps = []
                         for comp in competitions:

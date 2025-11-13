@@ -166,8 +166,10 @@ This tool uses free public APIs with rate limits. Please use responsibly:
 - `soccer` - Premier League
 - `ncaaf` - NCAA Football
 - `ncaab` - NCAA Basketball
-- `tennis-atp` - ATP Men's Tennis (singles and doubles)
-- `tennis-wta` - WTA Women's Tennis (singles and doubles)
+- `tennis-atp-singles` - ATP Men's Singles
+- `tennis-atp-doubles` - ATP Men's Doubles
+- `tennis-wta-singles` - WTA Women's Singles
+- `tennis-wta-doubles` - WTA Women's Doubles
 
 ### All Command
 
