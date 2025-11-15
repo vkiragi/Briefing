@@ -86,7 +86,6 @@ briefing news --sources bbc cnn techcrunch
 
 # List available sources
 briefing news --list-sources
-
 ```
 
 **Available News Sources:**
