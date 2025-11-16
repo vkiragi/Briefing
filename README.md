@@ -33,20 +33,29 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### Using a Virtual Environment (Recommended)
+### Using Docker
 
 ```bash
-# Create a virtual environment
-python -m venv venv
+# Build the Docker image
+docker build -t briefing:latest .
 
-# Activate it
-# On macOS/Linux:
-source venv/bin/activate
-# On Windows:
-venv\Scripts\activate
+# Run with default command (news)
+docker run --rm briefing:latest
 
-# Install the package
-pip install -e .
+# Get NFL scores
+docker run --rm briefing:latest sports --sport nfl --scores
+
+# Get NBA news
+docker run --rm briefing:latest sports --sport nba --news
+
+# Get comprehensive briefing
+docker run --rm briefing:latest all
+
+# List available sports
+docker run --rm briefing:latest sports --list-sports
+
+# Persist configuration across runs (optional)
+docker run --rm -v ~/.config/briefing:/home/appuser/.config/briefing briefing:latest all
 ```
 
 ## Quick Start
@@ -163,6 +172,7 @@ This tool uses free public APIs with rate limits. Please use responsibly:
 - `soccer` - Premier League
 - `ncaaf` - NCAA Football
 - `ncaab` - NCAA Basketball
+- `f1` - Formula 1
 - `tennis-atp-singles` - ATP Men's Singles
 - `tennis-atp-doubles` - ATP Men's Doubles
 - `tennis-wta-singles` - WTA Women's Singles
