@@ -78,6 +78,9 @@ briefing news --list-sources
 
 # List available sports
 briefing sports --list-sports
+
+# Enter custom NFL player props dashboard (session-only)
+briefing props
 ```
 
 ## Usage
@@ -267,6 +270,31 @@ briefing sports --sport nba --live --watch 10
 
 # Check live games once (no auto-refresh)
 briefing sports --sport mlb --live
+```
+
+### Track Custom NFL Player Props
+
+```bash
+# Start the interactive NFL props dashboard
+briefing props
+
+# From there you can:
+# - Attach props to upcoming NFL games
+# - Add player props like "Christian McCaffrey over 71.5 rushing yards"
+# - Refresh to see current player stats and whether you're above/below the line
+# - View final WON/LOST/PUSH once games are over
+```
+
+### Track Custom NBA Player Props
+
+```bash
+# Start the interactive NBA props dashboard
+briefing props --sport nba
+
+# Features:
+# - Track points, rebounds, assists, 3-pointers, blocks, steals
+# - Live stats updates
+# - Compare against lines (e.g. over 25.5 points)
 ```
 
 ### Quick News Check

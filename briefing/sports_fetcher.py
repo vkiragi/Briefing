@@ -3,7 +3,7 @@ Sports fetcher module for retrieving data from ESPN public APIs.
 """
 
 import requests
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -477,8 +477,465 @@ class SportsFetcher:
         except Exception as e:
             raise Exception(f"Error parsing {sport} live scores: {str(e)}")
 
+    def _fetch_game_summary(self, sport: str, event_id: str) -> Dict:
+        """
+        Fetch game summary/boxscore for a specific sport and event.
+
+        Args:
+            sport: Sport name ('nfl' or 'nba')
+            event_id: ESPN event id
+
+        Returns:
+            Parsed JSON payload with added _game_state field.
+        """
+        sport_path = self.SPORTS.get(sport.lower())
+        if not sport_path:
+            raise ValueError(f"Unknown sport: {sport}")
+
+        url = f"{self.BASE_URL}/{sport_path}/summary?event={event_id}"
+
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+
+            # Determine basic game state from header/status if available
+            header = data.get("header", {})
+            status = header.get("status", {})
+            status_type = status.get("type", {})
+            state = status_type.get("state", "").lower()
+
+            # Fallback: check competitions[0] if state missing in header
+            if not state:
+                comps = header.get("competitions", [])
+                if comps:
+                    state = comps[0].get("status", {}).get("type", {}).get("state", "").lower()
+            
+            state = state or "unknown"
+
+            # Extract detailed status for display (e.g. "5:09 - 2nd" or "Final")
+            status_detail = ""
+            
+            # Try to find the status object
+            target_status = header.get("status")
+            if not target_status or not target_status.get("type"):
+                 comps = header.get("competitions", [])
+                 if comps:
+                     target_status = comps[0].get("status")
+            
+            if target_status:
+                # Prefer shortDetail (e.g. "5:09 - 2nd")
+                status_detail = target_status.get("type", {}).get("shortDetail")
+
+                # Parse and reformat time if it's a date string (e.g. "11/25 - 8:00 PM EST")
+                # We want to display PST first: "11/25 - 5:00 PM PST / 8:00 PM EST"
+                # ESPN usually returns EST.
+                if status_detail and (" PM " in status_detail or " AM " in status_detail) and (" EST" in status_detail or " EDT" in status_detail):
+                    try:
+                        # Extract the time part
+                        # Typical format: "11/25 - 8:00 PM EST" or "Mon, November 25 - 8:00 PM EST"
+                        # Simple string replacement for EST->PST calculation (-3 hours)
+                        # This is a heuristic and might need full datetime parsing for robustness,
+                        # but avoiding heavy datetime dependencies/parsing logic here for simplicity if possible.
+                        
+                        from datetime import datetime, timedelta
+                        from dateutil import parser
+
+                        # Clean up the string to parse it
+                        # Remove " - " to make it easier or split
+                        parts = status_detail.rsplit(' - ', 1)
+                        if len(parts) == 2:
+                             date_part = parts[0]
+                             time_part_full = parts[1] # "8:00 PM EST"
+                             
+                             # Extract time and timezone
+                             time_str = time_part_full.replace(" EST", "").replace(" EDT", "").strip()
+                             is_dst = "EDT" in time_part_full
+                             
+                             # Parse full datetime string to handle date rollovers
+                             # parser.parse handles missing year (defaults to current)
+                             full_dt_str = f"{date_part} {time_str}"
+                             dt = parser.parse(full_dt_str)
+                             
+                             # Subtract 3 hours for PST
+                             t_pst = dt - timedelta(hours=3)
+                             pst_time_str = t_pst.strftime("%I:%M %p").lstrip("0")
+                             pst_zone = "PDT" if is_dst else "PST"
+                             
+                             # Reconstruct string, handling date change if needed
+                             if t_pst.date() == dt.date():
+                                 status_detail = f"{date_part} - {pst_time_str} {pst_zone} / {time_part_full}"
+                             else:
+                                 # Date rolled back (e.g. 2 AM EST -> 11 PM PST prev day)
+                                 # Match input format style
+                                 if "/" in date_part:
+                                     pst_date_str = f"{t_pst.month}/{t_pst.day}"
+                                 else:
+                                     pst_date_str = t_pst.strftime("%a, %B %d")
+                                 
+                                 # Show both full timestamps
+                                 status_detail = f"{pst_date_str} - {pst_time_str} {pst_zone} / {date_part} - {time_part_full}"
+                    except Exception:
+                        # If parsing fails, leave as is
+                        pass
+                
+                # Fallback if shortDetail missing but we have clock/period
+                if not status_detail and state == "in":
+                    clock = target_status.get("displayClock", "")
+                    period = target_status.get("period", "")
+                    if clock and period:
+                        status_detail = f"Q{period} {clock}"
+
+            # Attach a lightweight game_state hint at the top level
+            data["_game_state"] = state
+            data["_game_status_detail"] = status_detail if status_detail else state
+            return data
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Error fetching {sport} summary for event {event_id}: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Error parsing {sport} summary for event {event_id}: {str(e)}")
+
+    def fetch_nfl_game_player_stats(self, event_id: str) -> Dict:
+        """
+        Fetch detailed NFL player stats for a single game using the ESPN summary endpoint.
+
+        Args:
+            event_id: ESPN event id for the game
+
+        Returns:
+            Parsed JSON payload focused on player stats.
+        """
+        return self._fetch_game_summary('nfl', event_id)
+
+    def fetch_nba_game_player_stats(self, event_id: str) -> Dict:
+        """
+        Fetch detailed NBA player stats for a single game using the ESPN summary endpoint.
+
+        Args:
+            event_id: ESPN event id for the game
+
+        Returns:
+            Parsed JSON payload focused on player stats.
+        """
+        return self._fetch_game_summary('nba', event_id)
+
+    def get_nba_player_stat(
+        self,
+        event_id: str,
+        player_name: str,
+        market_type: str,
+        stats_payload: Optional[Dict] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Look up a specific NBA player stat (e.g., points) from the summary payload.
+
+        Args:
+            event_id: ESPN event id
+            player_name: Player display name (case-insensitive substring match)
+            market_type: One of 'points', 'rebounds', 'assists', 'three_pointers_made'
+            stats_payload: Optional pre-fetched summary payload to avoid re-requesting
+
+        Returns:
+            Dict with 'value' (float), 'team' (str), and 'player' (str) if found, otherwise None.
+        """
+        # If caller didn't pass stats, fetch them now.
+        data = stats_payload or self.fetch_nba_game_player_stats(event_id)
+
+        # Map market types to column NAMES found in the stats block
+        # Based on debug output: ['MIN', 'PTS', 'FG', '3PT', 'FT', 'REB', 'AST', 'TO', 'STL', 'BLK', ...]
+        market_to_col = {
+            "points": "PTS",
+            "rebounds": "REB",
+            "assists": "AST",
+            "three_pointers_made": "3PT",
+            "blocks": "BLK",
+            "steals": "STL",
+            # double_double handled specially below
+        }
+
+        # Handle derived markets like double_double
+        if market_type == "double_double":
+            target_cols = ["PTS", "REB", "AST", "BLK", "STL"]
+        else:
+            target_col = market_to_col.get(market_type)
+            if not target_col:
+                return None
+            target_cols = [target_col]
+
+        # Player stats structure: boxscore -> players -> statistics -> athletes
+        box = data.get("boxscore", {})
+        players_by_team = box.get("players", [])
+
+        target_name_lower = player_name.lower()
+
+        for team_block in players_by_team:
+            # Capture team name
+            team_info = team_block.get("team", {})
+            team_name = team_info.get("displayName") or team_info.get("name", "Unknown")
+
+            # Usually we check all statistics blocks
+            for cat in team_block.get("statistics", []):
+                col_names = cat.get("names", [])
+                if not col_names:
+                    continue
+
+                # Find indices for all needed columns
+                col_indices = {}
+                missing_col = False
+                for col in target_cols:
+                    if col in col_names:
+                        col_indices[col] = col_names.index(col)
+                    elif market_type != "double_double":
+                         # For single stat markets, if column is missing in this category, skip category
+                         missing_col = True
+                         break
+                
+                if missing_col:
+                    continue
+
+                # For double_double, we need at least some stats to be present, but not necessarily all
+                # usually PTS, REB, AST etc are in the same block.
+
+                for athlete_stat in cat.get("athletes", []):
+                    athlete = athlete_stat.get("athlete", {})
+                    display_name = athlete.get("displayName", "")
+                    if target_name_lower not in display_name.lower():
+                        continue
+
+                    # Found the athlete, get the stat from the positional list
+                    stats_values = athlete_stat.get("stats", [])
+                    if not isinstance(stats_values, list):
+                        continue
+
+                    if market_type == "double_double":
+                        # Check count of stats >= 10
+                        double_digit_stats = 0
+                        stats_found = [] # List of (value, label) tuples
+
+                        for col in target_cols:
+                            idx = col_indices.get(col)
+                            if idx is not None and idx < len(stats_values):
+                                raw_val = stats_values[idx]
+                                try:
+                                    val = float(raw_val)
+                                    stats_found.append((val, col))
+                                    if val >= 10:
+                                        double_digit_stats += 1
+                                except (ValueError, TypeError):
+                                    continue
+                        
+                        # Sort stats by value descending to show the most relevant ones
+                        stats_found.sort(key=lambda x: x[0], reverse=True)
+                        
+                        # Construct display string from top 2 stats
+                        # e.g. "12 PTS, 10 REB"
+                        top_stats = stats_found[:2]
+                        display_parts = [f"{int(v) if v.is_integer() else v} {k}" for v, k in top_stats]
+                        display_str = ", ".join(display_parts) if display_parts else "0 PTS, 0 REB"
+
+                        # Value is 1 if double double achieved, 0 otherwise
+                        val = 1.0 if double_digit_stats >= 2 else 0.0
+                        return {
+                            "value": val, 
+                            "team": team_name, 
+                            "player": display_name,
+                            "display_value": display_str
+                        }
+                    
+                    else:
+                        # Standard single stat lookup
+                        target_col = target_cols[0]
+                        col_idx = col_indices.get(target_col)
+                        
+                        if col_idx is None or col_idx >= len(stats_values):
+                            continue
+                        
+                        raw_val = stats_values[col_idx]
+                        
+                        # Handle "M-A" format (e.g. "1-5" for 3PT)
+                        if target_col == "3PT" and isinstance(raw_val, str) and "-" in raw_val:
+                            try:
+                                val = float(raw_val.split("-")[0])
+                                return {"value": val, "team": team_name, "player": display_name}
+                            except (ValueError, IndexError):
+                                continue
+                        
+                        # Handle regular numeric values
+                        try:
+                            return {"value": float(raw_val), "team": team_name, "player": display_name}
+                        except (TypeError, ValueError):
+                            continue
+
+        return None
+
+    def get_nfl_player_stat(
+        self,
+        event_id: str,
+        player_name: str,
+        market_type: str,
+        stats_payload: Optional[Dict] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Look up a specific NFL player stat (e.g., rushing yards) from the summary payload.
+
+        Args:
+            event_id: ESPN event id
+            player_name: Player display name (case-insensitive substring match)
+            market_type: One of 'rushing_yards', 'receiving_yards', 'passing_yards'
+            stats_payload: Optional pre-fetched summary payload to avoid re-requesting
+
+        Returns:
+            Dict with 'value' (float), 'team' (str), and 'player' (str) if found, otherwise None.
+        """
+        # If caller didn't pass stats, fetch them now.
+        data = stats_payload or self.fetch_nfl_game_player_stats(event_id)
+
+        # Map market types to stat group + stat name used by ESPN
+        # This is based on common ESPN JSON structures for NFL boxscores.
+        stat_mapping = {
+            "rushing_yards": ("rushing", ["rushingYards", "rushYds"]),
+            "receiving_yards": ("receiving", ["receivingYards", "recYds"]),
+            "passing_yards": ("passing", ["passingYards", "passYds"]),
+        }
+
+        if market_type not in stat_mapping:
+            return None
+
+        group_key, stat_keys = stat_mapping[market_type]
+
+        # Player stats are usually under 'boxscore' -> 'players' -> list by team
+        box = data.get("boxscore", {})
+        players_by_team = box.get("players", [])
+
+        target_name_lower = player_name.lower()
+
+        for team_block in players_by_team:
+            # Capture team name
+            team_info = team_block.get("team", {})
+            team_name = team_info.get("displayName") or team_info.get("name", "Unknown")
+
+            for cat in team_block.get("statistics", []):
+                # category: passing / rushing / receiving, etc.
+                if cat.get("name") != group_key:
+                    continue
+
+                for athlete_stat in cat.get("athletes", []):
+                    athlete = athlete_stat.get("athlete", {})
+                    display_name = athlete.get("displayName", "")
+                    if target_name_lower not in display_name.lower():
+                        continue
+
+                    # Within this athlete's stats, look for yards fields
+                    for stat_obj in athlete_stat.get("stats", []):
+                        # Some schemas have 'name' + 'value', others may be positional
+                        name = stat_obj.get("name")
+                        value = stat_obj.get("value")
+
+                        if name in stat_keys and value is not None:
+                            try:
+                                return {"value": float(value), "team": team_name, "player": display_name}
+                            except (TypeError, ValueError):
+                                continue
+
+                    # Fallback: some variants pack stats differently (e.g., 'yards' field)
+                    # Try a generic 'yards' key if present.
+                    yards = athlete_stat.get("yards")
+                    if yards is not None:
+                        try:
+                            return {"value": float(yards), "team": team_name, "player": display_name}
+                        except (TypeError, ValueError):
+                            pass
+
+        return None
+
+    def fetch_team_roster(self, sport: str, team_id: str) -> List[Dict]:
+        """
+        Fetch team roster from ESPN.
+        """
+        sport_path = self.SPORTS.get(sport.lower())
+        if not sport_path:
+            return []
+
+        url = f"{self.BASE_URL}/{sport_path}/teams/{team_id}/roster"
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+            return data.get('athletes', [])
+        except Exception:
+            return []
+
+    def find_player(self, sport: str, event_id: str, player_name: str) -> Optional[Dict[str, str]]:
+        """
+        Check if a player exists in a game and return their details.
+
+        Args:
+            sport: 'nfl' or 'nba'
+            event_id: Game event ID
+            player_name: Name fragment to search for
+
+        Returns:
+            Dict with 'display_name' and 'team_name' if found, else None.
+        """
+        # Fetch game stats
+        if sport == 'nba':
+            data = self.fetch_nba_game_player_stats(event_id)
+        else:
+            data = self.fetch_nfl_game_player_stats(event_id)
+
+        # Search in boxscore
+        box = data.get("boxscore", {})
+        players_by_team = box.get("players", [])
+        target_name_lower = player_name.lower()
+
+        for team_block in players_by_team:
+            team_info = team_block.get("team", {})
+            team_name = team_info.get("displayName") or team_info.get("name", "Unknown")
+
+            # Check all statistic categories
+            for cat in team_block.get("statistics", []):
+                for athlete_stat in cat.get("athletes", []):
+                    athlete = athlete_stat.get("athlete", {})
+                    display_name = athlete.get("displayName", "")
+
+                    if target_name_lower in display_name.lower():
+                        return {
+                            "display_name": display_name,
+                            "team_name": team_name
+                        }
+
+        # Fallback: Check rosters if player not found in boxscore stats (e.g. pre-game or DNP)
+        try:
+            header = data.get('header', {})
+            competitions = header.get('competitions', [])
+            if competitions:
+                competitors = competitions[0].get('competitors', [])
+                for comp in competitors:
+                    team = comp.get('team', {})
+                    team_id = team.get('id')
+                    team_name = team.get('displayName') or team.get('name')
+
+                    if team_id:
+                        roster = self.fetch_team_roster(sport, team_id)
+                        for athlete in roster:
+                            display_name = athlete.get('displayName') or athlete.get('fullName', '')
+                            if target_name_lower in display_name.lower():
+                                return {
+                                    "display_name": display_name,
+                                    "team_name": team_name
+                                }
+        except Exception:
+            pass
+
+        return None
+
     def _parse_game(self, event: Dict) -> Optional[Dict]:
-        """Parse game data from ESPN API response."""
+        """Parse game data from ESPN API response into a compact dict.
+
+        Note: For NFL props, we also need the ESPN event id so we can call the
+        summary/boxscore endpoint for detailed player stats. When present, the
+        `event['id']` field will be propagated as `event_id` in the result.
+        """
         try:
             competitions = event.get('competitions', [])
             if not competitions:
@@ -580,6 +1037,16 @@ class SportsFetcher:
                 'display_clock': display_clock,
                 'clock_seconds': clock_seconds,
             }
+
+            # Include ESPN event id and competition id when available for downstream
+            # use (e.g., detailed player stats for props dashboard).
+            event_id = event.get('id')
+            if event_id:
+                game_info['event_id'] = str(event_id)
+
+            comp_id = competition.get('id')
+            if comp_id:
+                game_info['competition_id'] = str(comp_id)
 
             # Add set scores for tennis
             if is_tennis and set_scores_str:

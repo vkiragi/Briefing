@@ -125,6 +125,14 @@ Examples:
     # All command
     subparsers.add_parser('all', help='Fetch both news and sports')
 
+    # Props command - custom player props dashboard (NFL, NBA)
+    props_parser = subparsers.add_parser('props', help='Custom player props dashboard (NFL, NBA)')
+    props_parser.add_argument(
+        '--sport',
+        default=None,
+        help='Sport to track props for (nfl, nba)'
+    )
+
     # Help command
     subparsers.add_parser('help', help='Show quick start guide and examples')
 
@@ -312,6 +320,119 @@ def handle_sports_command(args, formatter: OutputFormatter, config: Config):
         sys.exit(1)
 
 
+def handle_props_command(args, formatter: OutputFormatter, config: Config):
+    """
+    Handle the props command - enter interactive custom props dashboard mode.
+
+    Supports NFL and NBA player props and keeps all props in memory
+    for the duration of the session.
+    """
+    from .props_dashboard import PropsDashboard, add_prop_interactively, remove_prop_interactively
+
+    sport_arg = args.sport.lower() if args.sport else None
+    
+    sport = sport_arg
+    
+    if not sport:
+        formatter.print("\n[bold cyan]Select Sport for Props Dashboard[/bold cyan]")
+        formatter.print("  1) NFL")
+        formatter.print("  2) NBA")
+        
+        while True:
+            choice = input("\nSelect a sport (1-2): ").strip()
+            if choice == '1':
+                sport = 'nfl'
+                break
+            elif choice == '2':
+                sport = 'nba'
+                break
+            else:
+                formatter.print_warning("Invalid choice. Please enter 1 or 2.")
+    
+    if sport not in ['nfl', 'nba']:
+        formatter.print_error("The props dashboard currently supports only NFL and NBA.")
+        sys.exit(1)
+
+    formatter.print_info(f"Entering custom {sport.upper()} props dashboard (session-only, no persistence).")
+    formatter.print(f"Use this mode to track player props for {sport.upper()}.")
+
+    sports_fetcher = SportsFetcher()
+    dashboard = PropsDashboard(sport=sport)
+
+    while True:
+        formatter.print("\n[bold cyan]Props Dashboard Menu[/bold cyan]")
+        formatter.print("  1) Add prop")
+        formatter.print("  2) Watch dashboard (auto-refresh)")
+        formatter.print("  3) Remove prop")
+        formatter.print("  4) Quit\n")
+        
+        try:
+            choice = input("Select an option (1-4): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            formatter.print_info("\nExiting props dashboard.")
+            break
+
+        if choice == '1':
+            # Add a new prop
+            try:
+                add_prop_interactively(dashboard, sports_fetcher, formatter)
+                # Auto-refresh and show dashboard after adding
+                dashboard.refresh_props(sports_fetcher)
+                formatter.print_props_dashboard(dashboard.props, sport=sport)
+            except Exception as e:
+                formatter.print_error(f"Failed to add prop: {str(e)}")
+
+        elif choice == '2':
+            # Watch dashboard (auto-refresh)
+            try:
+                if not dashboard.props:
+                    formatter.print_info("No props added yet. Choose option 1 to add your first prop.")
+                    continue
+
+                import time
+                import os
+                from datetime import datetime
+
+                formatter.print_info("Starting auto-refresh (every 10s). Press Ctrl+C to stop.")
+                time.sleep(1.5)
+
+                try:
+                    while True:
+                        os.system('clear' if os.name != 'nt' else 'cls')
+                        
+                        # Refresh logic
+                        dashboard.refresh_props(sports_fetcher)
+                        
+                        now = datetime.now().strftime("%H:%M:%S")
+                        formatter.print(f"[dim]Last updated: {now} (Refreshing every 10s)[/dim]")
+                        
+                        formatter.print_props_dashboard(dashboard.props, sport=sport)
+                        
+                        formatter.print("\n[bold yellow]Press Ctrl+C to return to menu[/bold yellow]")
+                        time.sleep(10)
+                except KeyboardInterrupt:
+                    formatter.print_info("\nStopped watching.")
+            except Exception as e:
+                formatter.print_error(f"Failed to refresh props dashboard: {str(e)}")
+
+        elif choice == '3':
+            # Remove a prop
+            try:
+                if not dashboard.props:
+                    formatter.print_info("No props to remove.")
+                    continue
+
+                remove_prop_interactively(dashboard, formatter)
+            except Exception as e:
+                formatter.print_error(f"Failed to remove prop: {str(e)}")
+
+        elif choice == '4':
+            formatter.print_info("Good luck with your bets! Exiting props dashboard.")
+            break
+        else:
+            formatter.print_warning("Invalid choice. Please enter a number between 1 and 4.")
+
+
 def handle_help_command(formatter: OutputFormatter):
     """Handle the help command - show quick start guide."""
     console = formatter._get_console()
@@ -343,6 +464,7 @@ def handle_help_command(formatter: OutputFormatter):
 
 [bold yellow]OTHER COMMANDS:[/bold yellow]
   [green]briefing all[/green]                            Get comprehensive briefing (news + sports)
+  [green]briefing props[/green]                          Enter custom NFL player props dashboard
   [green]briefing --version[/green]                      Show version information
   [green]briefing --no-color[/green]                     Disable colored output
   [green]briefing --no-links[/green]                     Hide article links
@@ -423,6 +545,8 @@ def main():
         handle_sports_command(args, formatter, config)
     elif args.command == 'all':
         handle_all_command(args, formatter, config)
+    elif args.command == 'props':
+        handle_props_command(args, formatter, config)
     elif args.command == 'help':
         handle_help_command(formatter)
     else:

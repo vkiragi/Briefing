@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-
 class Config:
     """Manages user configuration for the Briefing CLI."""
 

@@ -87,6 +87,30 @@ briefing sports --sport nba --live --watch
 briefing sports --sport nfl --live --watch {X}
 ```
 
+### Track Custom NFL Player Props (Session-Only)
+
+```bash
+# Enter interactive player props dashboard (NFL only for now)
+briefing props
+
+# Inside this mode you can:
+# 1) Add props like "Christian McCaffrey over 71.5 rushing yards"
+# 2) Refresh to see current player stats and live win/loss status
+# 3) Remove props you no longer want to track
+```
+
+### Track Custom NBA Player Props (Session-Only)
+
+```bash
+# Enter interactive player props dashboard for NBA
+briefing props --sport nba
+
+# Inside this mode you can:
+# 1) Add props like "LeBron James over 25.5 points"
+# 2) Track points, rebounds, assists, 3-pointers, etc.
+# 3) Refresh to see live stats
+```
+
 ### Get Everything
 
 ```bash
