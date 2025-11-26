@@ -4,8 +4,8 @@ A robust, user-friendly CLI tool for fetching news summaries from RSS feeds and 
 
 ## Features
 
-- **News Summaries**: Fetch news from multiple RSS sources (BBC, CNN, NYTimes, The Guardian, Al Jazeera, TechCrunch, Hacker News, and more)
 - **Sports Updates**: Get scores and news for NFL, NBA, MLB, NHL, Soccer, NCAA Football, and NCAA Basketball
+- **News Summaries**: Fetch news from multiple RSS sources (BBC, CNN, NYTimes, The Guardian, Al Jazeera, TechCrunch, Hacker News, and more)
 - **Beautiful Output**: Rich formatting with colors, tables, and panels for easy reading
 - **Configurable**: Customize default sources and preferences
 - **Robust Error Handling**: Retry logic and graceful error recovery
@@ -61,60 +61,26 @@ docker run --rm -v ~/.config/briefing:/home/appuser/.config/briefing briefing:la
 ## Quick Start
 
 ```bash
-# Get news from default sources (BBC, CNN)
-briefing news
-
 # Get NFL scores
 briefing sports --sport nfl --scores
 
-# Get NBA news
-briefing sports --sport nba --news
+# Enter custom NFL player props dashboard (session-only)
+briefing props
+
+# Get news from default sources (BBC, CNN)
+briefing news
 
 # Get everything (news + sports)
 briefing all
 
-# List available news sources
-briefing news --list-sources
-
 # List available sports
 briefing sports --list-sports
 
-# Enter custom NFL player props dashboard (session-only)
-briefing props
-```
-
-## Usage
-
-### News Command
-
-Fetch news summaries from RSS feeds:
-
-```bash
-# Fetch from default sources
-briefing news
-
-# Fetch from specific sources
-briefing news --sources bbc cnn techcrunch
-
-# List available sources
+# List available news sources
 briefing news --list-sources
 ```
 
-**Available News Sources:**
-
-- `bbc` - BBC News
-- `cnn` - CNN Top Stories
-- `nytimes` - New York Times
-- `guardian` - The Guardian
-- `aljazeera` - Al Jazeera
-- `techcrunch` - TechCrunch
-- `hackernews` - Hacker News
-
-You can also use custom RSS feed URLs:
-
-```bash
-briefing news --sources https://example.com/feed.rss
-```
+## Usage
 
 ### Sports Command
 
@@ -181,6 +147,37 @@ This tool uses free public APIs with rate limits. Please use responsibly:
 - `tennis-wta-singles` - WTA Women's Singles
 - `tennis-wta-doubles` - WTA Women's Doubles
 
+### News Command
+
+Fetch news summaries from RSS feeds:
+
+```bash
+# Fetch from default sources
+briefing news
+
+# Fetch from specific sources
+briefing news --sources bbc cnn techcrunch
+
+# List available sources
+briefing news --list-sources
+```
+
+**Available News Sources:**
+
+- `bbc` - BBC News
+- `cnn` - CNN Top Stories
+- `nytimes` - New York Times
+- `guardian` - The Guardian
+- `aljazeera` - Al Jazeera
+- `techcrunch` - TechCrunch
+- `hackernews` - Hacker News
+
+You can also use custom RSS feed URLs:
+
+```bash
+briefing news --sources https://example.com/feed.rss
+```
+
 ### All Command
 
 Get a comprehensive briefing with both news and sports:
@@ -243,15 +240,6 @@ Edit the config file to change default sources, sports, and display preferences:
 
 ## Examples
 
-### Morning Briefing Routine
-
-```bash
-# Get your morning briefing with tech news and sports
-briefing news --sources bbc techcrunch
-briefing sports --sport nfl --scores
-briefing sports --sport nba --scores
-```
-
 ### Follow a Specific Sport
 
 ```bash
@@ -302,6 +290,15 @@ briefing props --sport nba
 ```bash
 # Quick news from multiple sources
 briefing news --sources bbc cnn guardian --no-links
+```
+
+### Morning Briefing Routine
+
+```bash
+# Get your morning briefing with tech news and sports
+briefing news --sources bbc techcrunch
+briefing sports --sport nfl --scores
+briefing sports --sport nba --scores
 ```
 
 ### Create an Alias
