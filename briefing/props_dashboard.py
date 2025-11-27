@@ -152,6 +152,13 @@ class PropsDashboard:
                         value = float(result)
 
                 p.current_value = value
+                
+                # Special handling for NFL: Players often don't appear in specific stat categories 
+                # (like receiving) until they record a stat. If the game is live and we have no value,
+                # default to 0.0 so it looks active/tracking.
+                if p.current_value is None and self.sport == 'nfl' and game_state == 'in':
+                    p.current_value = 0.0
+
                 p.game_state = game_state
                 p.game_status_text = game_status_detail
                 p.prop_status = _compute_prop_status(
