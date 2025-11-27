@@ -781,7 +781,8 @@ class SportsFetcher:
         Args:
             event_id: ESPN event id
             player_name: Player display name (case-insensitive substring match)
-            market_type: One of 'rushing_yards', 'receiving_yards', 'passing_yards'
+            market_type: 'rushing_yards', 'receiving_yards', 'passing_yards', 
+                         'passing_completions', 'passing_touchdowns'
             stats_payload: Optional pre-fetched summary payload to avoid re-requesting
 
         Returns:
@@ -790,18 +791,20 @@ class SportsFetcher:
         # If caller didn't pass stats, fetch them now.
         data = stats_payload or self.fetch_nfl_game_player_stats(event_id)
 
-        # Map market types to stat group + stat name used by ESPN
-        # This is based on common ESPN JSON structures for NFL boxscores.
+        # Map market types to stat group + list of possible column keys
+        # We check both 'keys' (API key name) and 'labels' (header text) just in case
         stat_mapping = {
             "rushing_yards": ("rushing", ["rushingYards", "rushYds"]),
             "receiving_yards": ("receiving", ["receivingYards", "recYds"]),
             "passing_yards": ("passing", ["passingYards", "passYds"]),
+            "passing_completions": ("passing", ["completions/passingAttempts", "C/ATT"]),
+            "passing_touchdowns": ("passing", ["passingTouchdowns", "TD"]),
         }
 
         if market_type not in stat_mapping:
             return None
 
-        group_key, stat_keys = stat_mapping[market_type]
+        group_key, target_keys = stat_mapping[market_type]
 
         # Player stats are usually under 'boxscore' -> 'players' -> list by team
         box = data.get("boxscore", {})
@@ -818,6 +821,31 @@ class SportsFetcher:
                 # category: passing / rushing / receiving, etc.
                 if cat.get("name") != group_key:
                     continue
+                
+                # Determine which index contains our target stat
+                # The 'keys' list in the category metadata tells us the order
+                # e.g. keys: ['completions/passingAttempts', 'passingYards', ...]
+                available_keys = cat.get("keys", [])
+                available_labels = cat.get("labels", [])
+                
+                target_index = -1
+                
+                # Try to find index by key match
+                for i, k in enumerate(available_keys):
+                    if k in target_keys:
+                        target_index = i
+                        break
+                
+                # If not found by key, try by label
+                if target_index == -1:
+                    for i, l in enumerate(available_labels):
+                        if l in target_keys:
+                            target_index = i
+                            break
+                
+                # If still not found, we can't reliably parse the list of values
+                if target_index == -1:
+                    continue
 
                 for athlete_stat in cat.get("athletes", []):
                     athlete = athlete_stat.get("athlete", {})
@@ -825,26 +853,25 @@ class SportsFetcher:
                     if target_name_lower not in display_name.lower():
                         continue
 
-                    # Within this athlete's stats, look for yards fields
-                    for stat_obj in athlete_stat.get("stats", []):
-                        # Some schemas have 'name' + 'value', others may be positional
-                        name = stat_obj.get("name")
-                        value = stat_obj.get("value")
-
-                        if name in stat_keys and value is not None:
+                    stats_values = athlete_stat.get("stats", [])
+                    if not isinstance(stats_values, list) or target_index >= len(stats_values):
+                        continue
+                        
+                    raw_val = stats_values[target_index]
+                    
+                    # Special handling for "completions/attempts" (e.g. "20/30")
+                    if market_type == "passing_completions":
+                        if isinstance(raw_val, str) and "/" in raw_val:
                             try:
-                                return {"value": float(value), "team": team_name, "player": display_name}
-                            except (TypeError, ValueError):
-                                continue
-
-                    # Fallback: some variants pack stats differently (e.g., 'yards' field)
-                    # Try a generic 'yards' key if present.
-                    yards = athlete_stat.get("yards")
-                    if yards is not None:
-                        try:
-                            return {"value": float(yards), "team": team_name, "player": display_name}
-                        except (TypeError, ValueError):
-                            pass
+                                val = float(raw_val.split("/")[0])
+                                return {"value": val, "team": team_name, "player": display_name}
+                            except (ValueError, IndexError):
+                                pass
+                    
+                    try:
+                        return {"value": float(raw_val), "team": team_name, "player": display_name}
+                    except (TypeError, ValueError):
+                        continue
 
         return None
 
@@ -861,7 +888,16 @@ class SportsFetcher:
             response = self.session.get(url, timeout=self.timeout)
             response.raise_for_status()
             data = response.json()
-            return data.get('athletes', [])
+            athletes = data.get('athletes', [])
+
+            # Handle grouped roster (e.g. NFL has groups by position)
+            if athletes and 'items' in athletes[0]:
+                flat_roster = []
+                for group in athletes:
+                    flat_roster.extend(group.get('items', []))
+                return flat_roster
+
+            return athletes
         except Exception:
             return []
 

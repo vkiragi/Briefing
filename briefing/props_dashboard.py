@@ -340,11 +340,15 @@ def add_prop_interactively(dashboard: PropsDashboard, sports_fetcher, formatter)
             "1": "rushing_yards",
             "2": "receiving_yards",
             "3": "passing_yards",
+            "4": "passing_completions",
+            "5": "passing_touchdowns",
         }
         formatter.print("\nSelect market type:")
         formatter.print("  1) Rushing yards")
         formatter.print("  2) Receiving yards")
         formatter.print("  3) Passing yards")
+        formatter.print("  4) Passing completions")
+        formatter.print("  5) Passing touchdowns")
 
     while True:
         market_choice = input(f"Market (1-{len(valid_markets)}): ").strip()
