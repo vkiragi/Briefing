@@ -337,20 +337,24 @@ def handle_props_command(args, formatter: OutputFormatter, config: Config):
         formatter.print("\n[bold cyan]Select Sport for Props Dashboard[/bold cyan]")
         formatter.print("  1) NFL")
         formatter.print("  2) NBA")
+        formatter.print("  3) MLB")
         
         while True:
-            choice = input("\nSelect a sport (1-2): ").strip()
+            choice = input("\nSelect a sport (1-3): ").strip()
             if choice == '1':
                 sport = 'nfl'
                 break
             elif choice == '2':
                 sport = 'nba'
                 break
+            elif choice == '3':
+                sport = 'mlb'
+                break
             else:
-                formatter.print_warning("Invalid choice. Please enter 1 or 2.")
+                formatter.print_warning("Invalid choice. Please enter 1-3.")
     
-    if sport not in ['nfl', 'nba']:
-        formatter.print_error("The props dashboard currently supports only NFL and NBA.")
+    if sport not in ['nfl', 'nba', 'mlb']:
+        formatter.print_error("The props dashboard currently supports NFL, NBA, and MLB.")
         sys.exit(1)
 
     formatter.print_info(f"Entering custom {sport.upper()} props dashboard (session-only, no persistence).")

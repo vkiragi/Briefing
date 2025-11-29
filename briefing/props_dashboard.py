@@ -98,6 +98,8 @@ class PropsDashboard:
                 # Dispatch based on dashboard sport type
                 if self.sport == "nba":
                     stats = sports_fetcher.fetch_nba_game_player_stats(game_id)
+                elif self.sport == "mlb":
+                    stats = sports_fetcher.fetch_mlb_game_player_stats(game_id)
                 else:
                     stats = sports_fetcher.fetch_nfl_game_player_stats(game_id)
             except Exception:
@@ -115,6 +117,13 @@ class PropsDashboard:
                 result = None
                 if self.sport == "nba":
                     result = sports_fetcher.get_nba_player_stat(
+                        event_id=game_id,
+                        player_name=p.player_name,
+                        market_type=p.market_type,
+                        stats_payload=stats,
+                    )
+                elif self.sport == "mlb":
+                    result = sports_fetcher.get_mlb_player_stat(
                         event_id=game_id,
                         player_name=p.player_name,
                         market_type=p.market_type,
@@ -341,6 +350,24 @@ def add_prop_interactively(dashboard: PropsDashboard, sports_fetcher, formatter)
         formatter.print("  5) Blocks")
         formatter.print("  6) Steals")
         formatter.print("  7) Double Double")
+    elif sport == "mlb":
+        valid_markets = {
+            "1": "hits",
+            "2": "runs",
+            "3": "rbi",
+            "4": "home_runs",
+            "5": "strikeouts_pitching",
+            "6": "earned_runs",
+            "7": "innings_pitched",
+        }
+        formatter.print("\nSelect market type:")
+        formatter.print("  1) Hits")
+        formatter.print("  2) Runs")
+        formatter.print("  3) RBI")
+        formatter.print("  4) Home Runs")
+        formatter.print("  5) Pitcher Strikeouts")
+        formatter.print("  6) Earned Runs Allowed")
+        formatter.print("  7) Innings Pitched")
     else:
         # Default to NFL markets
         valid_markets = {
