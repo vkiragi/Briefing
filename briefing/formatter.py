@@ -739,7 +739,7 @@ class OutputFormatter:
         table.add_column("Team", style="cyan")
         table.add_column("Market", style="blue")
         table.add_column("Line", justify="right", style="yellow")
-        table.add_column("Current", justify="right", style="green")
+        table.add_column("Current", justify="right")  # Removing default style to allow per-row coloring
         table.add_column("Game State", style="dim")
         table.add_column("Status", style="magenta")
         table.add_column("Game", style="white")
@@ -773,7 +773,12 @@ class OutputFormatter:
             elif p.market_type == "double_double":
                  current_str = "Yes" if p.current_value >= 1.0 else "No"
             else:
-                current_str = f"{p.current_value:.1f}"
+                # Format current value based on hit/miss status
+                raw_str = f"{p.current_value:.1f}"
+                if p.prop_status in ["live_hit", "won"]:
+                    current_str = f"[bold green]{raw_str}[/bold green]"
+                else:
+                    current_str = f"[bold red]{raw_str}[/bold red]"
 
             # If game is over but we have stats, show WON/LOST instead of just status
             # The prop_status field handles this logic (won/lost vs live_above/live_below)
