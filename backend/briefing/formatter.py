@@ -763,9 +763,20 @@ class OutputFormatter:
         }
 
         for p in props:
-            market_readable = p.market_type.replace("_", " ")
-            line_str = f"{p.line:.1f}"
+            market_readable = p.market_type.replace("_", " ").title()
+            
+            # Format Line
+            if p.market_type == "moneyline":
+                if hasattr(p, 'odds') and p.odds:
+                    line_str = f"{p.odds:+g}"
+                else:
+                    line_str = "ML"
+            elif p.market_type == "spread":
+                line_str = f"{p.line:+g}"
+            else:
+                line_str = f"{p.line:.1f}"
 
+            # Format Current Value
             if p.current_value is None:
                 current_str = "[dim]N/A[/dim]"
             elif hasattr(p, "current_value_str") and p.current_value_str:
@@ -780,45 +791,32 @@ class OutputFormatter:
                 else:
                     current_str = f"[bold red]{raw_str}[/bold red]"
 
-            # If game is over but we have stats, show WON/LOST instead of just status
-            # The prop_status field handles this logic (won/lost vs live_above/live_below)
-            
+            # Format Player Name (hide if it's a team bet)
+            player_display = p.player_name
+            if p.market_type in ("moneyline", "spread", "total_score"):
+                player_display = "-"
+
             # Use detailed status text (e.g. "5:09 - 2nd") if available, otherwise fallback to generic state
             if hasattr(p, "game_status_text") and p.game_status_text:
                 game_state = p.game_status_text
             else:
                 game_state = state_labels.get(p.game_state, p.game_state)
 
-            # Adjust time zone display if game_state contains time info
-            # Assuming format might be "11/25 - 11:00 PM EST"
-            # We want to display PST first if possible, or convert/append PST
-            # For simplicity, if we see "EST" or "EDT", we'll try to add PST/PDT or swap.
-            # But typically this string comes from the fetcher logic.
-            # If the source string is just "11/25 - 11:00 PM EST", let's try to make it "11/25 - 08:00 PM PST / 11:00 PM EST"
-            
-            # Simple heuristic replacement for now since we don't have full datetime objects here easily
-            # (The prop object stores pre-formatted strings for game_status_text usually)
-            
-            # Actually, looking at the user request: "let's set the game state as pst first, and est second."
-            # The example output shows: "11/25 - 11:00 PM EST" in the Game State column.
-            # This string likely comes from `game_status_text` which is set in `props_dashboard.py` from `_game_status_detail` in `sports_fetcher.py`.
-            
-            # Let's inspect sports_fetcher.py to see where this string is constructed first.
-            # But if we modify it here in presentation layer it's safer.
-            
-            if "EST" in game_state or "EDT" in game_state:
-                 # Try to parse time and convert. 
-                 # Since this is a string manipulation without datetime context, it might be brittle.
-                 # Let's try to fix it at the source in sports_fetcher.py instead for robustness.
-                 pass
-
             status = status_labels.get(p.prop_status, p.prop_status.upper())
+            
+            # Format Side/Market column
+            if p.market_type == "moneyline":
+                side_market = f"{p.side} (ML)"
+            elif p.market_type == "spread":
+                side_market = f"{p.side} (Spread)"
+            else:
+                side_market = f"{p.side} {market_readable}"
 
             table.add_row(
                 str(p.id),
-                p.player_name,
+                player_display,
                 p.team_name or "-",
-                f"{p.side} {market_readable}",
+                side_market,
                 line_str,
                 current_str,
                 game_state,

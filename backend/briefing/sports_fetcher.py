@@ -1188,6 +1188,29 @@ class SportsFetcher:
             display_clock = status.get('displayClock', '')
             clock_seconds = status.get('clock', 0)
 
+            # Extract odds info
+            odds_info = {}
+            if competition.get('odds'):
+                try:
+                    odds_data = competition['odds'][0]
+                    odds_info = {
+                        'details': odds_data.get('details', ''),
+                        'over_under': odds_data.get('overUnder'),
+                        'spread': odds_data.get('spread'),
+                    }
+                    
+                    # Extract moneyline if available
+                    if 'homeTeamOdds' in odds_data:
+                        odds_info['home_moneyline'] = odds_data['homeTeamOdds'].get('moneyLine')
+                        odds_info['home_spread_odds'] = odds_data['homeTeamOdds'].get('spreadOdds')
+                    
+                    if 'awayTeamOdds' in odds_data:
+                        odds_info['away_moneyline'] = odds_data['awayTeamOdds'].get('moneyLine')
+                        odds_info['away_spread_odds'] = odds_data['awayTeamOdds'].get('spreadOdds')
+                        
+                except Exception:
+                    pass
+
             game_info = {
                 'home_team': home_name,
                 'home_score': home_score,
@@ -1200,6 +1223,7 @@ class SportsFetcher:
                 'period': period,
                 'display_clock': display_clock,
                 'clock_seconds': clock_seconds,
+                'odds': odds_info,
             }
 
             # Include ESPN event id and competition id when available for downstream

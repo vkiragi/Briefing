@@ -48,3 +48,7 @@ htmlcov/
 
 # Config
 config.json
+
+# Personal notes
+features.txt
+

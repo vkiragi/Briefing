@@ -125,12 +125,12 @@ Examples:
     # All command
     subparsers.add_parser('all', help='Fetch both news and sports')
 
-    # Props command - custom player props dashboard (NFL, NBA)
-    props_parser = subparsers.add_parser('props', help='Custom player props dashboard (NFL, NBA)')
+    # Props command - custom player props and game bets dashboard (NFL, NBA)
+    props_parser = subparsers.add_parser('props', help='Custom betting dashboard (Props, Moneyline, Spread, Total)')
     props_parser.add_argument(
         '--sport',
         default=None,
-        help='Sport to track props for (nfl, nba)'
+        help='Sport to track bets for (nfl, nba)'
     )
 
     # Help command
@@ -318,6 +318,105 @@ def handle_sports_command(args, formatter: OutputFormatter, config: Config):
     except Exception as e:
         formatter.print_error(f"Failed to fetch sports data: {str(e)}")
         sys.exit(1)
+
+
+def handle_bets_command(args, formatter: OutputFormatter, config: Config):
+    """Handle the bets command - track moneyline, spread, and total bets."""
+    from .bet_tracker import BetTracker, add_bet_interactively
+    
+    sports_fetcher = SportsFetcher()
+    tracker = BetTracker()
+    
+    if not args.bets_command:
+        formatter.print_error("Please specify a subcommand: add, list, stats, update, or remove")
+        formatter.print_info("Example: briefing bets add")
+        sys.exit(1)
+    
+    if args.bets_command == 'add':
+        try:
+            add_bet_interactively(tracker, sports_fetcher, formatter)
+        except Exception as e:
+            formatter.print_error(f"Failed to add bet: {str(e)}")
+            sys.exit(1)
+    
+    elif args.bets_command == 'list':
+        bets = tracker.get_bets(
+            sport=args.sport if hasattr(args, 'sport') else None,
+            status=args.status if hasattr(args, 'status') else None,
+            type=args.type if hasattr(args, 'type') else None
+        )
+        
+        if not bets:
+            formatter.print_info("No bets found matching your criteria.")
+            return
+        
+        formatter.print(f"\n[bold cyan]📊 Bets ({len(bets)} total)[/bold cyan]\n")
+        
+        for bet in bets:
+            status_color = {
+                'Pending': 'yellow',
+                'Won': 'green',
+                'Lost': 'red',
+                'Pushed': 'blue'
+            }.get(bet.status, 'white')
+            
+            formatter.print(f"[bold]#{bet.id}[/bold] [{status_color}]{bet.status}[/{status_color}]")
+            formatter.print(f"  {bet.type} • {bet.sport.upper()}")
+            formatter.print(f"  {bet.matchup}")
+            formatter.print(f"  Selection: {bet.selection}")
+            formatter.print(f"  Odds: {bet.odds:+d} | Stake: ${bet.stake:.2f}")
+            
+            if bet.status == 'Won':
+                profit = bet.potential_payout or bet.calculate_payout()
+                formatter.print(f"  [green]Profit: +${profit:.2f}[/green]")
+            elif bet.status == 'Lost':
+                formatter.print(f"  [red]Loss: -${bet.stake:.2f}[/red]")
+            
+            if bet.book:
+                formatter.print(f"  Book: {bet.book}")
+            if bet.notes:
+                formatter.print(f"  Notes: {bet.notes}")
+            
+            formatter.print(f"  Date: {bet.date.split('T')[0]}\n")
+    
+    elif args.bets_command == 'stats':
+        stats = tracker.get_stats()
+        
+        formatter.print("\n[bold cyan]📈 Betting Statistics[/bold cyan]\n")
+        formatter.print(f"Total Bets: {stats['total_bets']}")
+        formatter.print(f"Pending: {stats['pending']}")
+        formatter.print(f"Won: [green]{stats['won']}[/green]")
+        formatter.print(f"Lost: [red]{stats['lost']}[/red]")
+        formatter.print(f"Pushed: [blue]{stats['pushed']}[/blue]")
+        
+        if stats['won'] + stats['lost'] > 0:
+            formatter.print(f"\nWin Rate: [bold]{stats['win_rate']:.1f}%[/bold]")
+            formatter.print(f"Total Staked: ${stats['total_staked']:.2f}")
+            
+            profit_color = 'green' if stats['total_profit'] >= 0 else 'red'
+            profit_sign = '+' if stats['total_profit'] >= 0 else ''
+            formatter.print(f"Total Profit: [{profit_color}]{profit_sign}${stats['total_profit']:.2f}[/{profit_color}]")
+            
+            roi_color = 'green' if stats['roi'] >= 0 else 'red'
+            roi_sign = '+' if stats['roi'] >= 0 else ''
+            formatter.print(f"ROI: [{roi_color}]{roi_sign}{stats['roi']:.1f}%[/{roi_color}]")
+        formatter.print()
+    
+    elif args.bets_command == 'update':
+        success = tracker.update_bet_status(args.bet_id, args.status)
+        if success:
+            formatter.print_success(f"✅ Bet #{args.bet_id} updated to {args.status}")
+        else:
+            formatter.print_error(f"Bet #{args.bet_id} not found")
+            sys.exit(1)
+    
+    elif args.bets_command == 'remove':
+        success = tracker.remove_bet(args.bet_id)
+        if success:
+            formatter.print_success(f"✅ Bet #{args.bet_id} removed")
+        else:
+            formatter.print_error(f"Bet #{args.bet_id} not found")
+            sys.exit(1)
 
 
 def handle_props_command(args, formatter: OutputFormatter, config: Config):
