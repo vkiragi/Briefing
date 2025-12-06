@@ -1,13 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Bet, BankrollTransaction } from '../types';
+import { Bet } from '../types';
+import { api } from '../lib/api';
 
 interface BetContextType {
   bets: Bet[];
-  bankroll: number;
-  transactions: BankrollTransaction[];
-  addBet: (bet: Omit<Bet, 'id' | 'status'>) => void;
-  updateBetStatus: (id: string, status: Bet['status']) => void;
-  addTransaction: (transaction: Omit<BankrollTransaction, 'id' | 'date'>) => void;
+  addBet: (bet: Omit<Bet, 'id' | 'status'>) => Promise<void>;
+  updateBetStatus: (id: string, status: Bet['status']) => Promise<void>;
+  deleteBet: (id: string) => Promise<void>;
   stats: {
     totalBets: number;
     wins: number;
@@ -30,82 +29,102 @@ export const useBets = () => {
 };
 
 export const BetProvider = ({ children }: { children: React.ReactNode }) => {
-  const [bets, setBets] = useState<Bet[]>(() => {
-    const saved = localStorage.getItem('bets');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [bets, setBets] = useState<Bet[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [bankroll, setBankroll] = useState<number>(() => {
-    const saved = localStorage.getItem('bankroll');
-    return saved ? parseFloat(saved) : 1000;
-  });
-
-  const [transactions, setTransactions] = useState<BankrollTransaction[]>(() => {
-      const saved = localStorage.getItem('transactions');
-      return saved ? JSON.parse(saved) : [];
-  });
+  // Fetch bets from backend (single source of truth)
+  const fetchBets = async () => {
+    try {
+      const remoteBets = await api.getBets();
+      setBets(remoteBets);
+      // Only use localStorage as read-only fallback for offline scenarios
+      // Don't write to it - backend is the source of truth
+    } catch (e) {
+      console.error("Failed to fetch bets from backend", e);
+      // Fallback to localStorage only if backend is completely unavailable
+      const saved = localStorage.getItem('bets');
+      if (saved) {
+        console.warn("Using localStorage fallback - backend unavailable");
+        setBets(JSON.parse(saved));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('bets', JSON.stringify(bets));
-  }, [bets]);
+    fetchBets();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem('bankroll', bankroll.toString());
-  }, [bankroll]);
-  
-  useEffect(() => {
-      localStorage.setItem('transactions', JSON.stringify(transactions));
-  }, [transactions]);
-
-  const addBet = (newBet: Omit<Bet, 'id' | 'status'>) => {
+  const addBet = async (newBet: Omit<Bet, 'id' | 'status'>) => {
     const bet: Bet = {
       ...newBet,
       id: crypto.randomUUID(),
       status: 'Pending',
     };
+    
+    // Optimistic update
     setBets((prev) => [bet, ...prev]);
     
-    // Deduct stake from bankroll
-    setBankroll(prev => prev - bet.stake);
-    addTransaction({ type: 'bet_placed', amount: -bet.stake, note: `Bet placed: ${bet.matchup}` });
+    try {
+      await api.saveBet(bet);
+      // Refresh from backend to ensure sync
+      await fetchBets();
+    } catch (e) {
+      console.error("Failed to save bet to backend", e);
+      // Rollback optimistic update on error
+      setBets((prev) => prev.filter(b => b.id !== bet.id));
+      throw e; // Re-throw so UI can handle error
+    }
   };
 
-  const updateBetStatus = (id: string, status: Bet['status']) => {
+  const updateBetStatus = async (id: string, status: Bet['status']) => {
+    // Optimistic update
     setBets((prev) =>
       prev.map((bet) => {
         if (bet.id === id && bet.status !== status) {
-            // Handle bankroll updates on status change
-            if (status === 'Won' && bet.status !== 'Won') {
-                 const payout = bet.stake + bet.potentialPayout;
-                 setBankroll(b => b + payout);
-                 addTransaction({ type: 'bet_won', amount: payout, note: `Bet won: ${bet.matchup}` });
-            } else if (status === 'Pushed' && bet.status !== 'Pushed') {
-                setBankroll(b => b + bet.stake);
-                 addTransaction({ type: 'bet_pushed', amount: bet.stake, note: `Bet pushed: ${bet.matchup}` });
-            } else if (status === 'Lost' && bet.status === 'Won') {
-                // Revert win
-                 const payout = bet.stake + bet.potentialPayout;
-                 setBankroll(b => b - payout);
-                 // No transaction for correction, or add a correction transaction? 
-                 // For simplicity, direct modification of bankroll for corrections is tricky without transaction logs.
-                 // We will just update bankroll state.
-            }
             return { ...bet, status };
         }
         return bet;
       })
     );
+    
+    try {
+      await api.updateBet(id, { status });
+      // Refresh from backend to ensure sync
+      await fetchBets();
+    } catch (e) {
+      console.error("Failed to update bet status in backend", e);
+      // Rollback optimistic update on error
+      await fetchBets();
+      throw e;
+    }
   };
-  
-  const addTransaction = (tx: Omit<BankrollTransaction, 'id' | 'date'>) => {
-      const newTx: BankrollTransaction = {
-          ...tx,
-          id: crypto.randomUUID(),
-          date: new Date().toISOString()
-      };
-      setTransactions(prev => [newTx, ...prev]);
-      if (tx.type === 'deposit') setBankroll(b => b + tx.amount);
-      if (tx.type === 'withdrawal') setBankroll(b => b - tx.amount);
+
+  const deleteBet = async (id: string) => {
+    const betToDelete = bets.find(b => b.id === id);
+    if (!betToDelete) return;
+
+    // Optimistic update
+    setBets((prev) => prev.filter(bet => bet.id !== id));
+
+    // Call backend to delete
+    try {
+      await api.deleteBet(id);
+      // Refresh from backend to ensure sync
+      await fetchBets();
+    } catch (e) {
+      console.error("Failed to delete bet from backend", e);
+      // Rollback optimistic update on error
+      setBets((prev) => {
+        const exists = prev.find(b => b.id === id);
+        if (!exists) {
+          return [betToDelete, ...prev];
+        }
+        return prev;
+      });
+      throw e;
+    }
   };
 
   const stats = (() => {
@@ -133,11 +152,14 @@ export const BetProvider = ({ children }: { children: React.ReactNode }) => {
   })();
 
   return (
-    <BetContext.Provider value={{ bets, bankroll, transactions, addBet, updateBetStatus, addTransaction, stats }}>
+    <BetContext.Provider value={{ bets, addBet, updateBetStatus, deleteBet, stats }}>
       {children}
     </BetContext.Provider>
   );
 };
+
+
+
 
 
 

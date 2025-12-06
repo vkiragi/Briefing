@@ -147,32 +147,80 @@ class PropsDashboard:
                             away_team_name = t_name
             except Exception:
                 pass
+            
+            # Helper for period scores (1Q, 1H)
+            linescores = stats.get("_linescores", {})
+            home_ls = linescores.get("home", [])
+            away_ls = linescores.get("away", [])
+            
+            def get_period_score(period_idx: int, is_home: bool) -> float:
+                # period_idx: 0 for 1Q, 1 for 2Q, etc.
+                target = home_ls if is_home else away_ls
+                if period_idx < len(target):
+                    return target[period_idx]
+                return 0.0
+                
+            def get_half_score(is_home: bool) -> float:
+                # 1st Half = Q1 + Q2
+                return get_period_score(0, is_home) + get_period_score(1, is_home)
 
             for p in props:
                 value = None
                 
                 # Check for team bet types
-                if p.market_type in ("moneyline", "spread", "total_score"):
-                    if p.market_type == "total_score":
-                        value = home_score + away_score
-                        p.current_value_str = f"{int(value)} ({int(away_score)}-{int(home_score)})"
-                    elif p.market_type == "spread":
+                if p.market_type in ("moneyline", "spread", "total_score", 
+                                     "1h_moneyline", "1h_spread", "1h_total_score",
+                                     "1q_moneyline", "1q_spread", "1q_total_score",
+                                     "home_team_points", "away_team_points"):
+                    
+                    # Determine relevant scores based on period
+                    if p.market_type.startswith("1q_"):
+                        h_s = get_period_score(0, True)
+                        a_s = get_period_score(0, False)
+                        period_label = "1Q"
+                    elif p.market_type.startswith("1h_"):
+                        h_s = get_half_score(True)
+                        a_s = get_half_score(False)
+                        period_label = "1H"
+                    else:
+                        h_s = home_score
+                        a_s = away_score
+                        period_label = "Full"
+
+                    if "total_score" in p.market_type:
+                        value = h_s + a_s
+                        p.current_value_str = f"{int(value)} ({int(a_s)}-{int(h_s)}) [{period_label}]"
+                    
+                    elif "spread" in p.market_type:
                         # Value is the score difference from perspective of the picked team
-                        # Spread bet: Team + Spread > Opponent
-                        # Or: (Team Score - Opponent Score) + Spread > 0
-                        # We'll store the actual margin (Team - Opponent) as value
                         if p.side.lower() in away_team_name.lower():
-                            value = away_score - home_score
+                            value = a_s - h_s
                         else:
-                            value = home_score - away_score
-                        p.current_value_str = f"{int(value):+d} ({int(away_score)}-{int(home_score)})"
-                    elif p.market_type == "moneyline":
-                        # Value is just the margin, same as spread but line is 0 (or odds)
+                            value = h_s - a_s
+                        p.current_value_str = f"{int(value):+d} ({int(a_s)}-{int(h_s)}) [{period_label}]"
+                        
+                    elif "moneyline" in p.market_type:
+                        # Value is just the margin
                         if p.side.lower() in away_team_name.lower():
-                            value = away_score - home_score
+                            value = a_s - h_s
                         else:
-                            value = home_score - away_score
-                        p.current_value_str = f"{int(value):+d} ({int(away_score)}-{int(home_score)})"
+                            value = h_s - a_s
+                        # Just show total score as requested
+                        p.current_value_str = f"Score: {int(a_s)}-{int(h_s)} [{period_label}]"
+                        
+                    elif p.market_type == "home_team_points":
+                        value = home_score
+                        p.current_value_str = f"{int(value)}"
+                        # Ensure we map team name correctly for tracking if not set
+                        if not p.team_name: 
+                            p.team_name = home_team_name
+                            
+                    elif p.market_type == "away_team_points":
+                        value = away_score
+                        p.current_value_str = f"{int(value)}"
+                        if not p.team_name:
+                            p.team_name = away_team_name
+
                 else:
                     # Player Prop
                     result = None
@@ -249,9 +297,16 @@ def _compute_prop_status(
     # Normalize side
     side = prop.side.lower()
     line = prop.line
+    
+    # Handle Period/Half specific team bets
+    # They behave exactly like full game versions but with period-specific values passed in as current_value
+    is_team_total = prop.market_type in ("home_team_points", "away_team_points")
+    is_moneyline = "moneyline" in prop.market_type
+    is_spread = "spread" in prop.market_type
+    is_total = "total_score" in prop.market_type
 
     # Handle Team Bets
-    if prop.market_type == "moneyline":
+    if is_moneyline:
         # Value is margin (Team - Opponent)
         # Winning if margin > 0
         is_winning = current_value > 0
@@ -260,23 +315,9 @@ def _compute_prop_status(
         else:
             return "live_hit" if is_winning else "live_miss"
 
-    elif prop.market_type == "spread":
+    elif is_spread:
         # Value is margin (Team - Opponent)
         # Winning if (Margin + Spread) > 0
-        # Wait, Spread is usually like -3.5 or +7.
-        # If I bet Team -3.5, I need Margin > 3.5. So Margin - 3.5 > 0? No.
-        # Spread condition: Score + Spread > Opp Score
-        # (Team Score + Spread) > Opp Score
-        # (Team Score - Opp Score) + Spread > 0
-        # Margin + Spread > 0
-        
-        # Example: Bet SF -3.5. Line is -3.5.
-        # If SF wins by 4 (Margin = 4). 4 + (-3.5) = 0.5 > 0. Win.
-        # If SF wins by 3 (Margin = 3). 3 + (-3.5) = -0.5 < 0. Loss.
-        
-        # Example: Bet CLE +5.5. Line is +5.5.
-        # If CLE loses by 5 (Margin = -5). -5 + 5.5 = 0.5 > 0. Win.
-        # If CLE loses by 6 (Margin = -6). -6 + 5.5 = -0.5 < 0. Loss.
         
         margin_with_spread = current_value + line
         if abs(margin_with_spread) < 1e-6:
@@ -288,8 +329,8 @@ def _compute_prop_status(
         else:
             return "live_hit" if is_winning else "live_miss"
 
-    elif prop.market_type == "total_score":
-        # Value is total score
+    elif is_total or is_team_total:
+        # Value is total score (either game total or team total)
         if abs(current_value - line) < 1e-6:
             return "push" if game_state in ("post", "final") else "live_push"
             
@@ -416,16 +457,19 @@ def add_prop_interactively(dashboard: PropsDashboard, sports_fetcher, formatter)
     # Bet Type Selection
     formatter.print("\nSelect bet type:")
     formatter.print("  1) Player Prop")
-    formatter.print("  2) Moneyline")
-    formatter.print("  3) Point Spread")
-    formatter.print("  4) Total Score (Over/Under)")
+    formatter.print("  2) Moneyline (Full Game)")
+    formatter.print("  3) Point Spread (Full Game)")
+    formatter.print("  4) Total Score (Full Game)")
+    formatter.print("  5) 1st Half Bets (ML, Spread, Total)")
+    formatter.print("  6) 1st Quarter Bets (ML, Spread, Total)")
+    formatter.print("  7) Team Total Points")
 
     bet_type_choice = "1"
     while True:
-        bet_type_choice = input("Select type (1-4): ").strip()
-        if bet_type_choice in ("1", "2", "3", "4"):
+        bet_type_choice = input("Select type (1-7): ").strip()
+        if bet_type_choice in ("1", "2", "3", "4", "5", "6", "7"):
             break
-        formatter.print_warning("Invalid selection. Please enter 1-4.")
+        formatter.print_warning("Invalid selection. Please enter 1-7.")
 
     player_name = ""
     team_name = ""
@@ -507,13 +551,49 @@ def add_prop_interactively(dashboard: PropsDashboard, sports_fetcher, formatter)
                 "3": "passing_yards",
                 "4": "passing_completions",
                 "5": "passing_touchdowns",
+                "6": "receptions",
+                "7": "passing_interceptions",
+                "8": "passing_attempts",
+                "9": "rushing_attempts",
+                "10": "sacks",
+                "11": "tackles_assists",
+                "12": "tackle_assists",
+                "13": "field_goals_made",
+                "14": "extra_points_made",
+                "15": "kicking_points",
+                "16": "rushing_receiving_yards",
+                "17": "passing_rushing_yards",
+                "18": "longest_passing_completion",
+                "19": "longest_reception",
+                "20": "longest_rush",
+                "21": "anytime_touchdowns",
+                "22": "first_touchdown",
+                "23": "last_touchdown",
             }
             formatter.print("\nSelect market type:")
-            formatter.print("  1) Rushing yards")
-            formatter.print("  2) Receiving yards")
-            formatter.print("  3) Passing yards")
-            formatter.print("  4) Passing completions")
-            formatter.print("  5) Passing touchdowns")
+            formatter.print("  1) Rushing Yards")
+            formatter.print("  2) Receiving Yards")
+            formatter.print("  3) Passing Yards")
+            formatter.print("  4) Passing Completions")
+            formatter.print("  5) Passing Touchdowns")
+            formatter.print("  6) Receptions")
+            formatter.print("  7) Passing Interceptions")
+            formatter.print("  8) Passing Attempts")
+            formatter.print("  9) Rushing Attempts")
+            formatter.print("  10) Sacks")
+            formatter.print("  11) Total Tackles (Solo + Ast)")
+            formatter.print("  12) Tackle Assists")
+            formatter.print("  13) Field Goals Made")
+            formatter.print("  14) Extra Points Made")
+            formatter.print("  15) Kicking Points")
+            formatter.print("  16) Rushing + Receiving Yards")
+            formatter.print("  17) Passing + Rushing Yards")
+            formatter.print("  18) Longest Passing Completion")
+            formatter.print("  19) Longest Reception")
+            formatter.print("  20) Longest Rush")
+            formatter.print("  21) Anytime Touchdowns")
+            formatter.print("  22) First Touchdown")
+            formatter.print("  23) Last Touchdown")
 
         while True:
             market_choice = input(f"Market (1-{len(valid_markets)}): ").strip()
@@ -638,6 +718,121 @@ def add_prop_interactively(dashboard: PropsDashboard, sports_fetcher, formatter)
                 formatter.print_warning("Invalid line.")
 
         # Side
+        while True:
+            side = input("Side ('over' or 'under'): ").strip().lower()
+            if side in ("over", "under"):
+                break
+            formatter.print_warning("Invalid side.")
+
+    elif bet_type_choice in ("5", "6"):
+        # 1st Half / 1st Quarter Bets
+        period_label = "1st Half" if bet_type_choice == "5" else "1st Quarter"
+        prefix = "1h" if bet_type_choice == "5" else "1q"
+        
+        formatter.print(f"\nSelect {period_label} Bet Type:")
+        formatter.print("  1) Moneyline")
+        formatter.print("  2) Point Spread")
+        formatter.print("  3) Total Score")
+        
+        sub_choice = ""
+        while True:
+            sub_choice = input("Select type (1-3): ").strip()
+            if sub_choice in ("1", "2", "3"):
+                break
+            formatter.print_warning("Invalid selection.")
+
+        # Determine market type string
+        if sub_choice == "1":
+            market_type = f"{prefix}_moneyline"
+            player_name = f"{period_label} Moneyline"
+        elif sub_choice == "2":
+            market_type = f"{prefix}_spread"
+            player_name = f"{period_label} Spread"
+        else:
+            market_type = f"{prefix}_total_score"
+            player_name = f"{period_label} Total"
+
+        # Team Selection (for ML/Spread) or Context (for Total)
+        formatter.print("\nSelect team (for ML/Spread perspective):")
+        formatter.print(f"  1) {game['away_team']} (Away)")
+        formatter.print(f"  2) {game['home_team']} (Home)")
+        
+        while True:
+            team_choice = input("Select team (1-2): ").strip()
+            if team_choice == "1":
+                side = game['away_team']
+                team_name = game['away_team']
+                break
+            elif team_choice == "2":
+                side = game['home_team']
+                team_name = game['home_team']
+                break
+            formatter.print_warning("Invalid selection.")
+            
+        if sub_choice == "1": # ML
+            line = 0.0
+            # Ask for odds
+            odds_raw = input("Odds (e.g. -110): ").strip()
+            if odds_raw:
+                try:
+                     bet_odds = float(odds_raw)
+                except ValueError: pass
+                
+        elif sub_choice == "2": # Spread
+             while True:
+                line_raw = input("Spread Line (e.g. -0.5, -3.5): ").strip()
+                try:
+                    line = float(line_raw)
+                    break
+                except ValueError:
+                    formatter.print_warning("Invalid line.")
+                    
+        elif sub_choice == "3": # Total
+            # For total, side is over/under
+             while True:
+                line_raw = input("Total Line (e.g. 20.5): ").strip()
+                try:
+                    line = float(line_raw)
+                    break
+                except ValueError:
+                    formatter.print_warning("Invalid line.")
+                    
+             while True:
+                side_in = input("Side ('over' or 'under'): ").strip().lower()
+                if side_in in ("over", "under"):
+                    side = side_in # Overwrite side (which was team name above)
+                    break
+                formatter.print_warning("Invalid side.")
+                
+    elif bet_type_choice == "7":
+        # Team Total Points
+        formatter.print("\nSelect team for Team Total:")
+        formatter.print(f"  1) {game['away_team']} (Away)")
+        formatter.print(f"  2) {game['home_team']} (Home)")
+        
+        is_home = False
+        while True:
+            team_choice = input("Select team (1-2): ").strip()
+            if team_choice == "1":
+                market_type = "away_team_points"
+                player_name = f"{game['away_team']} Total Points"
+                team_name = game['away_team']
+                break
+            elif team_choice == "2":
+                market_type = "home_team_points"
+                player_name = f"{game['home_team']} Total Points"
+                team_name = game['home_team']
+                break
+            formatter.print_warning("Invalid selection.")
+            
+        while True:
+            line_raw = input("Line (e.g. 24.5): ").strip()
+            try:
+                line = float(line_raw)
+                break
+            except ValueError:
+                formatter.print_warning("Invalid line.")
+                
         while True:
             side = input("Side ('over' or 'under'): ").strip().lower()
             if side in ("over", "under"):

@@ -24,7 +24,7 @@ export interface NewsItem {
 export interface Bet {
   id: string;
   sport: string;
-  type: 'Moneyline' | 'Spread' | 'Total' | 'Parlay' | 'Prop';
+  type: 'Moneyline' | 'Spread' | 'Total' | 'Parlay' | 'Prop' | '1st Half' | '1st Quarter' | 'Team Total';
   matchup: string;
   selection: string;
   odds: number; // American odds
@@ -33,6 +33,25 @@ export interface Bet {
   date: string;
   book?: string;
   potentialPayout: number;
+  legs?: {
+    sport: string;
+    matchup: string;
+    selection: string;
+    odds: number;
+  }[];
+  // Prop tracking data
+  event_id?: string;
+  player_name?: string;
+  team_name?: string;
+  market_type?: string;
+  line?: number;
+  side?: string;
+  // Live tracking data
+  current_value?: number;
+  current_value_str?: string;
+  game_state?: string;
+  game_status_text?: string;
+  prop_status?: string;
 }
 
 export interface BankrollTransaction {
@@ -42,6 +61,9 @@ export interface BankrollTransaction {
   date: string;
   note?: string;
 }
+
+
+
 
 
 

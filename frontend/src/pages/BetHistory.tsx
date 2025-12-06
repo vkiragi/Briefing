@@ -7,10 +7,16 @@ import { cn } from '../lib/utils';
 import { Bet } from '../types';
 
 export const BetHistory = () => {
-  const { bets, updateBetStatus } = useBets();
+  const { bets, updateBetStatus, deleteBet } = useBets();
   const [filter, setFilter] = useState<'All' | 'Won' | 'Lost' | 'Pending' | 'Pushed'>('All');
   const [search, setSearch] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof Bet; direction: 'asc' | 'desc' } | null>({ key: 'date', direction: 'desc' });
+
+  const handleDeleteBet = (betId: string, betMatchup: string) => {
+    if (window.confirm(`Are you sure you want to delete this bet?\n\n${betMatchup}`)) {
+      deleteBet(betId);
+    }
+  };
 
   const filteredBets = useMemo(() => {
     let result = [...bets];
@@ -60,9 +66,9 @@ export const BetHistory = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="p-4 md:p-8 space-y-6"
+      className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 flex-shrink-0 mb-6">
         <h1 className="text-3xl font-bold">Bet History</h1>
         
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
@@ -98,8 +104,8 @@ export const BetHistory = () => {
         </div>
       </div>
 
-      <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+      <Card className="p-0 overflow-hidden flex-1 flex flex-col">
+        <div className="overflow-auto flex-1">
           <table className="w-full text-left text-sm">
             <thead className="bg-white/5 text-gray-400 uppercase text-xs font-medium">
               <tr>
@@ -194,10 +200,13 @@ export const BetHistory = () => {
                             </button>
                           </>
                         )}
-                        {/* 
-                         TODO: Add Edit/Delete functionality if needed
-                         For now, status update is the main action
-                        */}
+                        <button 
+                          onClick={() => handleDeleteBet(bet.id, bet.matchup)}
+                          className="p-1 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded transition-colors"
+                          title="Delete bet"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>

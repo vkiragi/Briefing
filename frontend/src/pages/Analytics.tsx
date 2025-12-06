@@ -92,11 +92,12 @@ export const Analytics = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="p-4 md:p-8 space-y-8"
+      className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
-      <h1 className="text-3xl font-bold">Analytics</h1>
+      <h1 className="text-3xl font-bold mb-6 flex-shrink-0">Analytics</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="flex-1 overflow-y-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Profit by Sport - Pie Chart */}
         <Card>
@@ -143,7 +144,7 @@ export const Analytics = () => {
 
         {/* Profit Trend - Line Chart */}
         <Card>
-          <h3 className="text-lg font-bold mb-6">Bankroll Growth</h3>
+          <h3 className="text-lg font-bold mb-6">Profit Trend</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={profitOverTime}>
@@ -191,6 +192,7 @@ export const Analytics = () => {
             </ResponsiveContainer>
           </div>
         </Card>
+        </div>
       </div>
     </motion.div>
   );

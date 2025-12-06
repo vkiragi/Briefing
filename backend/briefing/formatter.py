@@ -806,9 +806,9 @@ class OutputFormatter:
             
             # Format Side/Market column
             if p.market_type == "moneyline":
-                side_market = f"{p.side} (ML)"
+                side_market = f"{p.side.title()} (ML)"
             elif p.market_type == "spread":
-                side_market = f"{p.side} (Spread)"
+                side_market = f"{p.side.title()} (Spread)"
             else:
                 side_market = f"{p.side} {market_readable}"
 
