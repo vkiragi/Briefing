@@ -12,13 +12,19 @@ from briefing.supabase_service import supabase_service
 app = FastAPI(title="Briefing API")
 
 # Enable CORS
+# Get additional origins from environment variable
+extra_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://classy-monstera-dd525b.netlify.app",
+] + [o.strip() for o in extra_origins if o.strip()]
+
+print(f"CORS allowed origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://classy-monstera-dd525b.netlify.app",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
