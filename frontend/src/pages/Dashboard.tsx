@@ -518,22 +518,26 @@ export const Dashboard = () => {
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-white">{title}</h2>
-          {hasLiveGames && (
-            <>
-              <span className="text-xs text-gray-500 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                Live
-              </span>
-              {lastUpdated && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Clock size={12} />
-                  <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-                </div>
-              )}
-            </>
-          )}
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-white">{title}</h2>
+            {hasLiveGames && (
+              <>
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                  Live
+                </span>
+                {lastUpdated && (
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <Clock size={12} />
+                    <span>Updated {lastUpdated.toLocaleTimeString()}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          {/* Accent line under title */}
+          <div className="w-full h-0.5 bg-accent/40 rounded-full" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -579,6 +583,7 @@ export const Dashboard = () => {
             <div className="text-gray-500 text-sm text-center py-8 col-span-full">No {title} games available</div>
           )}
         </div>
+
       </div>
     );
   };
