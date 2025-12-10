@@ -180,10 +180,7 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
         <div className="space-y-2 mb-3">
           {/* Away Team */}
           <div className="flex items-center justify-between">
-            <span className={cn(
-              "text-base font-semibold",
-              bet.selection?.toLowerCase().includes(teams.away.toLowerCase()) ? "text-accent" : "text-gray-300"
-            )}>
+            <span className="text-base font-semibold text-gray-300">
               {teams.away}
             </span>
             <span className="text-2xl font-mono font-bold text-white">
@@ -192,10 +189,7 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
           </div>
           {/* Home Team */}
           <div className="flex items-center justify-between">
-            <span className={cn(
-              "text-base font-semibold",
-              bet.selection?.toLowerCase().includes(teams.home.toLowerCase()) ? "text-accent" : "text-gray-300"
-            )}>
+            <span className="text-base font-semibold text-gray-300">
               {teams.home}
             </span>
             <span className="text-2xl font-mono font-bold text-white">
@@ -238,11 +232,11 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
         <div className="border-t border-border/50 pt-3">
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-sm font-semibold text-white">
+              <span className="text-sm font-semibold text-accent">
                 {bet.selection}
               </span>
               {isTeamBet && bet.type === 'Spread' && bet.line !== undefined && (
-                <span className="text-sm text-gray-400 ml-2">
+                <span className="text-sm text-accent ml-2">
                   {bet.line > 0 ? `+${bet.line}` : bet.line}
                 </span>
               )}
