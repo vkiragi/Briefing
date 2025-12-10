@@ -175,64 +175,121 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
         </button>
       </div>
 
-      {/* Teams and Score - ESPN style layout */}
-      <div className="space-y-2 mb-3">
-        {/* Away Team */}
-        <div className="flex items-center justify-between">
-          <span className={cn(
-            "text-base font-semibold",
-            bet.selection?.toLowerCase().includes(teams.away.toLowerCase()) ? "text-accent" : "text-gray-300"
-          )}>
-            {teams.away}
-          </span>
-          <span className="text-2xl font-mono font-bold text-white">
-            {isLive || isPostGame ? (bet.current_value_str?.split('-')[0] || '0') : 'TBD'}
-          </span>
-        </div>
-        {/* Home Team */}
-        <div className="flex items-center justify-between">
-          <span className={cn(
-            "text-base font-semibold",
-            bet.selection?.toLowerCase().includes(teams.home.toLowerCase()) ? "text-accent" : "text-gray-300"
-          )}>
-            {teams.home}
-          </span>
-          <span className="text-2xl font-mono font-bold text-white">
-            {isLive || isPostGame ? (bet.current_value_str?.split('-')[1] || '0') : 'TBD'}
-          </span>
-        </div>
-      </div>
-
-      {/* Bet Details */}
-      <div className="border-t border-border/50 pt-3">
-        <div className="flex justify-between items-center">
-          <div>
-            <span className="text-sm font-semibold text-white">
-              {bet.selection}
-            </span>
-            {isProp && bet.line !== undefined && bet.line !== 0 && (
-              <span className="text-sm text-gray-400 ml-2">
-                {isOver ? 'O' : 'U'} {bet.line}
-              </span>
-            )}
-            {isTeamBet && bet.type === 'Spread' && bet.line !== undefined && (
-              <span className="text-sm text-gray-400 ml-2">
-                {bet.line > 0 ? `+${bet.line}` : bet.line}
-              </span>
-            )}
-          </div>
-          <div className="text-right">
+      {/* Teams and Score - ESPN style layout (only for team bets, not player props) */}
+      {!isProp && (
+        <div className="space-y-2 mb-3">
+          {/* Away Team */}
+          <div className="flex items-center justify-between">
             <span className={cn(
-              "text-lg font-mono font-bold",
-              bet.odds > 0 ? "text-green-400" : "text-white"
+              "text-base font-semibold",
+              bet.selection?.toLowerCase().includes(teams.away.toLowerCase()) ? "text-accent" : "text-gray-300"
             )}>
-              {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
+              {teams.away}
+            </span>
+            <span className="text-2xl font-mono font-bold text-white">
+              {isLive || isPostGame ? (bet.current_value_str?.split('-')[0] || '0') : 'TBD'}
+            </span>
+          </div>
+          {/* Home Team */}
+          <div className="flex items-center justify-between">
+            <span className={cn(
+              "text-base font-semibold",
+              bet.selection?.toLowerCase().includes(teams.home.toLowerCase()) ? "text-accent" : "text-gray-300"
+            )}>
+              {teams.home}
+            </span>
+            <span className="text-2xl font-mono font-bold text-white">
+              {isLive || isPostGame ? (bet.current_value_str?.split('-')[1] || '0') : 'TBD'}
             </span>
           </div>
         </div>
-        <div className="flex justify-between items-center mt-1">
-          <span className="text-xs text-gray-500 uppercase">
-            {isProp && bet.market_type ? bet.market_type.replace(/_/g, ' ') : bet.type}
+      )}
+
+      {/* Player Prop display - show player name, line, and current value */}
+      {isProp && (
+        <div className="mb-3">
+          <div className="flex justify-between items-center">
+            <span className="text-lg font-semibold text-white">
+              {bet.player_name || bet.selection}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "text-2xl font-mono font-bold",
+                isLive || isPostGame ? getStatusColor() : "text-gray-500"
+              )}>
+                {isLive || isPostGame ? (bet.current_value ?? 0) : 'TBD'}
+              </span>
+              <span className="text-2xl font-mono font-bold text-white">
+                {bet.line}
+              </span>
+            </div>
+          </div>
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-sm text-gray-400">{bet.matchup}</span>
+            <span className="text-xs text-gray-500 uppercase">
+              {bet.market_type?.replace(/_/g, ' ') || 'POINTS'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Bet Details - only for team bets (props show details above) */}
+      {!isProp && (
+        <div className="border-t border-border/50 pt-3">
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="text-sm font-semibold text-white">
+                {bet.selection}
+              </span>
+              {isTeamBet && bet.type === 'Spread' && bet.line !== undefined && (
+                <span className="text-sm text-gray-400 ml-2">
+                  {bet.line > 0 ? `+${bet.line}` : bet.line}
+                </span>
+              )}
+            </div>
+            <div className="text-right">
+              <span className={cn(
+                "text-lg font-mono font-bold",
+                bet.odds > 0 ? "text-green-400" : "text-white"
+              )}>
+                {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
+              </span>
+            </div>
+          </div>
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-xs text-gray-500 uppercase">
+              {bet.type}
+            </span>
+            {/* Status indicator */}
+            {(isLive || isPostGame) && bet.prop_status && (
+              <span className={cn(
+                "text-xs font-semibold",
+                bet.prop_status === 'won' || bet.prop_status === 'live_hit' ? "text-accent"
+                  : bet.prop_status === 'lost' || bet.prop_status === 'live_miss' ? "text-red-500"
+                  : "text-blue-400"
+              )}>
+                {bet.prop_status === 'won' ? '✓ WON'
+                  : bet.prop_status === 'lost' ? '✗ LOST'
+                  : bet.prop_status === 'live_hit' ? '✓ WINNING'
+                  : bet.prop_status === 'live_miss' ? '✗ LOSING'
+                  : ''}
+              </span>
+            )}
+            {isPreGame && (
+              <span className="text-xs text-gray-500">SCHEDULED</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Player prop footer - odds and status */}
+      {isProp && (
+        <div className="flex justify-between items-center">
+          <span className={cn(
+            "text-sm font-mono font-semibold",
+            bet.odds > 0 ? "text-green-400" : "text-white"
+          )}>
+            {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
           </span>
           {/* Status indicator */}
           {(isLive || isPostGame) && bet.prop_status && (
@@ -253,7 +310,7 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
             <span className="text-xs text-gray-500">SCHEDULED</span>
           )}
         </div>
-      </div>
+      )}
 
       {/* Live progress section - for props/totals with current value */}
       {isProp && bet.current_value !== undefined && bet.current_value !== null && (
