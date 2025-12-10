@@ -18,40 +18,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let isMounted = true;
-    let initialLoadDone = false;
 
-    // Set up auth state listener FIRST
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (!isMounted) return;
-      console.log('Auth state changed:', event, newSession?.user?.email);
-
-      // Update session state
-      setSession(newSession);
-
-      // If this is the initial load or a sign in event, set loading to false
-      if (!initialLoadDone || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        initialLoadDone = true;
+    const initAuth = async () => {
+      // Set up auth state listener
+      const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        if (!isMounted) return;
+        console.log('Auth state changed:', event, newSession?.user?.email);
+        setSession(newSession);
         setLoading(false);
-      }
-    });
+      });
 
-    // Also do an initial session check
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!isMounted) return;
-      if (error) {
-        console.error('Failed to fetch session', error);
+      // Check if we have hash params (OAuth callback)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        console.log('Found tokens in URL, setting session...');
+        // Manually set the session from URL params
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error) {
+          console.error('Failed to set session from URL:', error);
+        } else {
+          console.log('Session set successfully:', data.session?.user?.email);
+          // Clear the hash from URL
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+        if (isMounted) {
+          setSession(data?.session ?? null);
+          setLoading(false);
+        }
+      } else {
+        // No hash params, check for existing session
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Failed to fetch session', error);
+        }
+        console.log('Initial session check:', data.session?.user?.email || 'no session');
+        if (isMounted) {
+          setSession(data.session);
+          setLoading(false);
+        }
       }
-      console.log('Initial session check:', data.session?.user?.email || 'no session');
-      setSession(data.session);
-      if (!initialLoadDone) {
-        initialLoadDone = true;
-        setLoading(false);
-      }
+
+      return listener;
+    };
+
+    let listenerCleanup: { subscription: { unsubscribe: () => void } } | undefined;
+    initAuth().then((listener) => {
+      listenerCleanup = listener;
     });
 
     return () => {
       isMounted = false;
-      listener?.subscription.unsubscribe();
+      listenerCleanup?.subscription.unsubscribe();
     };
   }, []);
 
@@ -59,7 +82,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
     if (error) {
