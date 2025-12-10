@@ -144,17 +144,11 @@ export const Dashboard = () => {
     const todayPST = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
     todayPST.setHours(0, 0, 0, 0);
 
-    console.log('Filtering pending bets:', { totalBets: bets.length, todayPST: todayPST.toISOString() });
-
-    const filtered = bets.filter(b => {
-      if (b.status !== 'Pending') {
-        console.log(`Bet ${b.id} excluded: status is ${b.status}`);
-        return false;
-      }
+    return bets.filter(b => {
+      if (b.status !== 'Pending') return false;
 
       // Exclude bets where outcome is already decided
       if (b.prop_status === 'won' || b.prop_status === 'lost' || b.prop_status === 'push') {
-        console.log(`Bet ${b.id} excluded: prop_status is ${b.prop_status}`);
         return false;
       }
 
@@ -167,14 +161,8 @@ export const Dashboard = () => {
       const betDate = new Date(betDateStr);
       betDate.setHours(0, 0, 0, 0);
 
-      const isValid = betDate >= todayPST;
-      console.log(`Bet ${b.id}: date=${b.date}, parsed=${betDate.toISOString()}, isValid=${isValid}`);
-
-      return isValid;
+      return betDate >= todayPST;
     });
-
-    console.log('Pending bets after filter:', filtered.length);
-    return filtered;
   }, [bets]);
 
   // Combine all props that need tracking
