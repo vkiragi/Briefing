@@ -19,26 +19,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
-    // Set up auth state listener FIRST, before checking session
+    // Check if we're returning from OAuth (URL has hash with access_token)
+    const hasAuthParams = window.location.hash.includes('access_token');
+
+    // Set up auth state listener FIRST
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!isMounted) return;
       console.log('Auth state changed:', event, newSession?.user?.email);
       setSession(newSession);
+      // Only set loading false after we've processed the auth change
       setLoading(false);
     });
 
-    // Then check for existing session
-    const initSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (!isMounted) return;
-      if (error) {
-        console.error('Failed to fetch session', error);
-      }
-      setSession(data.session);
-      setLoading(false);
-    };
-
-    initSession();
+    // If we have auth params in URL, wait for onAuthStateChange to handle it
+    // Otherwise, check for existing session
+    if (!hasAuthParams) {
+      const initSession = async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (error) {
+          console.error('Failed to fetch session', error);
+        }
+        setSession(data.session);
+        setLoading(false);
+      };
+      initSession();
+    }
 
     return () => {
       isMounted = false;
