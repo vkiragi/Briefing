@@ -403,7 +403,27 @@ export const Dashboard = () => {
   // Helper function to format game time based on sport
   const formatGameTime = (game: Game, sport: string) => {
     if (game.state === 'pre') {
-      return game.date || 'TBD';
+      // Format scheduled game time in PST
+      if (!game.date || game.date === 'TBD' || game.date === 'Unknown date') {
+        return game.date || 'TBD';
+      }
+      try {
+        const date = new Date(game.date);
+        if (isNaN(date.getTime())) {
+          return game.date;
+        }
+        const pstFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'America/Los_Angeles',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+        return pstFormatter.format(date) + ' PST';
+      } catch {
+        return game.date || 'TBD';
+      }
     }
     
     if (game.state === 'post' || game.completed) {

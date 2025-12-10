@@ -86,26 +86,17 @@ export const AddBet = () => {
   // Format game date/time to PST
   const formatGameTime = (dateStr: string) => {
     try {
-      // Check if it's already a formatted string (e.g., "Today - 7:00 PM")
-      if (dateStr.includes(' - ')) {
-        const parts = dateStr.split(' - ');
-        const datePart = parts[0];
-        const timePart = parts[1];
-        
-        // If it already has a time, assume it might need PST conversion
-        // For simplicity, we'll append PST to time parts
-        if (timePart) {
-          return `${datePart} - ${timePart} PST`;
-        }
+      // Handle special cases
+      if (!dateStr || dateStr === 'Unknown date' || dateStr === 'TBD') {
         return dateStr;
       }
-      
+
       // Try to parse as ISO date
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) {
         return dateStr; // Return original if can't parse
       }
-      
+
       // Format to PST
       const pstFormatter = new Intl.DateTimeFormat('en-US', {
         timeZone: 'America/Los_Angeles',
@@ -115,7 +106,7 @@ export const AddBet = () => {
         minute: '2-digit',
         hour12: true,
       });
-      
+
       return pstFormatter.format(date) + ' PST';
     } catch (e) {
       return dateStr; // Fallback to original string

@@ -944,20 +944,15 @@ class BaseSportsFetcher:
 
     @staticmethod
     def _parse_timestamp(timestamp: Optional[str]) -> str:
-        """Parse ISO timestamp to readable format in local time."""
+        """Return ISO timestamp for frontend to handle timezone conversion."""
         if not timestamp:
             return 'Unknown date'
 
         try:
-            # Parse the ISO timestamp
+            # Parse and normalize to ISO format with timezone info
             dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-
-            # Convert to local timezone
-            local_dt = dt.astimezone()
-
-            # Format as readable date/time
-            # Show day of week, date, and time
-            return local_dt.strftime('%a, %b %d - %I:%M %p')
+            # Return ISO format string - frontend will convert to user's timezone
+            return dt.isoformat()
         except:
             return timestamp
 

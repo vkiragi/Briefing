@@ -88,27 +88,42 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
       return bet.game_status_text || 'Live';
     }
 
-    // Format date similar to sports cards
+    // Format date in PST
     const betDate = new Date(bet.date);
+    if (isNaN(betDate.getTime())) {
+      return bet.date;
+    }
+
+    // Get today and tomorrow in PST for comparison
+    const pstOptions: Intl.DateTimeFormatOptions = { timeZone: 'America/Los_Angeles' };
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Format time (e.g., "7:30 PM")
+    const betDatePST = betDate.toLocaleDateString('en-US', pstOptions);
+    const todayPST = today.toLocaleDateString('en-US', pstOptions);
+    const tomorrowPST = tomorrow.toLocaleDateString('en-US', pstOptions);
+
+    // Format time in PST (e.g., "7:30 PM")
     const timeStr = betDate.toLocaleTimeString('en-US', {
+      timeZone: 'America/Los_Angeles',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
     });
 
-    if (betDate.toDateString() === today.toDateString()) {
-      return `Starts ${timeStr}`;
-    } else if (betDate.toDateString() === tomorrow.toDateString()) {
-      return `Tomorrow @ ${timeStr}`;
+    if (betDatePST === todayPST) {
+      return `Starts ${timeStr} PST`;
+    } else if (betDatePST === tomorrowPST) {
+      return `Tomorrow @ ${timeStr} PST`;
     }
 
-    const dateStr = betDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${dateStr} @ ${timeStr}`;
+    const dateStr = betDate.toLocaleDateString('en-US', {
+      timeZone: 'America/Los_Angeles',
+      month: 'short',
+      day: 'numeric'
+    });
+    return `${dateStr} @ ${timeStr} PST`;
   };
 
   const isOver = bet.side?.toLowerCase() === 'over';
