@@ -139,23 +139,42 @@ export const Dashboard = () => {
 
   // Get all pending bets (for the pending bets section)
   const pendingBets = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use PST timezone for date comparison to match game times
+    const now = new Date();
+    const todayPST = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    todayPST.setHours(0, 0, 0, 0);
 
-    return bets.filter(b => {
-      if (b.status !== 'Pending') return false;
+    console.log('Filtering pending bets:', { totalBets: bets.length, todayPST: todayPST.toISOString() });
 
-      // Exclude bets where outcome is already decided
-      if (b.prop_status === 'won' || b.prop_status === 'lost' || b.prop_status === 'push') {
+    const filtered = bets.filter(b => {
+      if (b.status !== 'Pending') {
+        console.log(`Bet ${b.id} excluded: status is ${b.status}`);
         return false;
       }
 
-      // Parse bet date and check if it's today or future
-      const betDate = new Date(b.date);
+      // Exclude bets where outcome is already decided
+      if (b.prop_status === 'won' || b.prop_status === 'lost' || b.prop_status === 'push') {
+        console.log(`Bet ${b.id} excluded: prop_status is ${b.prop_status}`);
+        return false;
+      }
+
+      // Parse bet date - handle both ISO and YYYY-MM-DD formats
+      // For YYYY-MM-DD, append time to avoid timezone issues
+      let betDateStr = b.date;
+      if (betDateStr && !betDateStr.includes('T')) {
+        betDateStr = `${betDateStr}T12:00:00`; // Noon to avoid date shifts
+      }
+      const betDate = new Date(betDateStr);
       betDate.setHours(0, 0, 0, 0);
 
-      return betDate >= today;
+      const isValid = betDate >= todayPST;
+      console.log(`Bet ${b.id}: date=${b.date}, parsed=${betDate.toISOString()}, isValid=${isValid}`);
+
+      return isValid;
     });
+
+    console.log('Pending bets after filter:', filtered.length);
+    return filtered;
   }, [bets]);
 
   // Combine all props that need tracking
