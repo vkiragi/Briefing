@@ -19,6 +19,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
+    // Set up auth state listener FIRST, before checking session
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!isMounted) return;
+      console.log('Auth state changed:', event, newSession?.user?.email);
+      setSession(newSession);
+      setLoading(false);
+    });
+
+    // Then check for existing session
     const initSession = async () => {
       const { data, error } = await supabase.auth.getSession();
       if (!isMounted) return;
@@ -30,10 +39,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     initSession();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
 
     return () => {
       isMounted = false;
