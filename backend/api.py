@@ -168,7 +168,16 @@ def get_bet_stats(user_id: str = Depends(get_current_user)):
 @app.post("/api/bets")
 def create_bet(bet: Bet, user_id: str = Depends(get_current_user)):
     """Create a new bet for the authenticated user"""
-    return supabase_service.create_bet(user_id, bet.dict())
+    try:
+        print(f"Creating bet for user {user_id}: {bet.dict()}")
+        result = supabase_service.create_bet(user_id, bet.dict())
+        print(f"Bet created successfully: {result}")
+        return result
+    except Exception as e:
+        print(f"Error creating bet: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/bets/{bet_id}")
 def update_bet(bet_id: str, updates: dict = Body(...), user_id: str = Depends(get_current_user)):
