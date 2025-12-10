@@ -208,6 +208,11 @@ class SupabaseService:
 
     def _transform_bet_to_db(self, bet: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         """Transform frontend bet format to database format"""
+        # Only allow valid side values (over/under) - other values like team names should be null
+        side = bet.get('side')
+        if side and side.lower() not in ('over', 'under'):
+            side = None
+
         return {
             'id': bet.get('id'),
             'user_id': user_id,
@@ -226,7 +231,7 @@ class SupabaseService:
             'team_name': bet.get('team_name'),
             'market_type': bet.get('market_type'),
             'line': bet.get('line'),
-            'side': bet.get('side'),
+            'side': side,
             'current_value': bet.get('current_value'),
             'current_value_str': bet.get('current_value_str'),
             'game_state': bet.get('game_state'),
