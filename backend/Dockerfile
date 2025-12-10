@@ -14,17 +14,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the actual project code
 COPY briefing ./briefing
+COPY api.py ./
 COPY setup.py ./
 
-# Optional: install as a package, so "briefing" CLI works
+# Optional: install as a package
 RUN pip install --no-cache-dir .
 
-# Default entrypoint: run the CLI
-ENTRYPOINT ["briefing"]
+# Expose port
+EXPOSE 8000
 
-# Optional default command if you run the container with no args
-CMD ["news"]
-
-# If you are a non-root user
-RUN adduser --disabled-password --gecos '' appuser
-USER appuser
+# Run the FastAPI server
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]

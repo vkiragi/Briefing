@@ -1,22 +1,38 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Bet } from '../types';
 import { api } from '../lib/api';
+import { useAuth } from './AuthContext';
+
+interface BetStats {
+  totalBets: number;
+  wins: number;
+  losses: number;
+  pending: number;
+  winRate: number;
+  roi: number;
+  profit: number;
+}
 
 interface BetContextType {
   bets: Bet[];
   addBet: (bet: Omit<Bet, 'id' | 'status'>) => Promise<void>;
   updateBetStatus: (id: string, status: Bet['status']) => Promise<void>;
   deleteBet: (id: string) => Promise<void>;
-  stats: {
-    totalBets: number;
-    wins: number;
-    losses: number;
-    pending: number;
-    winRate: number;
-    roi: number;
-    profit: number;
-  };
+  clearPendingBets: () => Promise<void>;
+  stats: BetStats;
+  loading: boolean;
+  refreshBets: () => Promise<void>;
 }
+
+const defaultStats: BetStats = {
+  totalBets: 0,
+  wins: 0,
+  losses: 0,
+  pending: 0,
+  winRate: 0,
+  roi: 0,
+  profit: 0,
+};
 
 const BetContext = createContext<BetContextType | undefined>(undefined);
 
@@ -29,32 +45,42 @@ export const useBets = () => {
 };
 
 export const BetProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user, session } = useAuth();
   const [bets, setBets] = useState<Bet[]>([]);
+  const [stats, setStats] = useState<BetStats>(defaultStats);
   const [loading, setLoading] = useState(true);
 
-  // Fetch bets from backend (single source of truth)
-  const fetchBets = async () => {
+  // Fetch bets and stats from backend (single source of truth)
+  const fetchBets = useCallback(async () => {
+    if (!session?.access_token) {
+      setBets([]);
+      setStats(defaultStats);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const remoteBets = await api.getBets();
+      const [remoteBets, remoteStats] = await Promise.all([
+        api.getBets(),
+        api.getStats(),
+      ]);
       setBets(remoteBets);
-      // Only use localStorage as read-only fallback for offline scenarios
-      // Don't write to it - backend is the source of truth
-    } catch (e) {
+      setStats(remoteStats);
+    } catch (e: any) {
       console.error("Failed to fetch bets from backend", e);
-      // Fallback to localStorage only if backend is completely unavailable
-      const saved = localStorage.getItem('bets');
-      if (saved) {
-        console.warn("Using localStorage fallback - backend unavailable");
-        setBets(JSON.parse(saved));
+      if (e.message === 'Not authenticated') {
+        setBets([]);
+        setStats(defaultStats);
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.access_token]);
 
+  // Re-fetch when user changes
   useEffect(() => {
     fetchBets();
-  }, []);
+  }, [fetchBets, user?.id]);
 
   const addBet = async (newBet: Omit<Bet, 'id' | 'status'>) => {
     const bet: Bet = {
@@ -127,32 +153,50 @@ export const BetProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const stats = (() => {
-    const completedBets = bets.filter((b) => b.status === 'Won' || b.status === 'Lost');
-    const wins = bets.filter((b) => b.status === 'Won').length;
-    const losses = bets.filter((b) => b.status === 'Lost').length;
-    const pending = bets.filter((b) => b.status === 'Pending').length;
-    
-    const totalStaked = completedBets.reduce((acc, b) => acc + b.stake, 0);
-    const totalProfit = bets.reduce((acc, b) => {
-        if (b.status === 'Won') return acc + b.potentialPayout;
-        if (b.status === 'Lost') return acc - b.stake;
-        return acc;
-    }, 0);
+  const clearPendingBets = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    return {
-      totalBets: bets.length,
-      wins,
-      losses,
-      pending,
-      winRate: completedBets.length > 0 ? (wins / completedBets.length) * 100 : 0,
-      roi: totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0,
-      profit: totalProfit,
-    };
-  })();
+    const pendingBetsToResolve = bets.filter(b => {
+      if (b.status !== 'Pending') return false;
+      const betDate = new Date(b.date);
+      betDate.setHours(0, 0, 0, 0);
+      return betDate >= today;
+    });
+
+    // Update pending bets to their resolved status based on prop_status
+    // Don't delete - just mark as Won/Lost/Push to preserve history
+    for (const bet of pendingBetsToResolve) {
+      try {
+        let newStatus: Bet['status'] = 'Pending';
+
+        // Determine status from prop_status
+        if (bet.prop_status === 'won' || bet.prop_status === 'live_hit') {
+          newStatus = 'Won';
+        } else if (bet.prop_status === 'lost' || bet.prop_status === 'live_miss') {
+          newStatus = 'Lost';
+        } else if (bet.prop_status === 'push' || bet.prop_status === 'live_push') {
+          newStatus = 'Pushed';
+        } else if (bet.game_state === 'post' || bet.game_state === 'final') {
+          // Game ended but no clear prop_status - mark as Lost by default
+          newStatus = 'Lost';
+        }
+
+        // Only update if we determined a final status
+        if (newStatus !== 'Pending') {
+          await api.updateBet(bet.id, { status: newStatus });
+        }
+      } catch (e) {
+        console.error(`Failed to update bet ${bet.id}`, e);
+      }
+    }
+
+    // Refresh from backend
+    await fetchBets();
+  };
 
   return (
-    <BetContext.Provider value={{ bets, addBet, updateBetStatus, deleteBet, stats }}>
+    <BetContext.Provider value={{ bets, addBet, updateBetStatus, deleteBet, clearPendingBets, stats, loading, refreshBets: fetchBets }}>
       {children}
     </BetContext.Provider>
   );

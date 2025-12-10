@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi import FastAPI, HTTPException, Query, Body, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
@@ -7,6 +7,7 @@ import os
 from briefing.news_fetcher import NewsFetcher
 from briefing.sports_fetcher import SportsFetcher
 from briefing.config import Config
+from briefing.supabase_service import supabase_service
 
 app = FastAPI(title="Briefing API")
 
@@ -23,8 +24,25 @@ config = Config()
 news_fetcher = NewsFetcher()
 sports_fetcher = SportsFetcher()
 
-# Bet Storage
-BETS_FILE = "bets.json"
+
+async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
+    """Extract user ID from Supabase JWT token"""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required")
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization format")
+
+    token = authorization.replace("Bearer ", "")
+
+    try:
+        # Verify token with Supabase
+        user = supabase_service.client.auth.get_user(token)
+        if not user or not user.user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user.user.id
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 class BetLeg(BaseModel):
     sport: str
@@ -58,19 +76,6 @@ class Bet(BaseModel):
     game_state: Optional[str] = None
     game_status_text: Optional[str] = None
     prop_status: Optional[str] = None
-
-def load_bets():
-    if not os.path.exists(BETS_FILE):
-        return []
-    try:
-        with open(BETS_FILE, 'r') as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_bets(bets):
-    with open(BETS_FILE, 'w') as f:
-        json.dump(bets, f, indent=2)
 
 @app.get("/")
 def read_root():
@@ -141,47 +146,34 @@ def get_sports_news(sport: str, limit: int = 10):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/bets")
-def get_bets():
-    return load_bets()
+def get_bets(user_id: str = Depends(get_current_user)):
+    """Get all bets for the authenticated user"""
+    return supabase_service.get_bets(user_id)
+
+@app.get("/api/bets/stats")
+def get_bet_stats(user_id: str = Depends(get_current_user)):
+    """Get betting statistics for the authenticated user"""
+    return supabase_service.get_user_stats(user_id)
 
 @app.post("/api/bets")
-def create_bet(bet: Bet):
-    bets = load_bets()
-    bets.insert(0, bet.dict())
-    save_bets(bets)
-    return bet
+def create_bet(bet: Bet, user_id: str = Depends(get_current_user)):
+    """Create a new bet for the authenticated user"""
+    return supabase_service.create_bet(user_id, bet.dict())
 
 @app.put("/api/bets/{bet_id}")
-def update_bet(bet_id: str, updates: dict = Body(...)):
+def update_bet(bet_id: str, updates: dict = Body(...), user_id: str = Depends(get_current_user)):
     """Update a bet by ID"""
-    bets = load_bets()
-    bet_index = None
-    
-    for i, bet in enumerate(bets):
-        if bet.get('id') == bet_id:
-            bet_index = i
-            break
-    
-    if bet_index is None:
+    result = supabase_service.update_bet(bet_id, user_id, updates)
+    if not result:
         raise HTTPException(status_code=404, detail="Bet not found")
-    
-    # Update the bet with new values
-    bets[bet_index].update(updates)
-    save_bets(bets)
-    
-    return bets[bet_index]
+    return result
 
 @app.delete("/api/bets/{bet_id}")
-def delete_bet(bet_id: str):
+def delete_bet(bet_id: str, user_id: str = Depends(get_current_user)):
     """Delete a bet by ID"""
-    bets = load_bets()
-    original_length = len(bets)
-    bets = [bet for bet in bets if bet.get('id') != bet_id]
-    
-    if len(bets) == original_length:
+    success = supabase_service.delete_bet(bet_id, user_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Bet not found")
-    
-    save_bets(bets)
     return {"success": True, "message": "Bet deleted successfully"}
 
 @app.get("/api/sports/validate-player")
@@ -206,23 +198,42 @@ def validate_player(sport: str, event_id: str, player_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/sports/search-players")
+def search_players(sport: str, event_id: str, query: str, limit: int = Query(10, ge=1, le=50)):
+    """
+    Search for players in a game matching a query.
+    Returns a list of matching players with their display names and team names.
+    """
+    try:
+        results = sports_fetcher.search_players(sport, event_id, query, limit)
+        return [
+            {
+                "displayName": player["display_name"],
+                "teamName": player["team_name"]
+            }
+            for player in results
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/bets/refresh-props")
-def refresh_props(bet_ids: List[str] = Body(...)):
+def refresh_props(bet_ids: List[str] = Body(...), user_id: str = Depends(get_current_user)):
     """
     Refresh live stats for player props and return updated bet data.
     """
     try:
         from briefing.props_dashboard import PropsDashboard
-        
-        bets = load_bets()
+
+        # Get user's bets from Supabase
+        all_bets = supabase_service.get_bets(user_id)
         updated_bets = []
-        
-        # Filter for the requested bet IDs that are props
-        target_bets = [b for b in bets if b.get('id') in bet_ids and b.get('type') in ['Prop', '1st Half', '1st Quarter', 'Team Total']]
-        
+
+        # Filter for the requested bet IDs that support live tracking
+        target_bets = [b for b in all_bets if b.get('id') in bet_ids and b.get('type') in ['Prop', '1st Half', '1st Quarter', 'Team Total', 'Moneyline', 'Spread', 'Total']]
+
         if not target_bets:
             return {"bets": []}
-        
+
         # Group by sport
         by_sport = {}
         for bet in target_bets:
@@ -230,19 +241,19 @@ def refresh_props(bet_ids: List[str] = Body(...)):
             if sport not in by_sport:
                 by_sport[sport] = []
             by_sport[sport].append(bet)
-        
+
         # Refresh props for each sport
         for sport, sport_bets in by_sport.items():
             dashboard = PropsDashboard(sport=sport)
-            
+
             # Convert bets to props
             for bet in sport_bets:
                 event_id = bet.get('event_id')
-                
+
                 # Skip if no valid event_id
                 if not event_id:
                     continue
-                
+
                 # Add prop to dashboard
                 dashboard.add_prop(
                     game_id=str(event_id),
@@ -255,7 +266,7 @@ def refresh_props(bet_ids: List[str] = Body(...)):
                     stake=bet.get('stake', 0),
                     odds=bet.get('odds')
                 )
-            
+
             # Refresh all props with live data
             try:
                 dashboard.refresh_props(sports_fetcher)
@@ -264,7 +275,7 @@ def refresh_props(bet_ids: List[str] = Body(...)):
                 import traceback
                 traceback.print_exc()
                 continue
-            
+
             # Map refreshed data back to bets
             for i, prop in enumerate(dashboard.props):
                 if i < len(sport_bets):
@@ -277,9 +288,9 @@ def refresh_props(bet_ids: List[str] = Body(...)):
                         'prop_status': prop.prop_status,
                     }
                     updated_bets.append(bet_data)
-        
+
         return {"bets": updated_bets}
-        
+
     except Exception as e:
         import traceback
         print(f"Error refreshing props: {str(e)}")

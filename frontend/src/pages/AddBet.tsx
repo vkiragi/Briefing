@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Plus, Trash2, Search, Clock, Calendar, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useBets } from '../context/BetContext';
 import { Card } from '../components/ui/Card';
+import { Autocomplete } from '../components/ui/Autocomplete';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 import { Game } from '../types';
@@ -67,6 +68,9 @@ export const AddBet = () => {
     status: 'idle' | 'validating' | 'valid' | 'invalid';
     message: string;
   }>({ status: 'idle', message: '' });
+  const [playerSuggestions, setPlayerSuggestions] = useState<Array<{ displayName: string; teamName: string }>>([]);
+  const [searchingPlayers, setSearchingPlayers] = useState(false);
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Get bet types based on sport
   const getBetTypes = () => {
@@ -215,6 +219,52 @@ export const AddBet = () => {
       });
     }
   };
+
+  // Search for players with debouncing
+  const searchPlayers = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 1 || !selectedGame) {
+      setPlayerSuggestions([]);
+      return;
+    }
+
+    const eventId = selectedGame.event_id || selectedGame.competition_id;
+    if (!eventId) {
+      setPlayerSuggestions([]);
+      return;
+    }
+
+    setSearchingPlayers(true);
+    try {
+      const results = await api.searchPlayers(formData.sport, eventId, query, 10);
+      setPlayerSuggestions(results);
+    } catch (error) {
+      console.error('Failed to search players:', error);
+      setPlayerSuggestions([]);
+    } finally {
+      setSearchingPlayers(false);
+    }
+  }, [selectedGame, formData.sport]);
+
+  // Debounced player search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (formData.playerName.trim().length >= 1 && selectedGame) {
+      searchTimeoutRef.current = setTimeout(() => {
+        searchPlayers(formData.playerName);
+      }, 300); // 300ms debounce
+    } else {
+      setPlayerSuggestions([]);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [formData.playerName, selectedGame, searchPlayers]);
 
   const calculatePayout = (stake: number, odds: number) => {
     if (!stake || !odds) return 0;
@@ -393,7 +443,94 @@ export const AddBet = () => {
       betData.line = parseFloat(formData.line);
       betData.side = formData.side.toLowerCase();
     }
-    
+
+    // Add tracking data for 1st Half bets
+    if (formData.sport === 'nba' && formData.type === '1h_bets' && selectedGame && formData.periodBetType) {
+      betData.event_id = selectedGame.event_id || selectedGame.competition_id;
+      betData.team_name = formData.selectedTeam;
+
+      if (formData.periodBetType === 'moneyline') {
+        betData.player_name = '1st Half Moneyline';
+        betData.market_type = '1h_moneyline';
+        betData.line = 0;
+        betData.side = formData.selectedTeam.toLowerCase();
+      } else if (formData.periodBetType === 'spread') {
+        betData.player_name = '1st Half Spread';
+        betData.market_type = '1h_spread';
+        betData.line = parseFloat(formData.line);
+        betData.side = formData.selectedTeam.toLowerCase();
+      } else if (formData.periodBetType === 'total') {
+        betData.player_name = '1st Half Total';
+        betData.market_type = '1h_total_score';
+        betData.line = parseFloat(formData.line);
+        betData.side = formData.side.toLowerCase();
+      }
+    }
+
+    // Add tracking data for 1st Quarter bets
+    if (formData.sport === 'nba' && formData.type === '1q_bets' && selectedGame && formData.periodBetType) {
+      betData.event_id = selectedGame.event_id || selectedGame.competition_id;
+      betData.team_name = formData.selectedTeam;
+
+      if (formData.periodBetType === 'moneyline') {
+        betData.player_name = '1st Quarter Moneyline';
+        betData.market_type = '1q_moneyline';
+        betData.line = 0;
+        betData.side = formData.selectedTeam.toLowerCase();
+      } else if (formData.periodBetType === 'spread') {
+        betData.player_name = '1st Quarter Spread';
+        betData.market_type = '1q_spread';
+        betData.line = parseFloat(formData.line);
+        betData.side = formData.selectedTeam.toLowerCase();
+      } else if (formData.periodBetType === 'total') {
+        betData.player_name = '1st Quarter Total';
+        betData.market_type = '1q_total_score';
+        betData.line = parseFloat(formData.line);
+        betData.side = formData.side.toLowerCase();
+      }
+    }
+
+    // Add tracking data for Team Total bets
+    if (formData.sport === 'nba' && formData.type === 'team_total' && selectedGame) {
+      const isHome = formData.selectedTeam === selectedGame.home_team;
+      betData.event_id = selectedGame.event_id || selectedGame.competition_id;
+      betData.player_name = `${formData.selectedTeam} Total Points`;
+      betData.team_name = formData.selectedTeam;
+      betData.market_type = isHome ? 'home_team_points' : 'away_team_points';
+      betData.line = parseFloat(formData.line);
+      betData.side = formData.side.toLowerCase();
+    }
+
+    // Add tracking data for full-game Moneyline bets
+    if (formData.sport === 'nba' && formData.type === 'moneyline' && selectedGame) {
+      betData.event_id = selectedGame.event_id || selectedGame.competition_id;
+      betData.player_name = 'Moneyline';
+      betData.team_name = formData.selectedTeam;
+      betData.market_type = 'moneyline';
+      betData.line = 0;
+      betData.side = formData.selectedTeam.toLowerCase();
+    }
+
+    // Add tracking data for full-game Spread bets
+    if (formData.sport === 'nba' && formData.type === 'spread' && selectedGame) {
+      betData.event_id = selectedGame.event_id || selectedGame.competition_id;
+      betData.player_name = 'Spread';
+      betData.team_name = formData.selectedTeam;
+      betData.market_type = 'spread';
+      betData.line = parseFloat(formData.spreadValue);
+      betData.side = formData.selectedTeam.toLowerCase();
+    }
+
+    // Add tracking data for full-game Total bets
+    if (formData.sport === 'nba' && formData.type === 'total' && selectedGame) {
+      betData.event_id = selectedGame.event_id || selectedGame.competition_id;
+      betData.player_name = 'Total Score';
+      betData.team_name = `${selectedGame.away_team} / ${selectedGame.home_team}`;
+      betData.market_type = 'total_score';
+      betData.line = parseFloat(formData.totalLine);
+      betData.side = formData.overUnder.toLowerCase();
+    }
+
     addBet(betData);
     navigate('/');
   };
@@ -562,17 +699,35 @@ export const AddBet = () => {
                   <>
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-gray-400 uppercase">Player Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. LeBron James or lebron"
-                        className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-accent transition-colors"
-                        value={formData.playerName}
-                        onChange={(e) => {
-                          setFormData({...formData, playerName: e.target.value});
-                          setPlayerValidation({ status: 'idle', message: '' });
-                        }}
-                        required
-                      />
+                      {selectedGame ? (
+                        <Autocomplete
+                          value={formData.playerName}
+                          onChange={(value) => {
+                            setFormData({...formData, playerName: value});
+                            setPlayerValidation({ status: 'idle', message: '' });
+                          }}
+                          onSelect={(option) => {
+                            setFormData({...formData, playerName: option.value});
+                            setPlayerValidation({ status: 'valid', message: '' });
+                          }}
+                          options={playerSuggestions.map(player => ({
+                            value: player.displayName,
+                            label: player.displayName,
+                            description: player.teamName,
+                          }))}
+                          loading={searchingPlayers}
+                          placeholder="Type player name to search..."
+                          disabled={!selectedGame}
+                          emptyMessage={!selectedGame ? 'Please select a game first' : 'No players found'}
+                        />
+                      ) : (
+                        <input 
+                          type="text" 
+                          placeholder="Please select a game first"
+                          className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-accent transition-colors opacity-50"
+                          disabled
+                        />
+                      )}
                       {playerValidation.status === 'invalid' && (
                         <div className="flex items-center gap-2 text-sm p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
                           <AlertCircle size={16} />
@@ -581,7 +736,7 @@ export const AddBet = () => {
                       )}
                       {!selectedGame && (
                         <p className="text-xs text-yellow-500 flex items-center gap-1">
-                          <AlertCircle size={12} /> Please select a game first
+                          <AlertCircle size={12} /> Please select a game first to search for players
                         </p>
                       )}
                     </div>

@@ -1,20 +1,63 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { Bet } from '../types';
 import { cn } from '../lib/utils';
-import { Card } from './ui/Card';
+import { useToast } from './ui/Toast';
+import { useBets } from '../context/BetContext';
 
 interface PropTrackerProps {
   bet: Bet;
 }
 
 export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
+  const { toast } = useToast();
+  const { updateBetStatus } = useBets();
   const isLive = bet.game_state === 'in';
-  const isComplete = bet.game_state === 'post' || bet.game_state === 'final';
-  
+  // Bet types that show line/progress tracking
+  const isProp = bet.type === 'Prop' || bet.type === '1st Half' || bet.type === '1st Quarter' || bet.type === 'Team Total' || bet.type === 'Total';
+  // Full-game bets that show score (Moneyline, Spread also tracked but display differently)
+  const isTeamBet = bet.type === 'Moneyline' || bet.type === 'Spread';
+
+  const handleDismiss = () => {
+    // Determine the appropriate status based on prop_status
+    const isWon = bet.prop_status === 'won' || bet.prop_status === 'live_hit';
+    const isLost = bet.prop_status === 'lost' || bet.prop_status === 'live_miss';
+    const isPush = bet.prop_status === 'push' || bet.prop_status === 'live_push';
+
+    let defaultStatus: 'Won' | 'Lost' | 'Pushed' = 'Lost';
+    let actionLabel = 'Mark as Lost';
+
+    if (isWon) {
+      defaultStatus = 'Won';
+      actionLabel = 'Mark as Won';
+    } else if (isPush) {
+      defaultStatus = 'Pushed';
+      actionLabel = 'Mark as Push';
+    }
+
+    toast({
+      title: 'Resolve bet?',
+      description: `${bet.player_name || bet.selection}\n${bet.matchup}`,
+      variant: isWon ? 'default' : 'warning',
+      duration: 5000,
+      action: {
+        label: actionLabel,
+        onClick: () => {
+          updateBetStatus(bet.id, defaultStatus);
+          toast({
+            title: `Bet marked as ${defaultStatus}`,
+            description: 'The bet has been moved to history.',
+            variant: 'default',
+            duration: 3000,
+          });
+        },
+      },
+    });
+  };
+
   const getStatusColor = () => {
     if (!bet.prop_status) return 'text-gray-400';
-    
+
     if (bet.prop_status === 'won' || bet.prop_status === 'live_hit') {
       return 'text-accent';
     } else if (bet.prop_status === 'lost') {
@@ -22,150 +65,212 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
     } else if (bet.prop_status === 'push' || bet.prop_status === 'live_push') {
       return 'text-yellow-500';
     } else if (isLive && bet.prop_status === 'live_miss') {
-      // For live games, show as "live" not "miss"
       return 'text-blue-400';
     }
     return 'text-gray-400';
   };
 
   const getStatusIcon = () => {
-    if (!bet.prop_status) return <Clock size={16} />;
-    
+    if (!bet.prop_status) return <Clock size={14} />;
+
     if (bet.prop_status === 'won' || bet.prop_status === 'live_hit') {
-      return <CheckCircle size={16} />;
+      return <CheckCircle size={14} />;
     } else if (bet.prop_status === 'lost') {
-      return <XCircle size={16} />;
-    } else if (bet.prop_status === 'push' || bet.prop_status === 'live_push') {
-      return <Minus size={16} />;
+      return <XCircle size={14} />;
     } else if (isLive) {
-      // For live games, show clock icon
-      return <Clock size={16} />;
+      return <Clock size={14} />;
     }
-    return <Clock size={16} />;
+    return <Clock size={14} />;
   };
 
-  const getStatusText = () => {
-    if (!bet.prop_status) return 'Pending';
-    
-    if (bet.prop_status === 'won') return 'Won';
-    if (bet.prop_status === 'lost') return 'Lost';
-    if (bet.prop_status === 'push') return 'Push';
-    if (bet.prop_status === 'live_hit') return 'Live Hit';
-    if (bet.prop_status === 'live_miss' && isLive) return 'Live';
-    if (bet.prop_status === 'live_push') return 'Live Push';
-    
-    return bet.prop_status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
+  const formatGameTime = () => {
+    if (isLive) {
+      return bet.game_status_text || 'Live';
+    }
 
-  const getProgressPercentage = () => {
-    if (bet.current_value == null || !bet.line) return 0;
-    return Math.min((bet.current_value / bet.line) * 100, 100);
+    // Format date similar to sports cards
+    const betDate = new Date(bet.date);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Format time (e.g., "7:30 PM")
+    const timeStr = betDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    if (betDate.toDateString() === today.toDateString()) {
+      return `Starts ${timeStr}`;
+    } else if (betDate.toDateString() === tomorrow.toDateString()) {
+      return `Tomorrow @ ${timeStr}`;
+    }
+
+    const dateStr = betDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${dateStr} @ ${timeStr}`;
   };
 
   const isOver = bet.side?.toLowerCase() === 'over';
-  const progress = getProgressPercentage();
 
   return (
-    <Card className={cn(
-      "p-4 transition-all",
+    <div className={cn(
+      "bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all",
       bet.prop_status === 'live_hit' && "border-accent/30 bg-accent/5",
       isLive && bet.prop_status !== 'live_hit' && "border-blue-500/30 bg-blue-500/5",
       bet.prop_status === 'won' && "border-accent/30 bg-accent/5",
       bet.prop_status === 'lost' && "border-red-500/30 bg-red-500/5"
     )}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-bold text-lg">{bet.player_name || bet.selection}</span>
-            {isLive && (
-              <span className="text-xs font-bold text-red-500 bg-red-500/20 px-2 py-0.5 rounded-full animate-pulse">
-                LIVE
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-gray-400">
-            {bet.matchup} • {bet.market_type?.replace(/_/g, ' ').toUpperCase()}
-          </div>
-        </div>
-        <div className={cn("flex items-center gap-1", getStatusColor())}>
-          {getStatusIcon()}
-          <span className="text-xs font-medium">
-            {getStatusText()}
+      {/* Header row - similar to sports cards */}
+      <div className="flex items-center justify-between mb-3">
+        <div className={cn("flex items-center gap-2", isLive ? "" : "flex-1 justify-center")}>
+          {isLive && (
+            <span className="text-xs uppercase font-medium text-red-500">
+              Live
+            </span>
+          )}
+          <span className="text-sm font-mono font-semibold text-gray-400">
+            {formatGameTime()}
           </span>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {/* Line Info */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">
-            {isOver ? 'Over' : 'Under'} {bet.line}
-          </span>
-          {bet.game_status_text && (
-            <span className="text-xs text-gray-500">{bet.game_status_text}</span>
+          {isLive && (
+            <div className={cn("flex items-center gap-1", getStatusColor())}>
+              {getStatusIcon()}
+            </div>
           )}
         </div>
+        <button
+          onClick={handleDismiss}
+          className="p-1 hover:bg-red-500/20 text-gray-600 hover:text-red-500 rounded transition-colors"
+          title="Dismiss bet"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
 
-        {/* Current Value */}
-        {bet.current_value !== undefined && bet.current_value !== null && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Current:</span>
-              <span className={cn("text-2xl font-bold font-mono", getStatusColor())}>
-                {bet.current_value_str || (bet.current_value != null ? bet.current_value.toFixed(1) : 'N/A')}
-              </span>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="relative h-2 bg-gray-800 rounded-full overflow-hidden">
-              <div 
-                className={cn(
-                  "h-full transition-all duration-500",
-                  bet.prop_status === 'won' || bet.prop_status === 'live_hit' 
-                    ? "bg-accent" 
-                    : bet.prop_status === 'lost'
-                    ? "bg-red-500"
-                    : isLive
-                    ? "bg-blue-500"
-                    : "bg-gray-600"
-                )}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">
-                {isOver ? 'Needs' : 'Stay under'} {bet.line}
-              </span>
-              {bet.line && bet.current_value != null && (
-                <span className={cn(
-                  "font-medium",
-                  (isOver && bet.current_value >= bet.line) || (!isOver && bet.current_value <= bet.line)
-                    ? "text-accent"
-                    : isLive
-                    ? "text-blue-400"
-                    : "text-red-500"
-                )}>
-                  {isOver 
-                    ? (bet.current_value >= bet.line ? '✓ Hit' : `${(bet.line - bet.current_value).toFixed(1)} away`)
-                    : (bet.current_value <= bet.line ? '✓ Under' : `${(bet.current_value - bet.line).toFixed(1)} over`)
-                  }
-                </span>
-              )}
-            </div>
-          </div>
+      {/* Main content - player/selection and line */}
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-base font-semibold text-white truncate">
+          {bet.player_name || bet.selection}
+        </span>
+        {isProp && bet.line !== undefined && bet.line !== 0 && (
+          <span className="text-xl font-mono font-semibold text-white ml-2">
+            {isOver ? 'O' : 'U'} {bet.line}
+          </span>
         )}
-
-        {/* Bet Details - Only show if stake > 0 */}
-        {bet.stake > 0 && (
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-border">
-            <span>Stake: ${bet.stake.toFixed(2)}</span>
-            <span>Odds: {bet.odds > 0 ? `+${bet.odds}` : bet.odds}</span>
-            <span>To Win: ${bet.potentialPayout.toFixed(2)}</span>
-          </div>
+        {isTeamBet && bet.type === 'Spread' && bet.line !== undefined && (
+          <span className="text-xl font-mono font-semibold text-white ml-2">
+            {bet.line > 0 ? `+${bet.line}` : bet.line}
+          </span>
+        )}
+        {!isProp && !isTeamBet && (
+          <span className={cn("text-xl font-mono font-semibold ml-2", bet.odds > 0 ? "text-green-400" : "text-white")}>
+            {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
+          </span>
+        )}
+        {isTeamBet && bet.type === 'Moneyline' && (
+          <span className={cn("text-xl font-mono font-semibold ml-2", bet.odds > 0 ? "text-green-400" : "text-white")}>
+            {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
+          </span>
         )}
       </div>
-    </Card>
+
+      {/* Secondary info - matchup and market type */}
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-sm text-gray-400 truncate">
+          {bet.matchup}
+        </span>
+        <span className="text-sm text-gray-500 ml-2">
+          {isProp && bet.market_type ? bet.market_type.replace(/_/g, ' ').toUpperCase() : bet.type.toUpperCase()}
+        </span>
+      </div>
+
+      {/* Live progress section - for props/totals with current value */}
+      {isProp && bet.current_value !== undefined && bet.current_value !== null && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-500">Current</span>
+            <span className={cn("text-lg font-bold font-mono", getStatusColor())}>
+              {bet.current_value_str || bet.current_value.toFixed(1)}
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="relative h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full transition-all duration-500",
+                bet.prop_status === 'won' || bet.prop_status === 'live_hit'
+                  ? "bg-accent"
+                  : bet.prop_status === 'lost'
+                  ? "bg-red-500"
+                  : isLive
+                  ? "bg-blue-500"
+                  : "bg-gray-600"
+              )}
+              style={{ width: `${Math.min((bet.current_value / (bet.line || 1)) * 100, 100)}%` }}
+            />
+          </div>
+
+          {bet.line !== undefined && bet.line !== 0 && (
+            <div className="flex justify-end mt-1">
+              <span className={cn(
+                "text-xs font-medium",
+                (isOver && bet.current_value >= bet.line) || (!isOver && bet.current_value <= bet.line)
+                  ? "text-accent"
+                  : isLive
+                  ? "text-blue-400"
+                  : "text-gray-500"
+              )}>
+                {isOver
+                  ? (bet.current_value >= bet.line ? '✓ Hit' : `${(bet.line - bet.current_value).toFixed(1)} to go`)
+                  : (bet.current_value <= bet.line ? '✓ Under' : `${(bet.current_value - bet.line).toFixed(1)} over`)
+                }
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Live score section - for any bet with score data (Moneyline/Spread or matched live games) */}
+      {bet.current_value_str && !isProp && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-500">Score</span>
+            <span className={cn("text-lg font-bold font-mono", getStatusColor())}>
+              {bet.current_value_str}
+            </span>
+          </div>
+          {bet.game_status_text && (
+            <div className="flex justify-between items-center">
+              <span className={cn(
+                "text-sm font-semibold",
+                bet.game_state === 'post' ? "text-gray-400" : "text-blue-400"
+              )}>
+                {bet.game_status_text}
+              </span>
+              <span className={cn(
+                "text-sm font-semibold",
+                bet.prop_status === 'won' ? "text-accent"
+                  : bet.prop_status === 'live_hit' ? "text-accent"
+                  : bet.prop_status === 'lost' ? "text-red-500"
+                  : bet.prop_status === 'live_miss' ? "text-red-400"
+                  : "text-blue-400"
+              )}>
+                {bet.prop_status === 'won'
+                  ? '✓ Won'
+                  : bet.prop_status === 'lost'
+                  ? '✗ Lost'
+                  : bet.prop_status === 'live_hit'
+                  ? '✓ Winning'
+                  : bet.prop_status === 'live_miss'
+                  ? '✗ Losing'
+                  : isLive ? 'Live' : ''}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+    </div>
   );
 };
-

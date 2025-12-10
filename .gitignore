@@ -52,3 +52,14 @@ config.json
 # Personal notes
 features.txt
 
+# Environment files (secrets)
+.env
+.env.*
+*.env
+
+# Frontend build output
+frontend/dist/
+
+# Node modules
+node_modules/
+

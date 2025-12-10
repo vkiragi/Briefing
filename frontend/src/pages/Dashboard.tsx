@@ -1,40 +1,165 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { TrendingUp, Activity, Settings, Clock } from "lucide-react";
+import { TrendingUp, Activity, Clock, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useBets } from "../context/BetContext";
 import { Card } from "../components/ui/Card";
 import { PropTracker } from "../components/PropTracker";
-import { SettingsModal } from "../components/SettingsModal";
 import { api } from "../lib/api";
-import { Game } from "../types";
+import { Game, Bet } from "../types";
 import { cn } from "../lib/utils";
 
 export const Dashboard = () => {
-  const { stats, bets } = useBets();
+  const { stats, bets, clearPendingBets } = useBets();
   const [liveGames, setLiveGames] = useState<Game[]>([]);
+  const [nflGames, setNflGames] = useState<Game[]>([]);
+  const [mlbGames, setMlbGames] = useState<Game[]>([]);
+  const [eplGames, setEplGames] = useState<Game[]>([]);
+  const [laligaGames, setLaligaGames] = useState<Game[]>([]);
+  const [uclGames, setUclGames] = useState<Game[]>([]);
+  const [tennisGames, setTennisGames] = useState<Game[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
+  const [loadingNflGames, setLoadingNflGames] = useState(true);
+  const [loadingMlbGames, setLoadingMlbGames] = useState(true);
+  const [loadingEplGames, setLoadingEplGames] = useState(true);
+  const [loadingLaligaGames, setLoadingLaligaGames] = useState(true);
+  const [loadingUclGames, setLoadingUclGames] = useState(true);
+  const [loadingTennisGames, setLoadingTennisGames] = useState(true);
   const [propsData, setPropsData] = useState<Map<string, any>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [gamesLastUpdated, setGamesLastUpdated] = useState<Date | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState<number>(() => {
+  const [nflGamesLastUpdated, setNflGamesLastUpdated] = useState<Date | null>(null);
+  const [mlbGamesLastUpdated, setMlbGamesLastUpdated] = useState<Date | null>(null);
+  const [eplGamesLastUpdated, setEplGamesLastUpdated] = useState<Date | null>(null);
+  const [laligaGamesLastUpdated, setLaligaGamesLastUpdated] = useState<Date | null>(null);
+  const [uclGamesLastUpdated, setUclGamesLastUpdated] = useState<Date | null>(null);
+  const [tennisGamesLastUpdated, setTennisGamesLastUpdated] = useState<Date | null>(null);
+  const [refreshInterval] = useState<number>(() => {
     const saved = localStorage.getItem('refreshInterval');
     return saved ? parseInt(saved, 10) : 30000; // Default 30 seconds
   });
 
-  // Get active props that need tracking
-  const activeProps = useMemo(() => bets.filter(b => 
-    b.status === 'Pending' && 
-    b.type === 'Prop' && 
-    b.event_id && 
-    b.player_name &&
-    b.market_type &&
-    b.line !== undefined
-  ), [bets]);
+  // Bet types that support live tracking
+  const trackableTypes = ['Prop', '1st Half', '1st Quarter', 'Team Total', 'Moneyline', 'Spread', 'Total'];
+
+  // Get active props that need tracking (exclude expired/completed games)
+  const activeProps = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    return bets.filter(b => {
+      // Basic requirements - must be a trackable type with required fields
+      if (b.status !== 'Pending' ||
+          !trackableTypes.includes(b.type) ||
+          !b.event_id ||
+          !b.player_name ||
+          !b.market_type ||
+          b.line === undefined) {
+        return false;
+      }
+      
+      // Filter out props where game has ended
+      if (b.game_state === 'post' || b.game_state === 'final') {
+        return false;
+      }
+      
+      // Filter out props where prop is already decided (won/lost/push)
+      if (b.prop_status === 'won' || b.prop_status === 'lost' || b.prop_status === 'push') {
+        return false;
+      }
+      
+      // Parse bet date
+      const betDate = new Date(b.date);
+      
+      // Filter out props from past dates (games that have likely ended)
+      const betDateOnly = new Date(betDate.getFullYear(), betDate.getMonth(), betDate.getDate());
+      
+      // If bet date is before today, it's likely expired unless we have live data
+      if (betDateOnly < today) {
+        // Only show if we have active live data indicating game is still ongoing
+        if (b.game_state === 'in') {
+          return true; // Game is still live
+        }
+        // Otherwise, game likely ended, exclude from tracker
+        return false;
+      }
+      
+      // Additional safety: If bet was created more than 24 hours ago and has no live data, exclude
+      if (betDate < oneDayAgo && !b.game_state && !b.current_value) {
+        return false;
+      }
+      
+      // Include if game is today or in the future
+      return true;
+    });
+  }, [bets]);
+
+  // Combine all games (live and completed) for matching
+  const allGamesForMatching = useMemo(() => {
+    return [...liveGames, ...nflGames, ...mlbGames, ...eplGames, ...laligaGames, ...uclGames, ...tennisGames]
+      .filter(g => g.state === 'in' || g.state === 'post' || g.completed);
+  }, [liveGames, nflGames, mlbGames, eplGames, laligaGames, uclGames, tennisGames]);
+
+  // Helper to match a bet to a game by matchup string
+  const findMatchingGame = useCallback((bet: Bet) => {
+    const matchupLower = bet.matchup.toLowerCase();
+    return allGamesForMatching.find(game => {
+      const homeTeam = game.home_team.toLowerCase();
+      const awayTeam = game.away_team.toLowerCase();
+
+      // Direct containment check
+      if (matchupLower.includes(homeTeam) || matchupLower.includes(awayTeam)) {
+        return true;
+      }
+
+      // Check parts of matchup (e.g., "New York Knicks @ Toronto Raptors")
+      const parts = matchupLower.split('@').map(p => p.trim());
+      if (parts.length === 2) {
+        const [awayPart, homePart] = parts;
+        // Check if team names contain the parts or vice versa
+        if ((awayTeam.includes(awayPart) || awayPart.includes(awayTeam)) &&
+            (homeTeam.includes(homePart) || homePart.includes(homeTeam))) {
+          return true;
+        }
+      }
+
+      // Check selection field too (for Moneyline bets)
+      if (bet.selection) {
+        const selectionLower = bet.selection.toLowerCase();
+        if (homeTeam.includes(selectionLower) || selectionLower.includes(homeTeam) ||
+            awayTeam.includes(selectionLower) || selectionLower.includes(awayTeam)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }, [allGamesForMatching]);
+
+  // Get all pending bets (for the pending bets section)
+  const pendingBets = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return bets.filter(b => {
+      if (b.status !== 'Pending') return false;
+
+      // Exclude bets where outcome is already decided
+      if (b.prop_status === 'won' || b.prop_status === 'lost' || b.prop_status === 'push') {
+        return false;
+      }
+
+      // Parse bet date and check if it's today or future
+      const betDate = new Date(b.date);
+      betDate.setHours(0, 0, 0, 0);
+
+      return betDate >= today;
+    });
+  }, [bets]);
 
   // Combine all props that need tracking
-  const allPropsToTrack = useMemo(() => 
+  const allPropsToTrack = useMemo(() =>
     activeProps.map(b => b.id),
     [activeProps]
   );
@@ -80,40 +205,348 @@ export const Dashboard = () => {
     }
   }, [allPropsToTrack.length, refreshPropsData, refreshInterval]); // Re-run when props to track change or interval changes
 
+  // Fetch NBA games
   useEffect(() => {
     const fetchLive = async () => {
       try {
-        // Fetch NBA live games as default example, or could cycle/fetch multiple
-        const games = await api.getScores('nba', 5, true); 
-        // If no live games, maybe fetch schedule or scores
-        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
-            const scheduled = await api.getSchedule('nba', 5);
-             setLiveGames(scheduled);
+        // Fetch both live games and recent scores (includes completed games)
+        const [liveGamesData, recentScores] = await Promise.all([
+          api.getScores('nba', 6, true),
+          api.getScores('nba', 10, false)  // Get recent scores including completed
+        ]);
+
+        // Combine live and completed games, deduplicating by event_id
+        const seenIds = new Set<string>();
+        const combinedGames: Game[] = [];
+
+        // Add live games first
+        for (const game of liveGamesData) {
+          if (game.event_id && !seenIds.has(game.event_id) && game.status !== 'No live games') {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          }
+        }
+
+        // Add completed/recent games
+        for (const game of recentScores) {
+          if (game.event_id && !seenIds.has(game.event_id)) {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          }
+        }
+
+        if (combinedGames.length === 0) {
+          const scheduled = await api.getSchedule('nba', 6);
+          setLiveGames(scheduled);
         } else {
-            setLiveGames(games);
+          setLiveGames(combinedGames);
         }
         setGamesLastUpdated(new Date());
       } catch (e) {
-        console.error("Failed to fetch games", e);
+        console.error("Failed to fetch NBA games", e);
       } finally {
         setLoadingGames(false);
       }
     };
     fetchLive();
-    
+
     // Auto-refresh games based on refresh interval
     const interval = setInterval(fetchLive, refreshInterval);
     return () => clearInterval(interval);
   }, [refreshInterval]);
 
+  // Fetch NFL games
+  useEffect(() => {
+    const fetchNfl = async () => {
+      try {
+        const games = await api.getScores('nfl', 6, true);
+        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
+            const scheduled = await api.getSchedule('nfl', 6);
+            setNflGames(scheduled);
+        } else {
+            setNflGames(games);
+        }
+        setNflGamesLastUpdated(new Date());
+      } catch (e) {
+        console.error("Failed to fetch NFL games", e);
+      } finally {
+        setLoadingNflGames(false);
+      }
+    };
+    fetchNfl();
+    
+    // Auto-refresh NFL games based on refresh interval
+    const interval = setInterval(fetchNfl, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Fetch MLB games
+  useEffect(() => {
+    const fetchMlb = async () => {
+      try {
+        const games = await api.getScores('mlb', 6, true);
+        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
+            const scheduled = await api.getSchedule('mlb', 6);
+            setMlbGames(scheduled);
+        } else {
+            setMlbGames(games);
+        }
+        setMlbGamesLastUpdated(new Date());
+      } catch (e) {
+        console.error("Failed to fetch MLB games", e);
+      } finally {
+        setLoadingMlbGames(false);
+      }
+    };
+    fetchMlb();
+    
+    const interval = setInterval(fetchMlb, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Fetch Premier League games
+  useEffect(() => {
+    const fetchEpl = async () => {
+      try {
+        const games = await api.getScores('epl', 6, true);
+        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
+            const scheduled = await api.getSchedule('epl', 6);
+            setEplGames(scheduled);
+        } else {
+            setEplGames(games);
+        }
+        setEplGamesLastUpdated(new Date());
+      } catch (e) {
+        console.error("Failed to fetch EPL games", e);
+      } finally {
+        setLoadingEplGames(false);
+      }
+    };
+    fetchEpl();
+
+    const interval = setInterval(fetchEpl, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Fetch La Liga games
+  useEffect(() => {
+    const fetchLaliga = async () => {
+      try {
+        const games = await api.getScores('laliga', 6, true);
+        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
+            const scheduled = await api.getSchedule('laliga', 6);
+            setLaligaGames(scheduled);
+        } else {
+            setLaligaGames(games);
+        }
+        setLaligaGamesLastUpdated(new Date());
+      } catch (e) {
+        console.error("Failed to fetch La Liga games", e);
+      } finally {
+        setLoadingLaligaGames(false);
+      }
+    };
+    fetchLaliga();
+
+    const interval = setInterval(fetchLaliga, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Fetch Champions League games
+  useEffect(() => {
+    const fetchUcl = async () => {
+      try {
+        const games = await api.getScores('ucl', 6, true);
+        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
+            const scheduled = await api.getSchedule('ucl', 6);
+            setUclGames(scheduled);
+        } else {
+            setUclGames(games);
+        }
+        setUclGamesLastUpdated(new Date());
+      } catch (e) {
+        console.error("Failed to fetch UCL games", e);
+      } finally {
+        setLoadingUclGames(false);
+      }
+    };
+    fetchUcl();
+
+    const interval = setInterval(fetchUcl, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Fetch Tennis games
+  useEffect(() => {
+    const fetchTennis = async () => {
+      try {
+        const games = await api.getScores('tennis-atp-singles', 6, true);
+        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
+            const scheduled = await api.getSchedule('tennis-atp-singles', 6);
+            setTennisGames(scheduled);
+        } else {
+            setTennisGames(games);
+        }
+        setTennisGamesLastUpdated(new Date());
+      } catch (e) {
+        console.error("Failed to fetch Tennis games", e);
+      } finally {
+        setLoadingTennisGames(false);
+      }
+    };
+    fetchTennis();
+    
+    const interval = setInterval(fetchTennis, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Helper function to format game time based on sport
+  const formatGameTime = (game: Game, sport: string) => {
+    if (game.state === 'pre') {
+      return game.date || 'TBD';
+    }
+    
+    if (game.state === 'post' || game.completed) {
+      return 'Final';
+    }
+    
+    // Tennis uses sets instead of quarters/periods
+    if (sport.includes('tennis')) {
+      const statusLower = (game.status || '').toLowerCase();
+      if (statusLower.includes('set')) {
+        return game.status || 'Live';
+      }
+      return game.status || 'Live';
+    }
+    
+    // Check for halftime
+    const statusLower = (game.status || '').toLowerCase();
+    const isHalftime = 
+      statusLower.includes('half') || 
+      statusLower.includes('halftime') ||
+      (game.period === 2 && game.clock_seconds === 0 && game.state === 'in');
+    
+    if (isHalftime) {
+      return 'Halftime';
+    }
+    
+    // Live game - show period/quarter and time
+    if (game.state === 'in' && game.period) {
+      const period = sport === 'mlb' ? `Inning ${game.period}` : `Q${game.period}`;
+      
+      // If we have clock_seconds, format as MM:SS
+      if (game.clock_seconds !== undefined && game.clock_seconds > 0) {
+        const minutes = Math.floor(game.clock_seconds / 60);
+        const seconds = game.clock_seconds % 60;
+        const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        return `${period} ${formattedTime}`;
+      }
+      
+      // Fallback to display_clock if available
+      if (game.display_clock) {
+        return `${period} ${game.display_clock}`;
+      }
+      
+      return period;
+    }
+    
+    return game.display_clock || game.status || 'Live';
+  };
+
+  // Helper function to render game cards
+  const renderGameSection = (
+    title: string,
+    games: Game[],
+    loading: boolean,
+    lastUpdated: Date | null,
+    sport: string
+  ) => {
+    const hasLiveGames = games.some(game => game.state === 'in');
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+          {hasLiveGames && (
+            <>
+              <span className="text-xs text-gray-500 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                Live
+              </span>
+              {lastUpdated && (
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <Clock size={12} />
+                  <span>Updated {lastUpdated.toLocaleTimeString()}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {loading ? (
+            <>
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="h-24 bg-card/50 animate-pulse rounded-lg" />
+              ))}
+            </>
+          ) : games.length > 0 ? (
+            games.map((game, i) => {
+              const isLive = game.state === 'in';
+              return (
+                <div
+                  key={i}
+                  className="bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all"
+                >
+                  <div className={cn(
+                    "flex items-center mb-3",
+                    isLive ? "justify-between" : "justify-center"
+                  )}>
+                    {isLive && (
+                      <span className="text-xs uppercase font-medium text-red-500">
+                        Live
+                      </span>
+                    )}
+                    <span className="text-sm font-mono font-semibold text-gray-400">
+                      {formatGameTime(game, sport)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-base font-semibold text-white truncate">{game.home_team}</span>
+                    <span className="text-xl font-mono font-semibold text-white ml-2">{game.home_score}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-semibold text-white truncate">{game.away_team}</span>
+                    <span className="text-xl font-mono font-semibold text-white ml-2">{game.away_score}</span>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-gray-500 text-sm text-center py-8 col-span-full">No {title} games available</div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto space-y-8"
+      className="px-2 md:px-4 py-2 md:py-4 max-w-[2400px] mx-auto space-y-6"
     >
+      {/* Header Bar */}
+      <div className="text-center p-2 md:p-4 mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+          Briefing Sports Tracking
+        </h1>
+        <p className="text-sm md:text-base text-gray-400">
+          Your comprehensive sports betting dashboard
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Win Rate Card */}
         <Card>
@@ -164,12 +597,19 @@ export const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Live Props Tracking */}
-      {activeProps.length > 0 && (
+      {/* Pending Bets Section */}
+      {pendingBets.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold">Live Props Tracker</h2>
+              <h2 className="text-xl font-bold">Pending Bets</h2>
+              <button
+                onClick={refreshPropsData}
+                disabled={refreshing}
+                className="text-sm text-accent hover:underline disabled:opacity-50"
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh Now'}
+              </button>
               {lastUpdated && (
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Clock size={12} />
@@ -177,138 +617,94 @@ export const Dashboard = () => {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSettingsOpen(true)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                title="Settings"
-              >
-                <Settings size={18} className="text-gray-400" />
-              </button>
-              <button 
-                onClick={refreshPropsData}
-                disabled={refreshing}
-                className="text-sm text-accent hover:underline disabled:opacity-50"
-              >
-                {refreshing ? 'Refreshing...' : 'Refresh Now'}
-              </button>
-            </div>
+            <button
+              onClick={clearPendingBets}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-orange-500 transition-colors"
+              title="Resolve all pending bets based on their outcomes"
+            >
+              <Trash2 size={14} />
+              <span>Resolve All</span>
+            </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeProps.map(bet => {
+            {pendingBets.map(bet => {
               const liveData = propsData.get(bet.id);
-              const enrichedBet = liveData ? { ...bet, ...liveData } : bet;
+              let enrichedBet = liveData ? { ...bet, ...liveData } : bet;
+
+              // For bets without tracking data, try to match to a game
+              if (!liveData && !bet.event_id) {
+                const matchingGame = findMatchingGame(bet);
+                if (matchingGame) {
+                  const homeScore = parseInt(matchingGame.home_score || '0');
+                  const awayScore = parseInt(matchingGame.away_score || '0');
+                  const totalScore = homeScore + awayScore;
+                  const isGameOver = matchingGame.state === 'post' || matchingGame.completed;
+
+                  // Determine prop_status for Moneyline bets
+                  let propStatus: string | undefined;
+                  if (bet.type === 'Moneyline' && bet.selection) {
+                    const selectionLower = bet.selection.toLowerCase();
+                    const homeTeamLower = matchingGame.home_team.toLowerCase();
+                    const awayTeamLower = matchingGame.away_team.toLowerCase();
+
+                    // Check which team was selected
+                    const betOnHome = selectionLower.includes(homeTeamLower) || homeTeamLower.includes(selectionLower);
+                    const betOnAway = selectionLower.includes(awayTeamLower) || awayTeamLower.includes(selectionLower);
+
+                    if (betOnHome) {
+                      const isWinning = homeScore > awayScore;
+                      propStatus = isGameOver ? (isWinning ? 'won' : 'lost') : (isWinning ? 'live_hit' : 'live_miss');
+                    } else if (betOnAway) {
+                      const isWinning = awayScore > homeScore;
+                      propStatus = isGameOver ? (isWinning ? 'won' : 'lost') : (isWinning ? 'live_hit' : 'live_miss');
+                    }
+                  }
+
+                  // Determine game status text
+                  let gameStatusText = matchingGame.status;
+                  if (isGameOver) {
+                    gameStatusText = 'Final';
+                  } else if (matchingGame.display_clock) {
+                    gameStatusText = `Q${matchingGame.period} ${matchingGame.display_clock}`;
+                  }
+
+                  enrichedBet = {
+                    ...bet,
+                    game_state: isGameOver ? 'post' : matchingGame.state,
+                    game_status_text: gameStatusText,
+                    current_value_str: `${awayScore}-${homeScore}`,
+                    current_value: bet.type === 'Total' ? totalScore : undefined,
+                    prop_status: propStatus,
+                  };
+                }
+              }
+
               return <PropTracker key={bet.id} bet={enrichedBet} />;
             })}
           </div>
         </div>
       )}
 
-      {/* Live/Upcoming Games Section */}
-      <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xl font-bold">NBA Action</h2>
-                  {gamesLastUpdated && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Clock size={12} />
-                      <span>Updated {gamesLastUpdated.toLocaleTimeString()}</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-xs text-gray-500 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    Live Updates
-                </span>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {loadingGames ? (
-                    <>
-                        {[1,2,3,4,5].map(i => (
-                            <div key={i} className="h-20 bg-card/50 animate-pulse rounded-lg" />
-                        ))}
-                    </>
-                ) : liveGames.length > 0 ? (
-                    liveGames.map((game, i) => {
-                      // Format time and quarter display
-                      const formatGameTime = () => {
-                        if (game.state === 'pre') {
-                          return game.date || 'TBD';
-                        }
-                        
-                        if (game.state === 'post' || game.completed) {
-                          return 'Final';
-                        }
-                        
-                        // Check for halftime - multiple ways it might be indicated
-                        const statusLower = (game.status || '').toLowerCase();
-                        const isHalftime = 
-                          statusLower.includes('half') || 
-                          statusLower.includes('halftime') ||
-                          (game.period === 2 && game.clock_seconds === 0 && game.state === 'in');
-                        
-                        if (isHalftime) {
-                          return 'Halftime';
-                        }
-                        
-                        // Live game - show quarter and time
-                        if (game.state === 'in' && game.period) {
-                          const quarter = `Q${game.period}`;
-                          
-                          // If we have clock_seconds, format as MM:SS
-                          if (game.clock_seconds !== undefined && game.clock_seconds > 0) {
-                            const minutes = Math.floor(game.clock_seconds / 60);
-                            const seconds = game.clock_seconds % 60;
-                            const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                            return `${quarter} ${formattedTime}`;
-                          }
-                          
-                          // Fallback to display_clock if available
-                          if (game.display_clock) {
-                            return `${quarter} ${game.display_clock}`;
-                          }
-                          
-                          return quarter;
-                        }
-                        
-                        return game.display_clock || game.status || 'Live';
-                      };
-                      
-                      return (
-                        <div key={i} className="bg-card border border-border rounded-lg p-3 hover:bg-card/80 transition-colors">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-[10px] text-gray-500 uppercase">
-                                  {game.state === 'in' ? 'Live' : game.status || 'Scheduled'}
-                                </span>
-                                <span className="text-xs font-mono text-gray-400 font-semibold">
-                                  {formatGameTime()}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-semibold truncate">{game.home_team}</span>
-                                <span className="text-lg font-mono font-bold ml-2">{game.home_score}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-400 truncate">{game.away_team}</span>
-                                <span className="text-lg font-mono text-gray-400 ml-2">{game.away_score}</span>
-                            </div>
-                        </div>
-                      );
-                    })
-                ) : (
-                    <div className="text-gray-500 text-sm text-center py-8 col-span-full">No games available</div>
-                )}
-            </div>
-          </div>
+      {/* NBA Games Section */}
+      {renderGameSection('NBA Action', liveGames, loadingGames, gamesLastUpdated, 'nba')}
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        refreshInterval={refreshInterval}
-        onRefreshIntervalChange={setRefreshInterval}
-      />
+      {/* NFL Games Section */}
+      {renderGameSection('NFL Action', nflGames, loadingNflGames, nflGamesLastUpdated, 'nfl')}
+
+      {/* MLB Games Section */}
+      {renderGameSection('MLB Action', mlbGames, loadingMlbGames, mlbGamesLastUpdated, 'mlb')}
+
+      {/* Premier League Section */}
+      {renderGameSection('Premier League', eplGames, loadingEplGames, eplGamesLastUpdated, 'epl')}
+
+      {/* La Liga Section */}
+      {renderGameSection('La Liga', laligaGames, loadingLaligaGames, laligaGamesLastUpdated, 'laliga')}
+
+      {/* Champions League Section */}
+      {renderGameSection('Champions League', uclGames, loadingUclGames, uclGamesLastUpdated, 'ucl')}
+
+      {/* Tennis Games Section */}
+      {renderGameSection('Tennis Action', tennisGames, loadingTennisGames, tennisGamesLastUpdated, 'tennis')}
     </motion.div>
   );
 };

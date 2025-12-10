@@ -653,6 +653,147 @@ class BaseSportsFetcher:
 
         return None
 
+    def search_players(self, sport: str, event_id: str, query: str, limit: int = 10) -> List[Dict[str, str]]:
+        """
+        Search for players in a game matching a query string.
+        Returns a list of matching players with their display names and team names.
+
+        Args:
+            sport: 'nfl' or 'nba' or 'mlb'
+            event_id: Game event ID
+            query: Search query (player name fragment)
+            limit: Maximum number of results to return
+
+        Returns:
+            List of dicts with 'display_name' and 'team_name', sorted by relevance.
+        """
+        if not query or len(query.strip()) < 1:
+            return []
+
+        # Fetch game stats
+        if sport == 'nba':
+            if hasattr(self, 'fetch_nba_game_player_stats'):
+                data = self.fetch_nba_game_player_stats(event_id)
+            else:
+                return []
+        elif sport == 'mlb':
+            if hasattr(self, 'fetch_mlb_game_player_stats'):
+                data = self.fetch_mlb_game_player_stats(event_id)
+            else:
+                return []
+        else:
+            if hasattr(self, 'fetch_nfl_game_player_stats'):
+                data = self.fetch_nfl_game_player_stats(event_id)
+            else:
+                return []
+
+        query_lower = query.lower().strip()
+        matches = []
+        seen_players = set()
+
+        # Search in boxscore stats
+        box = data.get("boxscore", {})
+        players_by_team = box.get("players", [])
+
+        for team_block in players_by_team:
+            team_info = team_block.get("team", {})
+            team_name = team_info.get("displayName") or team_info.get("name", "Unknown")
+
+            for cat in team_block.get("statistics", []):
+                for athlete_stat in cat.get("athletes", []):
+                    athlete = athlete_stat.get("athlete", {})
+                    display_name = athlete.get("displayName", "")
+                    if not display_name:
+                        continue
+
+                    # Create unique key for deduplication
+                    player_key = f"{display_name}|{team_name}"
+                    if player_key in seen_players:
+                        continue
+
+                    display_name_lower = display_name.lower()
+                    
+                    # Check if query matches (starts with or contains)
+                    if display_name_lower.startswith(query_lower):
+                        matches.append({
+                            "display_name": display_name,
+                            "team_name": team_name,
+                            "relevance": 1  # Exact start match
+                        })
+                        seen_players.add(player_key)
+                    elif query_lower in display_name_lower:
+                        matches.append({
+                            "display_name": display_name,
+                            "team_name": team_name,
+                            "relevance": 2  # Contains match
+                        })
+                        seen_players.add(player_key)
+
+                    if len(matches) >= limit:
+                        break
+
+                if len(matches) >= limit:
+                    break
+            if len(matches) >= limit:
+                break
+
+        # If not enough matches, also search rosters (for pre-game scenarios)
+        if len(matches) < limit:
+            try:
+                header = data.get('header', {})
+                competitions = header.get('competitions', [])
+                if competitions:
+                    competitors = competitions[0].get('competitors', [])
+                    for comp in competitors:
+                        team = comp.get('team', {})
+                        team_id = team.get('id')
+                        team_name = team.get('displayName') or team.get('name')
+
+                        if team_id:
+                            try:
+                                roster = self.fetch_team_roster(sport, team_id)
+                                for athlete in roster:
+                                    display_name = athlete.get('displayName') or athlete.get('fullName', '')
+                                    if not display_name:
+                                        continue
+
+                                    player_key = f"{display_name}|{team_name}"
+                                    if player_key in seen_players:
+                                        continue
+
+                                    display_name_lower = display_name.lower()
+                                    
+                                    if display_name_lower.startswith(query_lower):
+                                        matches.append({
+                                            "display_name": display_name,
+                                            "team_name": team_name,
+                                            "relevance": 1
+                                        })
+                                        seen_players.add(player_key)
+                                    elif query_lower in display_name_lower:
+                                        matches.append({
+                                            "display_name": display_name,
+                                            "team_name": team_name,
+                                            "relevance": 2
+                                        })
+                                        seen_players.add(player_key)
+
+                                    if len(matches) >= limit:
+                                        break
+                            except Exception:
+                                continue  # Skip if roster fetch fails
+
+                        if len(matches) >= limit:
+                            break
+            except Exception:
+                pass
+
+        # Sort by relevance (1 = starts with, 2 = contains), then alphabetically
+        matches.sort(key=lambda x: (x["relevance"], x["display_name"]))
+        
+        # Remove relevance key before returning
+        return [{"display_name": m["display_name"], "team_name": m["team_name"]} for m in matches[:limit]]
+
     def _parse_game(self, event: Dict) -> Optional[Dict]:
         """Parse game data from ESPN API response into a compact dict."""
         try:
