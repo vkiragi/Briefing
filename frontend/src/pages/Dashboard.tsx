@@ -171,6 +171,32 @@ export const Dashboard = () => {
     [activeProps]
   );
 
+  // Check if all pending bets have finished games (can be resolved)
+  const canResolveAll = useMemo(() => {
+    if (pendingBets.length === 0) return false;
+
+    return pendingBets.every(bet => {
+      // Check if bet has a decided outcome from props data
+      const liveData = propsData.get(bet.id);
+      if (liveData?.game_state === 'post' || liveData?.prop_status === 'won' || liveData?.prop_status === 'lost' || liveData?.prop_status === 'push') {
+        return true;
+      }
+
+      // Check if bet's game_state indicates finished
+      if (bet.game_state === 'post') {
+        return true;
+      }
+
+      // Try to find matching game and check if it's finished
+      const matchingGame = findMatchingGame(bet);
+      if (matchingGame && (matchingGame.state === 'post' || matchingGame.completed)) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [pendingBets, propsData, findMatchingGame]);
+
   // Refresh props data
   const refreshPropsData = useCallback(async () => {
     if (allPropsToTrack.length === 0) return;
@@ -646,8 +672,14 @@ export const Dashboard = () => {
             </div>
             <button
               onClick={clearPendingBets}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-orange-500 transition-colors"
-              title="Resolve all pending bets based on their outcomes"
+              disabled={!canResolveAll}
+              className={cn(
+                "flex items-center gap-1 text-xs transition-colors",
+                canResolveAll
+                  ? "text-gray-400 hover:text-orange-500"
+                  : "text-gray-600 cursor-not-allowed"
+              )}
+              title={canResolveAll ? "Resolve all pending bets based on their outcomes" : "Wait for all games to finish"}
             >
               <Trash2 size={14} />
               <span>Resolve All</span>
