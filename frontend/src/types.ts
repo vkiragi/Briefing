@@ -12,6 +12,13 @@ export interface Game {
   clock_seconds?: number;
   event_id?: string;
   competition_id?: string;
+  tournament?: string; // For tennis matches
+  match_type?: string; // For tennis: 'singles', 'doubles', 'tournament'
+  // Tennis-specific fields
+  home_set_scores?: string; // e.g., "6-7(4-7) 5-7"
+  away_set_scores?: string; // e.g., "7-6(7-4) 7-5"
+  home_winner?: boolean;
+  away_winner?: boolean;
 }
 
 export interface NewsItem {

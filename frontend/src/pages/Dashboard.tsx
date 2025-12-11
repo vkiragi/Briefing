@@ -414,8 +414,15 @@ export const Dashboard = () => {
       try {
         const games = await api.getScores('tennis-atp-singles', 6, true);
         if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
-            const scheduled = await api.getSchedule('tennis-atp-singles', 6);
-            setTennisGames(scheduled);
+            // No live games - try to get recent results first
+            const recentResults = await api.getScores('tennis-atp-singles', 6, false);
+            if (recentResults && recentResults.length > 0 && recentResults[0].state !== 'no_live') {
+                setTennisGames(recentResults);
+            } else {
+                // No recent results either - show upcoming tournaments
+                const scheduled = await api.getSchedule('tennis-atp-singles', 6);
+                setTennisGames(scheduled);
+            }
         } else {
             setTennisGames(games);
         }
@@ -427,7 +434,7 @@ export const Dashboard = () => {
       }
     };
     fetchTennis();
-    
+
     const interval = setInterval(fetchTennis, refreshInterval);
     return () => clearInterval(interval);
   }, [refreshInterval]);
@@ -549,11 +556,99 @@ export const Dashboard = () => {
           ) : games.length > 0 ? (
             games.map((game, i) => {
               const isLive = game.state === 'in';
+              const isTennis = sport === 'tennis';
+              const showTournament = isTennis && game.tournament && game.match_type !== 'tournament';
+              const isTennisMatch = isTennis && game.match_type !== 'tournament';
+
+              // For tennis, render a special layout
+              if (isTennisMatch) {
+                return (
+                  <div
+                    key={i}
+                    className="bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all"
+                  >
+                    {/* Tournament name */}
+                    {showTournament && (
+                      <div className="text-xs text-accent font-medium mb-2 truncate">
+                        {game.tournament}
+                      </div>
+                    )}
+                    {/* Status/Time */}
+                    <div className={cn(
+                      "flex items-center mb-3",
+                      isLive ? "justify-between" : "justify-center"
+                    )}>
+                      {isLive && (
+                        <span className="text-xs uppercase font-medium text-red-500">
+                          Live
+                        </span>
+                      )}
+                      <span className="text-sm font-mono font-semibold text-gray-400">
+                        {formatGameTime(game, sport)}
+                      </span>
+                    </div>
+                    {/* Player 1 */}
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {game.home_winner && (
+                          <span className="text-green-500 text-sm">✓</span>
+                        )}
+                        <span className={cn(
+                          "text-sm truncate",
+                          game.home_winner ? "font-semibold text-white" : "text-gray-400"
+                        )}>{game.home_team}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        <span className={cn(
+                          "text-lg font-mono font-bold w-4 text-center",
+                          game.home_winner ? "text-white" : "text-gray-400"
+                        )}>{game.home_score}</span>
+                        {game.home_set_scores && (
+                          <span className="text-xs font-mono text-gray-500 whitespace-nowrap">
+                            {game.home_set_scores}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Player 2 */}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {game.away_winner && (
+                          <span className="text-green-500 text-sm">✓</span>
+                        )}
+                        <span className={cn(
+                          "text-sm truncate",
+                          game.away_winner ? "font-semibold text-white" : "text-gray-400"
+                        )}>{game.away_team}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        <span className={cn(
+                          "text-lg font-mono font-bold w-4 text-center",
+                          game.away_winner ? "text-white" : "text-gray-400"
+                        )}>{game.away_score}</span>
+                        {game.away_set_scores && (
+                          <span className="text-xs font-mono text-gray-500 whitespace-nowrap">
+                            {game.away_set_scores}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Standard layout for other sports
               return (
                 <div
                   key={i}
                   className="bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all"
                 >
+                  {/* Tournament name for tennis tournaments list */}
+                  {showTournament && (
+                    <div className="text-xs text-accent font-medium mb-2 truncate">
+                      {game.tournament}
+                    </div>
+                  )}
                   <div className={cn(
                     "flex items-center mb-3",
                     isLive ? "justify-between" : "justify-center"

@@ -106,14 +106,39 @@ class TennisFetcherMixin:
                         completed = status.get('completed', False)
 
                         # Parse scores - tennis header API uses different format
-                        home_score = competitors[0].get('score', 'TBD')
-                        away_score = competitors[1].get('score', 'TBD')
+                        home_score_str = competitors[0].get('score', '')
+                        away_score_str = competitors[1].get('score', '')
+                        home_winner = competitors[0].get('winner', False)
+                        away_winner = competitors[1].get('winner', False)
+
+                        # Calculate sets won from score strings (e.g., "7-6(7-4) 7-5" -> 2 sets)
+                        def count_sets_won(score_str):
+                            if not score_str:
+                                return 0
+                            sets = score_str.split()
+                            wins = 0
+                            for s in sets:
+                                # Extract the first number (games won in that set)
+                                # Handle tiebreak format like "7-6(7-4)"
+                                parts = s.split('-')
+                                if len(parts) >= 2:
+                                    try:
+                                        games_won = int(parts[0])
+                                        games_lost = int(parts[1].split('(')[0])
+                                        if games_won > games_lost:
+                                            wins += 1
+                                    except ValueError:
+                                        pass
+                            return wins
+
+                        home_sets = count_sets_won(home_score_str)
+                        away_sets = count_sets_won(away_score_str)
 
                         game_info = {
                             'home_team': competitors[0].get('displayName', 'Unknown'),
-                            'home_score': home_score if state != 'pre' else 'TBD',
+                            'home_score': str(home_sets) if state != 'pre' else 'TBD',
                             'away_team': competitors[1].get('displayName', 'Unknown'),
-                            'away_score': away_score if state != 'pre' else 'TBD',
+                            'away_score': str(away_sets) if state != 'pre' else 'TBD',
                             'status': status.get('description', 'Unknown'),
                             'completed': completed,
                             'date': event.get('date', 'Unknown date'),
@@ -121,7 +146,10 @@ class TennisFetcherMixin:
                             'event_name': event.get('name', ''),
                             'tournament': event.get('name', ''),
                             'match_type': 'doubles' if is_doubles else 'singles',
-                            'set_scores': home_score if state != 'pre' else None,
+                            'home_set_scores': home_score_str if state != 'pre' else None,
+                            'away_set_scores': away_score_str if state != 'pre' else None,
+                            'home_winner': home_winner,
+                            'away_winner': away_winner,
                         }
 
                         # Add event ID if available
