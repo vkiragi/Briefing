@@ -206,17 +206,9 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
             <span className="text-lg font-semibold text-white">
               {bet.player_name || bet.selection}
             </span>
-            <div className="flex items-center gap-2">
-              <span className={cn(
-                "text-2xl font-mono font-bold",
-                isLive || isPostGame ? getStatusColor() : "text-gray-500"
-              )}>
-                {isLive || isPostGame ? (bet.current_value ?? 0) : 'TBD'}
-              </span>
-              <span className="text-2xl font-mono font-bold text-white">
-                {bet.line}
-              </span>
-            </div>
+            <span className="text-2xl font-mono font-bold text-white">
+              {bet.line}
+            </span>
           </div>
           <div className="flex justify-between items-center mt-1">
             <span className="text-sm text-gray-400">{bet.matchup}</span>
