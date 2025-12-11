@@ -23,7 +23,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Set up auth state listener
       const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
         if (!isMounted) return;
-        console.log('Auth state changed:', event, newSession?.user?.email);
         setSession(newSession);
         setLoading(false);
       });
@@ -34,7 +33,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const refreshToken = hashParams.get('refresh_token');
 
       if (accessToken && refreshToken) {
-        console.log('Found tokens in URL, setting session...');
         // Manually set the session from URL params
         const { data, error } = await supabase.auth.setSession({
           access_token: accessToken,
@@ -43,7 +41,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.error('Failed to set session from URL:', error);
         } else {
-          console.log('Session set successfully:', data.session?.user?.email);
           // Clear the hash from URL
           window.history.replaceState(null, '', window.location.pathname);
         }
@@ -57,7 +54,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.error('Failed to fetch session', error);
         }
-        console.log('Initial session check:', data.session?.user?.email || 'no session');
         if (isMounted) {
           setSession(data.session);
           setLoading(false);

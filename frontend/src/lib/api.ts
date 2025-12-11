@@ -13,7 +13,6 @@ const getAuthHeaders = async (): Promise<Record<string, string>> => {
     console.warn('No session or access token available');
     throw new Error('Not authenticated');
   }
-  console.log('Got auth token:', session.access_token.substring(0, 20) + '...');
   return {
     'Authorization': `Bearer ${session.access_token}`,
     'Content-Type': 'application/json',
