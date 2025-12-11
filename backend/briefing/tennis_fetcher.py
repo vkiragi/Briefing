@@ -170,6 +170,15 @@ class TennisFetcherMixin:
             # If no matches found, try to get upcoming tournaments
             if not games:
                 games = self._fetch_tennis_upcoming_tournaments(league, limit)
+            else:
+                # Also fetch upcoming tournaments to show alongside current matches
+                upcoming_tournaments = self._fetch_tennis_upcoming_tournaments(league, limit)
+                if upcoming_tournaments:
+                    # Deduplicate by checking tournament name
+                    existing_tournaments = {g.get('tournament') for g in games if g.get('tournament')}
+                    for tournament in upcoming_tournaments:
+                        if tournament.get('tournament') not in existing_tournaments:
+                            games.append(tournament)
 
             return games
 
@@ -182,7 +191,7 @@ class TennisFetcherMixin:
 
     def _fetch_tennis_upcoming_tournaments(self, league: str, limit: int = 10) -> List[Dict]:
         """
-        Fetch upcoming tennis tournaments when no matches are available.
+        Fetch upcoming tennis tournaments.
         """
         sport_path = f"tennis/{league}"
         url = f"{self.BASE_URL}/{sport_path}/scoreboard"
@@ -216,8 +225,8 @@ class TennisFetcherMixin:
                     'end_date': end_date,
                 })
 
-            # If no events in current scoreboard, check future dates
-            if not tournaments:
+            # Always check future dates to find more upcoming tournaments
+            if len(tournaments) < limit:
                 now = datetime.now()
 
                 # Check next 60 days for tournaments

@@ -437,19 +437,14 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchTennis = async () => {
       try {
-        const games = await api.getScores('tennis-atp-singles', 6, true);
-        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
-            // No live games - try to get recent results first
-            const recentResults = await api.getScores('tennis-atp-singles', 6, false);
-            if (recentResults && recentResults.length > 0 && recentResults[0].state !== 'no_live') {
-                setTennisGames(recentResults);
-            } else {
-                // No recent results either - show upcoming tournaments
-                const scheduled = await api.getSchedule('tennis-atp-singles', 6);
-                setTennisGames(scheduled);
-            }
+        // Fetch all tennis matches - this includes live, recent, AND upcoming matches
+        const games = await api.getScores('tennis-atp-singles', 10, false);
+        if (games && games.length > 0 && games[0].state !== 'no_live') {
+          setTennisGames(games);
         } else {
-            setTennisGames(games);
+          // Fallback to schedule if no matches at all
+          const scheduled = await api.getSchedule('tennis-atp-singles', 6);
+          setTennisGames(scheduled);
         }
         setTennisGamesLastUpdated(new Date());
       } catch (e) {
@@ -584,8 +579,31 @@ export const Dashboard = () => {
               const isTennis = sport === 'tennis';
               const showTournament = isTennis && game.tournament && game.match_type !== 'tournament';
               const isTennisMatch = isTennis && game.match_type !== 'tournament';
+              const isTennisTournament = isTennis && game.match_type === 'tournament';
 
-              // For tennis, render a special layout
+              // For upcoming tennis tournaments (no matches yet), show a clean card
+              if (isTennisTournament) {
+                return (
+                  <div
+                    key={i}
+                    className="bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all"
+                  >
+                    <div className="text-center">
+                      <div className="text-sm font-mono text-gray-400 mb-2">
+                        {formatGameTime(game, sport)}
+                      </div>
+                      <div className="text-base font-semibold text-white">
+                        {game.tournament || game.home_team}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Upcoming Tournament
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // For tennis matches, render a special layout
               if (isTennisMatch) {
                 return (
                   <div
@@ -594,7 +612,7 @@ export const Dashboard = () => {
                   >
                     {/* Tournament name */}
                     {showTournament && (
-                      <div className="text-xs text-accent font-medium mb-2 truncate">
+                      <div className="text-xs text-gray-400 font-medium mb-2 truncate">
                         {game.tournament}
                       </div>
                     )}
