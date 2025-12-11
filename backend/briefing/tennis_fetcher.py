@@ -33,11 +33,11 @@ class TennisFetcherMixin:
         if live_matches:
             return live_matches
         return [{
-            'home_team': 'No live matches at the moment',
+            'home_team': 'No live games at the moment',
             'away_team': 'Check back later',
             'home_score': '-',
             'away_score': '-',
-            'status': 'No live matches',
+            'status': 'No live games',
             'completed': False,
             'date': '-',
             'state': 'no_live',
