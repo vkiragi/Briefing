@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, PlusCircle, List, BarChart2, Settings, User, LogOut } from "lucide-react";
+import { Home, PlusCircle, List, BarChart2, Settings, User } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 import { SettingsModal } from "../SettingsModal";
+import { ProfileModal } from "../ProfileModal";
 
 const navItems = [
   { path: "/", label: "Home", icon: Home },
@@ -14,31 +15,13 @@ const navItems = [
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
   const [refreshInterval, setRefreshInterval] = useState<number>(() => {
     const saved = localStorage.getItem('refreshInterval');
     return saved ? parseInt(saved, 10) : 30000;
   });
-
-  // Close profile dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setProfileOpen(false);
-      }
-    };
-
-    if (profileOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [profileOpen]);
 
   const handleRefreshIntervalChange = (interval: number) => {
     setRefreshInterval(interval);
@@ -86,9 +69,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         {/* Profile and Settings at bottom */}
         <div className="mt-auto flex flex-col gap-2 w-full px-3">
           {/* Profile Button */}
-          <div ref={profileRef} className="flex flex-col items-center group relative">
+          <div className="flex flex-col items-center group">
             <button
-              onClick={() => setProfileOpen(!profileOpen)}
+              onClick={() => setProfileOpen(true)}
               className="flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 relative w-full hover:bg-white/[0.03] text-gray-400 hover:text-white"
             >
               {user?.user_metadata?.avatar_url ? (
@@ -104,26 +87,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <span className="text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center text-gray-400 opacity-0 group-hover:opacity-100">
               Profile
             </span>
-            {/* Dropdown on click */}
-            {profileOpen && (
-              <div className="absolute left-full bottom-0 ml-2 z-50">
-                <div className="bg-card border border-border rounded-lg p-3 shadow-lg min-w-[160px]">
-                  <div className="text-xs text-gray-400 mb-2 truncate">
-                    {user?.email ?? 'Signed in'}
-                  </div>
-                  <button
-                    onClick={() => {
-                      signOut();
-                      setProfileOpen(false);
-                    }}
-                    className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors w-full"
-                  >
-                    <LogOut size={14} />
-                    Sign out
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
           {/* Settings Button */}
           <div className="flex flex-col items-center group">
@@ -198,6 +161,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         onClose={() => setSettingsOpen(false)}
         refreshInterval={refreshInterval}
         onRefreshIntervalChange={handleRefreshIntervalChange}
+      />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={profileOpen}
+        onClose={() => setProfileOpen(false)}
       />
     </div>
   );
