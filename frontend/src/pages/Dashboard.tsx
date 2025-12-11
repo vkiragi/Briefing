@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { TrendingUp, Activity, Clock, Trash2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useBets } from "../context/BetContext";
 import { Card } from "../components/ui/Card";
 import { PropTracker } from "../components/PropTracker";
@@ -137,30 +137,18 @@ export const Dashboard = () => {
   }, [allGamesForMatching]);
 
   // Get all pending bets (for the pending bets section)
+  // Include ALL pending bets regardless of date - they need to be resolved
   const pendingBets = useMemo(() => {
-    // Use PST timezone for date comparison to match game times
-    const now = new Date();
-    const todayPST = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    todayPST.setHours(0, 0, 0, 0);
-
     return bets.filter(b => {
       if (b.status !== 'Pending') return false;
 
-      // Exclude bets where outcome is already decided
+      // Exclude bets where outcome is already decided in stored data
+      // (These should have been resolved already)
       if (b.prop_status === 'won' || b.prop_status === 'lost' || b.prop_status === 'push') {
         return false;
       }
 
-      // Parse bet date - handle both ISO and YYYY-MM-DD formats
-      // For YYYY-MM-DD, append time to avoid timezone issues
-      let betDateStr = b.date;
-      if (betDateStr && !betDateStr.includes('T')) {
-        betDateStr = `${betDateStr}T12:00:00`; // Noon to avoid date shifts
-      }
-      const betDate = new Date(betDateStr);
-      betDate.setHours(0, 0, 0, 0);
-
-      return betDate >= todayPST;
+      return true;
     });
   }, [bets]);
 
@@ -170,31 +158,68 @@ export const Dashboard = () => {
     [activeProps]
   );
 
+  // Compute enriched pending bets with prop_status from game matching
+  const enrichedPendingBets = useMemo(() => {
+    return pendingBets.map(bet => {
+      // First check if we have live tracking data
+      const liveData = propsData.get(bet.id);
+      if (liveData) {
+        return { ...bet, ...liveData };
+      }
+
+      // Otherwise, try to match to a game and compute prop_status
+      const matchingGame = findMatchingGame(bet);
+      if (matchingGame) {
+        const homeScore = parseInt(matchingGame.home_score || '0');
+        const awayScore = parseInt(matchingGame.away_score || '0');
+        const isGameOver = matchingGame.state === 'post' || matchingGame.completed;
+
+        // Determine prop_status for Moneyline bets
+        let propStatus: string | undefined;
+        if (isGameOver && bet.type === 'Moneyline' && bet.selection) {
+          const selectionLower = bet.selection.toLowerCase();
+          const homeTeamLower = matchingGame.home_team.toLowerCase();
+          const awayTeamLower = matchingGame.away_team.toLowerCase();
+
+          const betOnHome = selectionLower.includes(homeTeamLower) || homeTeamLower.includes(selectionLower);
+          const betOnAway = selectionLower.includes(awayTeamLower) || awayTeamLower.includes(selectionLower);
+
+          if (betOnHome) {
+            propStatus = homeScore > awayScore ? 'won' : 'lost';
+          } else if (betOnAway) {
+            propStatus = awayScore > homeScore ? 'won' : 'lost';
+          }
+        }
+
+        return {
+          ...bet,
+          game_state: matchingGame.state,
+          prop_status: propStatus,
+        };
+      }
+
+      return bet;
+    });
+  }, [pendingBets, propsData, findMatchingGame]);
+
   // Check if all pending bets have finished games (can be resolved)
   const canResolveAll = useMemo(() => {
-    if (pendingBets.length === 0) return false;
+    if (enrichedPendingBets.length === 0) return false;
 
-    return pendingBets.every(bet => {
-      // Check if bet has a decided outcome from props data
-      const liveData = propsData.get(bet.id);
-      if (liveData?.game_state === 'post' || liveData?.prop_status === 'won' || liveData?.prop_status === 'lost' || liveData?.prop_status === 'push') {
+    return enrichedPendingBets.every(bet => {
+      // Check if bet has a decided outcome
+      if (bet.prop_status === 'won' || bet.prop_status === 'lost' || bet.prop_status === 'push') {
         return true;
       }
 
-      // Check if bet's game_state indicates finished
+      // Check if bet's game_state indicates finished (fallback)
       if (bet.game_state === 'post') {
-        return true;
-      }
-
-      // Try to find matching game and check if it's finished
-      const matchingGame = findMatchingGame(bet);
-      if (matchingGame && (matchingGame.state === 'post' || matchingGame.completed)) {
         return true;
       }
 
       return false;
     });
-  }, [pendingBets, propsData, findMatchingGame]);
+  }, [enrichedPendingBets]);
 
   // Refresh props data
   const refreshPropsData = useCallback(async () => {
@@ -770,7 +795,7 @@ export const Dashboard = () => {
               )}
             </div>
             <button
-              onClick={clearPendingBets}
+              onClick={() => clearPendingBets(enrichedPendingBets)}
               disabled={!canResolveAll}
               className={cn(
                 "flex items-center gap-1 text-xs transition-colors",
@@ -785,64 +810,75 @@ export const Dashboard = () => {
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {pendingBets.map(bet => {
-              const liveData = propsData.get(bet.id);
-              let enrichedBet = liveData ? { ...bet, ...liveData } : bet;
+            <AnimatePresence mode="popLayout">
+                {pendingBets.map(bet => {
+                  const liveData = propsData.get(bet.id);
+                  let enrichedBet = liveData ? { ...bet, ...liveData } : bet;
 
-              // For bets without tracking data, try to match to a game
-              if (!liveData) {
-                const matchingGame = findMatchingGame(bet);
-                if (matchingGame) {
-                  const homeScore = parseInt(matchingGame.home_score || '0');
-                  const awayScore = parseInt(matchingGame.away_score || '0');
-                  const totalScore = homeScore + awayScore;
-                  const isGameOver = matchingGame.state === 'post' || matchingGame.completed;
-                  const isLive = matchingGame.state === 'in';
-                  const isPreGame = matchingGame.state === 'pre';
+                  // For bets without tracking data, try to match to a game
+                  if (!liveData) {
+                    const matchingGame = findMatchingGame(bet);
+                    if (matchingGame) {
+                      const homeScore = parseInt(matchingGame.home_score || '0');
+                      const awayScore = parseInt(matchingGame.away_score || '0');
+                      const totalScore = homeScore + awayScore;
+                      const isGameOver = matchingGame.state === 'post' || matchingGame.completed;
+                      const isLive = matchingGame.state === 'in';
+                      const isPreGame = matchingGame.state === 'pre';
 
-                  // Determine prop_status for Moneyline bets (only for live/finished games)
-                  let propStatus: string | undefined;
-                  if ((isLive || isGameOver) && bet.type === 'Moneyline' && bet.selection) {
-                    const selectionLower = bet.selection.toLowerCase();
-                    const homeTeamLower = matchingGame.home_team.toLowerCase();
-                    const awayTeamLower = matchingGame.away_team.toLowerCase();
+                      // Determine prop_status for Moneyline bets (only for live/finished games)
+                      let propStatus: string | undefined;
+                      if ((isLive || isGameOver) && bet.type === 'Moneyline' && bet.selection) {
+                        const selectionLower = bet.selection.toLowerCase();
+                        const homeTeamLower = matchingGame.home_team.toLowerCase();
+                        const awayTeamLower = matchingGame.away_team.toLowerCase();
 
-                    // Check which team was selected
-                    const betOnHome = selectionLower.includes(homeTeamLower) || homeTeamLower.includes(selectionLower);
-                    const betOnAway = selectionLower.includes(awayTeamLower) || awayTeamLower.includes(selectionLower);
+                        // Check which team was selected
+                        const betOnHome = selectionLower.includes(homeTeamLower) || homeTeamLower.includes(selectionLower);
+                        const betOnAway = selectionLower.includes(awayTeamLower) || awayTeamLower.includes(selectionLower);
 
-                    if (betOnHome) {
-                      const isWinning = homeScore > awayScore;
-                      propStatus = isGameOver ? (isWinning ? 'won' : 'lost') : (isWinning ? 'live_hit' : 'live_miss');
-                    } else if (betOnAway) {
-                      const isWinning = awayScore > homeScore;
-                      propStatus = isGameOver ? (isWinning ? 'won' : 'lost') : (isWinning ? 'live_hit' : 'live_miss');
+                        if (betOnHome) {
+                          const isWinning = homeScore > awayScore;
+                          propStatus = isGameOver ? (isWinning ? 'won' : 'lost') : (isWinning ? 'live_hit' : 'live_miss');
+                        } else if (betOnAway) {
+                          const isWinning = awayScore > homeScore;
+                          propStatus = isGameOver ? (isWinning ? 'won' : 'lost') : (isWinning ? 'live_hit' : 'live_miss');
+                        }
+                      }
+
+                      // Determine game status text
+                      let gameStatusText = matchingGame.status;
+                      if (isGameOver) {
+                        gameStatusText = 'Final';
+                      } else if (isLive && matchingGame.display_clock) {
+                        gameStatusText = `Q${matchingGame.period} ${matchingGame.display_clock}`;
+                      }
+
+                      enrichedBet = {
+                        ...bet,
+                        game_state: matchingGame.state,
+                        game_status_text: gameStatusText,
+                        current_value_str: isPreGame ? undefined : `${awayScore}-${homeScore}`,
+                        current_value: bet.type === 'Total' && !isPreGame ? totalScore : undefined,
+                        prop_status: propStatus,
+                        // Use the game's actual date for better accuracy
+                        date: matchingGame.date || bet.date,
+                      };
                     }
                   }
 
-                  // Determine game status text
-                  let gameStatusText = matchingGame.status;
-                  if (isGameOver) {
-                    gameStatusText = 'Final';
-                  } else if (isLive && matchingGame.display_clock) {
-                    gameStatusText = `Q${matchingGame.period} ${matchingGame.display_clock}`;
-                  }
-
-                  enrichedBet = {
-                    ...bet,
-                    game_state: matchingGame.state,
-                    game_status_text: gameStatusText,
-                    current_value_str: isPreGame ? undefined : `${awayScore}-${homeScore}`,
-                    current_value: bet.type === 'Total' && !isPreGame ? totalScore : undefined,
-                    prop_status: propStatus,
-                    // Use the game's actual date for better accuracy
-                    date: matchingGame.date || bet.date,
-                  };
-                }
-              }
-
-              return <PropTracker key={bet.id} bet={enrichedBet} />;
-            })}
+                  return (
+                    <motion.div
+                      key={bet.id}
+                      initial={false}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                      <PropTracker bet={enrichedBet} />
+                    </motion.div>
+                  );
+                })}
+            </AnimatePresence>
           </div>
         </div>
       )}

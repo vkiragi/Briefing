@@ -18,7 +18,7 @@ interface BetContextType {
   addBet: (bet: Omit<Bet, 'id' | 'status'>) => Promise<void>;
   updateBetStatus: (id: string, status: Bet['status']) => Promise<void>;
   deleteBet: (id: string) => Promise<void>;
-  clearPendingBets: () => Promise<void>;
+  clearPendingBets: (enrichedBets?: Bet[]) => Promise<void>;
   stats: BetStats;
   loading: boolean;
   refreshBets: () => Promise<void>;
@@ -153,16 +153,12 @@ export const BetProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const clearPendingBets = async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const clearPendingBets = async (enrichedBets?: Bet[]) => {
+    // Use enriched bets if provided (contains computed prop_status from game matching)
+    // Otherwise fall back to stored bets
+    const betsToCheck = enrichedBets || bets;
 
-    const pendingBetsToResolve = bets.filter(b => {
-      if (b.status !== 'Pending') return false;
-      const betDate = new Date(b.date);
-      betDate.setHours(0, 0, 0, 0);
-      return betDate >= today;
-    });
+    const pendingBetsToResolve = betsToCheck.filter(b => b.status === 'Pending');
 
     // Update pending bets to their resolved status based on prop_status
     // Don't delete - just mark as Won/Lost/Push to preserve history

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Clock, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Bet } from '../types';
 import { cn } from '../lib/utils';
 import { useToast } from './ui/Toast';
@@ -12,13 +13,55 @@ interface PropTrackerProps {
 export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
   const { toast } = useToast();
   const { updateBetStatus } = useBets();
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolvedStatus, setResolvedStatus] = useState<'Won' | 'Lost' | 'Pushed' | null>(null);
+  const hasAutoResolved = useRef(false);
+
   const isLive = bet.game_state === 'in';
   const isPreGame = !bet.game_state || bet.game_state === 'pre';
   const isPostGame = bet.game_state === 'post';
+
   // Bet types that show line/progress tracking
   const isProp = bet.type === 'Prop' || bet.type === '1st Half' || bet.type === '1st Quarter' || bet.type === 'Team Total' || bet.type === 'Total';
   // Full-game bets that show score (Moneyline, Spread also tracked but display differently)
   const isTeamBet = bet.type === 'Moneyline' || bet.type === 'Spread';
+
+  // Determine final status from prop_status
+  const getFinalStatus = (): 'Won' | 'Lost' | 'Pushed' | null => {
+    if (bet.prop_status === 'won' || bet.prop_status === 'live_hit') return 'Won';
+    if (bet.prop_status === 'lost' || bet.prop_status === 'live_miss') return 'Lost';
+    if (bet.prop_status === 'push' || bet.prop_status === 'live_push') return 'Pushed';
+    // If game is over but no clear prop_status, mark as Lost
+    if (isPostGame && !bet.prop_status) return 'Lost';
+    return null;
+  };
+
+  // Trigger resolution with animation
+  const resolveWithAnimation = (status: 'Won' | 'Lost' | 'Pushed') => {
+    if (hasAutoResolved.current) return; // Prevent double resolution
+
+    setResolvedStatus(status);
+    setIsResolving(true);
+    hasAutoResolved.current = true;
+
+    // Show overlay for 1s, then update status (which triggers AnimatePresence exit)
+    setTimeout(() => {
+      updateBetStatus(bet.id, status);
+    }, 1000);
+  };
+
+  // Auto-resolve when game finishes
+  useEffect(() => {
+    const finalStatus = getFinalStatus();
+
+    // Only auto-resolve if:
+    // 1. Game is post (finished)
+    // 2. We haven't already auto-resolved this bet
+    // 3. We have a final status determined
+    if (isPostGame && !hasAutoResolved.current && finalStatus) {
+      resolveWithAnimation(finalStatus);
+    }
+  }, [isPostGame, bet.prop_status]);
 
   const handleDismiss = () => {
     // Determine the appropriate status based on prop_status
@@ -45,13 +88,8 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
       action: {
         label: actionLabel,
         onClick: () => {
-          updateBetStatus(bet.id, defaultStatus);
-          toast({
-            title: `Bet marked as ${defaultStatus}`,
-            description: 'The bet has been moved to history.',
-            variant: 'default',
-            duration: 3000,
-          });
+          // Trigger animation instead of direct update
+          resolveWithAnimation(defaultStatus);
         },
       },
     });
@@ -143,13 +181,54 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
   const teams = getTeamsFromMatchup();
 
   return (
-    <div className={cn(
-      "bg-card border border-border rounded-xl p-4 hover:bg-card/80 transition-all",
-      bet.prop_status === 'live_hit' && "border-accent/30 bg-accent/5",
-      isLive && bet.prop_status !== 'live_hit' && "border-blue-500/30 bg-blue-500/5",
-      bet.prop_status === 'won' && "border-accent/30 bg-accent/5",
-      bet.prop_status === 'lost' && "border-red-500/30 bg-red-500/5"
-    )}>
+    <div
+      className={cn(
+        "bg-card border border-border rounded-xl p-4 hover:bg-card/80 transition-all relative overflow-hidden",
+        bet.prop_status === 'live_hit' && "border-accent/30 bg-accent/5",
+        isLive && bet.prop_status !== 'live_hit' && "border-blue-500/30 bg-blue-500/5",
+        bet.prop_status === 'won' && "border-accent/30 bg-accent/5",
+        bet.prop_status === 'lost' && "border-red-500/30 bg-red-500/5",
+        isResolving && resolvedStatus === 'Won' && "border-accent bg-accent/20",
+        isResolving && resolvedStatus === 'Lost' && "border-red-500 bg-red-500/20",
+        isResolving && resolvedStatus === 'Pushed' && "border-yellow-500 bg-yellow-500/20"
+      )}
+    >
+      {/* Resolution overlay animation */}
+      <AnimatePresence>
+        {isResolving && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 flex items-center justify-center z-10 bg-black/60 backdrop-blur-sm rounded-xl"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              className={cn(
+                "flex flex-col items-center gap-2",
+                resolvedStatus === 'Won' && "text-accent",
+                resolvedStatus === 'Lost' && "text-red-500",
+                resolvedStatus === 'Pushed' && "text-yellow-500"
+              )}
+            >
+              {resolvedStatus === 'Won' && <CheckCircle size={48} strokeWidth={2.5} />}
+              {resolvedStatus === 'Lost' && <XCircle size={48} strokeWidth={2.5} />}
+              {resolvedStatus === 'Pushed' && <Clock size={48} strokeWidth={2.5} />}
+              <motion.span
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-lg font-bold uppercase tracking-wider"
+              >
+                {resolvedStatus}
+              </motion.span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Header row with game time and status */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
