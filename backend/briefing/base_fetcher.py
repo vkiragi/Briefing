@@ -242,23 +242,29 @@ class BaseSportsFetcher:
                         except Exception:
                             continue
                 
-                # Strategy 2: If calendar failed or empty, brute force check next 7 days
+                # Strategy 2: If calendar failed or empty, brute force check future dates
+                # Check daily for first week, then weekly up to 60 days (for tournaments with long breaks like UCL)
                 if not games:
                     from datetime import datetime, timedelta
                     now = datetime.now()
-                    for i in range(1, 8): # Check next 7 days
+
+                    # Build list of days to check: daily for 7 days, then weekly for 8 more weeks
+                    days_to_check = list(range(1, 8))  # Days 1-7
+                    days_to_check.extend(range(14, 61, 7))  # Days 14, 21, 28, 35, 42, 49, 56
+
+                    for i in days_to_check:
                         try:
                             next_date = now + timedelta(days=i)
                             date_param = next_date.strftime("%Y%m%d")
                             future_url = f"{url}?dates={date_param}"
-                            
+
                             future_response = self.session.get(future_url, timeout=self.timeout)
                             if future_response.status_code != 200:
                                 continue
-                                
+
                             future_data = future_response.json()
                             future_events = future_data.get('events', [])
-                            
+
                             for event in future_events:
                                 status = event.get('status', {})
                                 status_type = status.get('type', {})
@@ -271,7 +277,7 @@ class BaseSportsFetcher:
 
                                     if len(games) >= limit:
                                         break
-                            
+
                             if games:
                                 break
                         except Exception:
