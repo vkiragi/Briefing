@@ -95,10 +95,9 @@ export const Dashboard = () => {
     });
   }, [bets]);
 
-  // Combine all games (live and completed) for matching
+  // Combine all games (including pre-game) for matching
   const allGamesForMatching = useMemo(() => {
-    return [...liveGames, ...nflGames, ...mlbGames, ...eplGames, ...laligaGames, ...uclGames, ...tennisGames]
-      .filter(g => g.state === 'in' || g.state === 'post' || g.completed);
+    return [...liveGames, ...nflGames, ...mlbGames, ...eplGames, ...laligaGames, ...uclGames, ...tennisGames];
   }, [liveGames, nflGames, mlbGames, eplGames, laligaGames, uclGames, tennisGames]);
 
   // Helper to match a bet to a game by matchup string
@@ -696,17 +695,19 @@ export const Dashboard = () => {
               let enrichedBet = liveData ? { ...bet, ...liveData } : bet;
 
               // For bets without tracking data, try to match to a game
-              if (!liveData && !bet.event_id) {
+              if (!liveData) {
                 const matchingGame = findMatchingGame(bet);
                 if (matchingGame) {
                   const homeScore = parseInt(matchingGame.home_score || '0');
                   const awayScore = parseInt(matchingGame.away_score || '0');
                   const totalScore = homeScore + awayScore;
                   const isGameOver = matchingGame.state === 'post' || matchingGame.completed;
+                  const isLive = matchingGame.state === 'in';
+                  const isPreGame = matchingGame.state === 'pre';
 
-                  // Determine prop_status for Moneyline bets
+                  // Determine prop_status for Moneyline bets (only for live/finished games)
                   let propStatus: string | undefined;
-                  if (bet.type === 'Moneyline' && bet.selection) {
+                  if ((isLive || isGameOver) && bet.type === 'Moneyline' && bet.selection) {
                     const selectionLower = bet.selection.toLowerCase();
                     const homeTeamLower = matchingGame.home_team.toLowerCase();
                     const awayTeamLower = matchingGame.away_team.toLowerCase();
@@ -728,17 +729,19 @@ export const Dashboard = () => {
                   let gameStatusText = matchingGame.status;
                   if (isGameOver) {
                     gameStatusText = 'Final';
-                  } else if (matchingGame.display_clock) {
+                  } else if (isLive && matchingGame.display_clock) {
                     gameStatusText = `Q${matchingGame.period} ${matchingGame.display_clock}`;
                   }
 
                   enrichedBet = {
                     ...bet,
-                    game_state: isGameOver ? 'post' : matchingGame.state,
+                    game_state: matchingGame.state,
                     game_status_text: gameStatusText,
-                    current_value_str: `${awayScore}-${homeScore}`,
-                    current_value: bet.type === 'Total' ? totalScore : undefined,
+                    current_value_str: isPreGame ? undefined : `${awayScore}-${homeScore}`,
+                    current_value: bet.type === 'Total' && !isPreGame ? totalScore : undefined,
                     prop_status: propStatus,
+                    // Use the game's actual date for better accuracy
+                    date: matchingGame.date || bet.date,
                   };
                 }
               }

@@ -413,6 +413,11 @@ export const AddBet = () => {
     const stakeAmount = Number(formData.stake) || 0;
     
     // Build bet object with prop tracking data if applicable
+    // Use the selected game's date/time if available, otherwise use today's date
+    const betDate = selectedGame?.date && !selectedGame.date.includes(',')
+      ? selectedGame.date  // Use ISO date from game
+      : formData.date;     // Fallback to form date
+
     const betData: any = {
       sport: formData.sport,
       type: betType as any,
@@ -420,7 +425,7 @@ export const AddBet = () => {
       selection: formData.selection,
       odds: Number(formData.odds),
       stake: stakeAmount,
-      date: formData.date,
+      date: betDate,
       book: formData.book,
       potentialPayout: potentialProfit,
     };

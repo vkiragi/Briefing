@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, PlusCircle, List, BarChart2, Settings } from "lucide-react";
+import { Home, PlusCircle, List, BarChart2, Settings, User, LogOut } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 import { SettingsModal } from "../SettingsModal";
@@ -64,35 +64,59 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
           ))}
         </div>
-        {/* Settings Button at bottom */}
-        <div className="flex flex-col items-center group mt-auto">
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 relative w-full hover:bg-white/[0.03] text-gray-400 hover:text-white"
-          >
-            <Settings size={26} />
-          </button>
-          <span className="text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center text-gray-400 opacity-0 group-hover:opacity-100">
-            Settings
-          </span>
+        {/* Profile and Settings at bottom */}
+        <div className="mt-auto flex flex-col gap-2 w-full px-3">
+          {/* Profile Button */}
+          <div className="flex flex-col items-center group relative">
+            <button
+              className="flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 relative w-full hover:bg-white/[0.03] text-gray-400 hover:text-white peer"
+            >
+              {user?.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt="Profile"
+                  className="w-7 h-7 rounded-full border border-accent/50"
+                />
+              ) : (
+                <User size={26} />
+              )}
+            </button>
+            <span className="text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center text-gray-400 opacity-0 group-hover:opacity-100">
+              Profile
+            </span>
+            {/* Dropdown on hover */}
+            <div className="absolute left-full bottom-0 ml-2 hidden group-hover:block z-50">
+              <div className="bg-card border border-border rounded-lg p-3 shadow-lg min-w-[160px]">
+                <div className="text-xs text-gray-400 mb-2 truncate">
+                  {user?.email ?? 'Signed in'}
+                </div>
+                <button
+                  onClick={signOut}
+                  className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors w-full"
+                >
+                  <LogOut size={14} />
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </div>
+          {/* Settings Button */}
+          <div className="flex flex-col items-center group">
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 relative w-full hover:bg-white/[0.03] text-gray-400 hover:text-white"
+            >
+              <Settings size={26} />
+            </button>
+            <span className="text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center text-gray-400 opacity-0 group-hover:opacity-100">
+              Settings
+            </span>
+          </div>
         </div>
       </nav>
 
       {/* Main Content */}
       <main className="w-full min-h-screen md:pl-36 md:pr-12 relative">
-        <div className="absolute right-4 top-6 md:right-12 z-10">
-          <div className="flex items-center gap-4 bg-card border border-border rounded-xl px-4 py-2.5 shadow-md">
-            <div className="text-sm text-gray-400">
-              {user?.email ?? 'Signed in'}
-            </div>
-            <button
-              onClick={signOut}
-              className="text-sm font-semibold text-accent hover:text-white transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
         {children}
       </main>
 
