@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line
+  Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ComposedChart
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { useBets } from '../context/BetContext';
@@ -178,25 +178,25 @@ export const Analytics = () => {
 
   // Monthly Performance (ensure current month is always shown)
   const monthlyPerformance = useMemo(() => {
-    const stats: Record<string, { profit: number, bets: number, wins: number }> = {};
+    const stats: Record<string, { bets: number, wins: number, losses: number, totalOdds: number }> = {};
 
     // Always include current month
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    stats[currentMonthKey] = { profit: 0, bets: 0, wins: 0 };
+    stats[currentMonthKey] = { bets: 0, wins: 0, losses: 0, totalOdds: 0 };
 
     finishedBets.forEach(bet => {
       const date = new Date(bet.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-      if (!stats[monthKey]) stats[monthKey] = { profit: 0, bets: 0, wins: 0 };
+      if (!stats[monthKey]) stats[monthKey] = { bets: 0, wins: 0, losses: 0, totalOdds: 0 };
 
       stats[monthKey].bets += 1;
+      stats[monthKey].totalOdds += bet.odds;
       if (bet.status === 'Won') {
-        stats[monthKey].profit += bet.potentialPayout;
         stats[monthKey].wins += 1;
       } else if (bet.status === 'Lost') {
-        stats[monthKey].profit -= bet.stake;
+        stats[monthKey].losses += 1;
       }
     });
 
@@ -207,11 +207,14 @@ export const Analytics = () => {
         const [year, month] = key.split('-').map(Number);
         const date = new Date(year, month - 1, 1); // month is 0-indexed
         const isCurrentMonth = key === currentMonthKey;
+        const avgOdds = stats[key].bets > 0 ? stats[key].totalOdds / stats[key].bets : 0;
         return {
           month: date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }),
-          profit: stats[key].profit,
+          wins: stats[key].wins,
+          losses: stats[key].losses,
           bets: stats[key].bets,
           winRate: stats[key].bets > 0 ? (stats[key].wins / stats[key].bets) * 100 : 0,
+          avgOdds: Math.round(avgOdds),
           isCurrentMonth
         };
       });
@@ -445,25 +448,34 @@ export const Analytics = () => {
             <h3 className="text-lg font-bold mb-4">Monthly Performance</h3>
             <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyPerformance}>
+                <ComposedChart data={monthlyPerformance}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                   <XAxis dataKey="month" stroke="#666" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#666" fontSize={11} tickLine={false} tickFormatter={(val) => `$${val}`} />
+                  <YAxis yAxisId="left" stroke="#666" fontSize={11} tickLine={false} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#666" fontSize={11} tickLine={false} tickFormatter={(val) => val > 0 ? `+${val}` : val} />
                   <RechartsTooltip
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                     contentStyle={{ backgroundColor: '#141417', borderColor: '#1F1F23', borderRadius: '8px' }}
                     formatter={(value: number, name: string) => {
-                      if (name === 'profit') return [`$${value.toFixed(2)}`, 'Profit'];
+                      if (name === 'Avg Odds') return [value > 0 ? `+${value}` : value, name];
                       return [value, name];
                     }}
                   />
-                  <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
-                    {monthlyPerformance.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.profit >= 0 ? '#00FF85' : '#FF4757'} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="wins" name="Wins" fill="#00FF85" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="losses" name="Losses" fill="#FF4757" radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="avgOdds" name="Avg Odds" stroke="#FFD166" strokeWidth={2} dot={{ fill: '#FFD166', r: 4 }} />
+                </ComposedChart>
               </ResponsiveContainer>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+              {monthlyPerformance.slice(-3).map(m => (
+                <div key={m.month} className={cn("p-2 rounded-lg", m.isCurrentMonth ? "bg-accent/10 border border-accent/30" : "bg-white/5")}>
+                  <div className="font-medium text-gray-400">{m.month}</div>
+                  <div className="text-white font-bold">{m.wins}W - {m.losses}L</div>
+                  <div className="text-gray-500">{m.winRate.toFixed(0)}% · {m.avgOdds > 0 ? '+' : ''}{m.avgOdds}</div>
+                </div>
+              ))}
             </div>
           </Card>
 
