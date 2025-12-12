@@ -3,6 +3,8 @@ export interface Game {
   away_team: string;
   home_score: string;
   away_score: string;
+  home_logo?: string; // Team/player logo URL from ESPN
+  away_logo?: string; // Team/player logo URL from ESPN
   status: string;
   completed: boolean;
   date: string;

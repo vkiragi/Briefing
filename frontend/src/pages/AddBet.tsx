@@ -653,13 +653,23 @@ export const AddBet = () => {
                                 <span className="text-xs text-gray-500">{game.status}</span>
                               </div>
                               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-                                <div className="text-right">
-                                  <div className="font-bold text-gray-300">{game.away_team}</div>
+                                <div className="text-right flex flex-col items-end">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-bold text-gray-300">{game.away_team}</span>
+                                    {game.away_logo && (
+                                      <img src={game.away_logo} alt={game.away_team} className="w-6 h-6 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                    )}
+                                  </div>
                                   <div className="text-2xl font-mono font-bold text-white">{game.away_score}</div>
                                 </div>
                                 <div className="text-xs text-gray-600 font-bold">VS</div>
-                                <div>
-                                  <div className="font-bold text-gray-300">{game.home_team}</div>
+                                <div className="flex flex-col items-start">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {game.home_logo && (
+                                      <img src={game.home_logo} alt={game.home_team} className="w-6 h-6 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                    )}
+                                    <span className="font-bold text-gray-300">{game.home_team}</span>
+                                  </div>
                                   <div className="text-2xl font-mono font-bold text-white">{game.home_score}</div>
                                 </div>
                               </div>
@@ -685,9 +695,19 @@ export const AddBet = () => {
                                 </span>
                               </div>
                               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                                <div className="text-right font-bold">{game.away_team}</div>
+                                <div className="text-right font-bold flex items-center justify-end gap-2">
+                                  <span>{game.away_team}</span>
+                                  {game.away_logo && (
+                                    <img src={game.away_logo} alt={game.away_team} className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                  )}
+                                </div>
                                 <div className="text-xs text-gray-600 font-bold">@</div>
-                                <div className="font-bold">{game.home_team}</div>
+                                <div className="font-bold flex items-center gap-2">
+                                  {game.home_logo && (
+                                    <img src={game.home_logo} alt={game.home_team} className="w-5 h-5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                  )}
+                                  <span>{game.home_team}</span>
+                                </div>
                               </div>
                             </button>
                           ))
@@ -718,8 +738,18 @@ export const AddBet = () => {
                 <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 mb-6">
                   <div className="flex items-center gap-3 mb-2">
                     <span className="text-2xl">{currentSport?.icon}</span>
-                    <div>
-                      <div className="font-bold text-lg">{selectedGame.away_team} @ {selectedGame.home_team}</div>
+                    <div className="flex-1">
+                      <div className="font-bold text-lg flex items-center gap-2 flex-wrap">
+                        {selectedGame.away_logo && (
+                          <img src={selectedGame.away_logo} alt={selectedGame.away_team} className="w-6 h-6 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        )}
+                        <span>{selectedGame.away_team}</span>
+                        <span className="text-gray-500">@</span>
+                        {selectedGame.home_logo && (
+                          <img src={selectedGame.home_logo} alt={selectedGame.home_team} className="w-6 h-6 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        )}
+                        <span>{selectedGame.home_team}</span>
+                      </div>
                       <div className="text-sm text-gray-400">{formatGameTime(selectedGame.date)}</div>
                     </div>
                     {selectedGame.state === 'in' && (

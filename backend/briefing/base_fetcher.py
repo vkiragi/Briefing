@@ -1047,18 +1047,41 @@ class BaseSportsFetcher:
             # Tennis doubles: 'roster.displayName', Singles: 'athlete.displayName', Regular sports: 'team.displayName'
             is_tennis = 'roster' in home_team or 'athlete' in home_team
 
+            # Initialize logo URLs
+            home_logo = None
+            away_logo = None
+
             if 'roster' in home_team:
                 # Tennis doubles
                 home_name = home_team.get('roster', {}).get('shortDisplayName') or home_team.get('roster', {}).get('displayName', 'Unknown')
                 away_name = away_team.get('roster', {}).get('shortDisplayName') or away_team.get('roster', {}).get('displayName', 'Unknown')
             elif 'athlete' in home_team:
-                # Tennis singles
+                # Tennis singles - use athlete headshot if available
                 home_name = home_team.get('athlete', {}).get('displayName', 'Unknown')
                 away_name = away_team.get('athlete', {}).get('displayName', 'Unknown')
+                home_logo = home_team.get('athlete', {}).get('headshot', {}).get('href')
+                away_logo = away_team.get('athlete', {}).get('headshot', {}).get('href')
             else:
                 # Regular team sports
-                home_name = home_team.get('team', {}).get('displayName', 'Unknown')
-                away_name = away_team.get('team', {}).get('displayName', 'Unknown')
+                home_team_data = home_team.get('team', {})
+                away_team_data = away_team.get('team', {})
+                home_name = home_team_data.get('displayName', 'Unknown')
+                away_name = away_team_data.get('displayName', 'Unknown')
+
+                # Extract team logos - ESPN provides them in multiple formats
+                # Try 'logo' first (single URL), then 'logos' array
+                home_logo = home_team_data.get('logo')
+                if not home_logo:
+                    home_logos = home_team_data.get('logos', [])
+                    if home_logos:
+                        # Prefer the default/primary logo (usually first one)
+                        home_logo = home_logos[0].get('href') if isinstance(home_logos[0], dict) else home_logos[0]
+
+                away_logo = away_team_data.get('logo')
+                if not away_logo:
+                    away_logos = away_team_data.get('logos', [])
+                    if away_logos:
+                        away_logo = away_logos[0].get('href') if isinstance(away_logos[0], dict) else away_logos[0]
 
             # Get scores - tennis uses linescores (sets won), other sports use score field
             if state == 'pre':
@@ -1135,8 +1158,10 @@ class BaseSportsFetcher:
             game_info = {
                 'home_team': home_name,
                 'home_score': home_score,
+                'home_logo': home_logo,
                 'away_team': away_name,
                 'away_score': away_score,
+                'away_logo': away_logo,
                 'status': status_type.get('description', 'Unknown'),
                 'completed': completed,
                 'date': self._parse_timestamp(event.get('date')),
