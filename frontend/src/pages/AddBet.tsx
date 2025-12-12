@@ -10,14 +10,14 @@ import { cn } from '../lib/utils';
 import { Game } from '../types';
 
 const SPORTS = [
-  { id: 'nba', label: 'NBA', icon: '🏀' },
-  { id: 'nfl', label: 'NFL', icon: '🏈' },
-  { id: 'mlb', label: 'MLB', icon: '⚾' },
-  { id: 'nhl', label: 'NHL', icon: '🏒' },
-  { id: 'soccer', label: 'Soccer', icon: '⚽' },
-  { id: 'tennis', label: 'Tennis', icon: '🎾' },
-  { id: 'f1', label: 'F1', icon: '🏎️' },
-  { id: 'ufc', label: 'UFC', icon: '🥊' },
+  { id: 'nba', label: 'NBA', icon: '🏀', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/nba.png&w=100&h=100&transparent=true' },
+  { id: 'nfl', label: 'NFL', icon: '🏈', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png' },
+  { id: 'mlb', label: 'MLB', icon: '⚾', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/mlb.png&w=100&h=100&transparent=true' },
+  { id: 'nhl', label: 'NHL', icon: '🏒', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nhl.png' },
+  { id: 'soccer', label: 'Soccer', icon: '⚽', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/23.png' },
+  { id: 'tennis', label: 'Tennis', icon: '🎾', logo: 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-tennis.png&w=100&h=100' },
+  { id: 'f1', label: 'F1', icon: '🏎️', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/f1.png&w=100&h=100' },
+  { id: 'ufc', label: 'UFC', icon: '🥊', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png' },
 ];
 
 // NBA-specific bet types matching terminal CLI
@@ -598,7 +598,18 @@ export const AddBet = () => {
                       onClick={() => handleSportSelect(s.id)}
                       className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border bg-card hover:border-accent hover:bg-accent/5 transition-all group"
                     >
-                      <span className="text-4xl group-hover:scale-110 transition-transform">{s.icon}</span>
+                      {s.logo ? (
+                        <img
+                          src={s.logo}
+                          alt={s.label}
+                          className="w-12 h-12 object-contain group-hover:scale-110 transition-transform"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <span className={cn("text-4xl group-hover:scale-110 transition-transform", s.logo && "hidden")}>{s.icon}</span>
                       <span className="font-semibold text-gray-300 group-hover:text-white">{s.label}</span>
                     </button>
                   ))}
@@ -618,7 +629,11 @@ export const AddBet = () => {
             >
               <Card className="p-6 flex-1 flex flex-col overflow-hidden">
                 <div className="flex items-center gap-3 mb-6 flex-shrink-0">
-                  <span className="text-3xl">{currentSport?.icon}</span>
+                  {currentSport?.logo ? (
+                    <img src={currentSport.logo} alt={currentSport.label} className="w-8 h-8 object-contain" />
+                  ) : (
+                    <span className="text-3xl">{currentSport?.icon}</span>
+                  )}
                   <h2 className="text-xl font-bold">Select a {currentSport?.label} Game</h2>
                   {loadingGames && <Loader2 className="animate-spin text-accent" size={20} />}
                 </div>
@@ -737,7 +752,11 @@ export const AddBet = () => {
                 {/* Selected Game Summary */}
                 <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 mb-6">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">{currentSport?.icon}</span>
+                    {currentSport?.logo ? (
+                      <img src={currentSport.logo} alt={currentSport.label} className="w-8 h-8 object-contain" />
+                    ) : (
+                      <span className="text-2xl">{currentSport?.icon}</span>
+                    )}
                     <div className="flex-1">
                       <div className="font-bold text-lg flex items-center gap-2 flex-wrap">
                         {selectedGame.away_logo && (
