@@ -576,24 +576,24 @@ export const AddBet = () => {
               }
             }}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all !cursor-default",
               currentStep === 'game' ? "bg-accent text-background" :
-              currentStep === 'bet' ? "bg-accent/20 text-accent cursor-pointer hover:opacity-80" : "bg-gray-800 text-gray-500"
+              currentStep === 'bet' ? "bg-accent/20 text-accent !cursor-pointer hover:opacity-80" : "bg-gray-800 text-gray-500"
             )}
           >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">2</span>
             Game
           </button>
           <ChevronRight size={16} className="text-gray-600" />
-          <button
+          <div
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-default",
               currentStep === 'bet' ? "bg-accent text-background" : "bg-gray-800 text-gray-500"
             )}
           >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">3</span>
             Bet
-          </button>
+          </div>
         </div>
       </div>
 
