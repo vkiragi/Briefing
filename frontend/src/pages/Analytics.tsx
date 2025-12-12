@@ -504,10 +504,13 @@ export const Analytics = () => {
                             )}>
                               {dayData.day}
                             </span>
-                            {(dayData.wins > 0 || dayData.losses > 0) && (
-                              <span className="text-[10px] text-gray-400">
-                                {dayData.wins}W-{dayData.losses}L
-                              </span>
+                            {(dayData.wins > 0 || dayData.losses > 0) ? (
+                              <>
+                                <span className="text-[10px] text-green-400">{dayData.wins} {dayData.wins === 1 ? 'win' : 'wins'}</span>
+                                <span className="text-[10px] text-red-400">{dayData.losses} {dayData.losses === 1 ? 'loss' : 'losses'}</span>
+                              </>
+                            ) : (
+                              <span className="text-[9px] text-gray-600">-</span>
                             )}
                           </>
                         )}
