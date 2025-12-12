@@ -552,13 +552,15 @@ export const AddBet = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              setCurrentStep('league');
-              setFormData(prev => ({ ...prev, sport: '' }));
-              setSelectedGame(null);
+              if (currentStep !== 'league') {
+                setCurrentStep('league');
+                setFormData(prev => ({ ...prev, sport: '' }));
+                setSelectedGame(null);
+              }
             }}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer hover:opacity-80",
-              currentStep === 'league' ? "bg-accent text-background" : "bg-accent/20 text-accent"
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+              currentStep === 'league' ? "bg-accent text-background" : "bg-accent/20 text-accent cursor-pointer hover:opacity-80"
             )}
           >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">1</span>
@@ -566,13 +568,17 @@ export const AddBet = () => {
           </button>
           <ChevronRight size={16} className="text-gray-600" />
           <button
-            onClick={() => formData.sport && setCurrentStep('game')}
-            disabled={!formData.sport}
+            onClick={() => {
+              // Only allow going back to game from bet step
+              if (currentStep === 'bet') {
+                setCurrentStep('game');
+                setSelectedGame(null);
+              }
+            }}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
               currentStep === 'game' ? "bg-accent text-background" :
-              currentStep === 'bet' ? "bg-accent/20 text-accent cursor-pointer hover:opacity-80" : "bg-gray-800 text-gray-500",
-              !formData.sport && "cursor-not-allowed opacity-50"
+              currentStep === 'bet' ? "bg-accent/20 text-accent cursor-pointer hover:opacity-80" : "bg-gray-800 text-gray-500 cursor-not-allowed opacity-50"
             )}
           >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">2</span>
@@ -580,12 +586,10 @@ export const AddBet = () => {
           </button>
           <ChevronRight size={16} className="text-gray-600" />
           <button
-            onClick={() => selectedGame && setCurrentStep('bet')}
-            disabled={!selectedGame}
+            disabled
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-              currentStep === 'bet' ? "bg-accent text-background" : "bg-gray-800 text-gray-500",
-              !selectedGame && "cursor-not-allowed opacity-50"
+              currentStep === 'bet' ? "bg-accent text-background" : "bg-gray-800 text-gray-500 cursor-not-allowed opacity-50"
             )}
           >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">3</span>
