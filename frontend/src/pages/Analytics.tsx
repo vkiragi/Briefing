@@ -176,72 +176,72 @@ export const Analytics = () => {
     });
   }, [finishedBets]);
 
-  // Monthly Performance (show all months from first bet to current month)
-  const monthlyPerformance = useMemo(() => {
-    const stats: Record<string, { bets: number, wins: number, losses: number, totalOdds: number }> = {};
-
+  // Monthly Calendar Data (show each day of the current month)
+  const calendarData = useMemo(() => {
     const now = new Date();
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const year = now.getFullYear();
+    const month = now.getMonth();
 
-    // Find the earliest bet date
-    let earliestDate = now;
+    // Get first day of month and total days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay(); // 0 = Sunday
+
+    // Build stats for each day
+    const dayStats: Record<number, { wins: number, losses: number, totalOdds: number, bets: number }> = {};
+
     finishedBets.forEach(bet => {
       const betDate = new Date(bet.date);
-      if (betDate < earliestDate) {
-        earliestDate = betDate;
+      if (betDate.getFullYear() === year && betDate.getMonth() === month) {
+        const day = betDate.getDate();
+        if (!dayStats[day]) dayStats[day] = { wins: 0, losses: 0, totalOdds: 0, bets: 0 };
+
+        dayStats[day].bets += 1;
+        dayStats[day].totalOdds += bet.odds;
+        if (bet.status === 'Won') {
+          dayStats[day].wins += 1;
+        } else if (bet.status === 'Lost') {
+          dayStats[day].losses += 1;
+        }
       }
     });
 
-    // Generate all months from earliest bet to current month
-    const startYear = earliestDate.getFullYear();
-    const startMonth = earliestDate.getMonth();
-    const endYear = now.getFullYear();
-    const endMonth = now.getMonth();
+    // Generate calendar grid (6 rows x 7 columns max)
+    const weeks: Array<Array<{ day: number | null, wins: number, losses: number, avgOdds: number, isToday: boolean }>> = [];
+    let currentWeek: Array<{ day: number | null, wins: number, losses: number, avgOdds: number, isToday: boolean }> = [];
 
-    for (let year = startYear; year <= endYear; year++) {
-      const monthStart = (year === startYear) ? startMonth : 0;
-      const monthEnd = (year === endYear) ? endMonth : 11;
+    // Add empty cells for days before the 1st
+    for (let i = 0; i < startDayOfWeek; i++) {
+      currentWeek.push({ day: null, wins: 0, losses: 0, avgOdds: 0, isToday: false });
+    }
 
-      for (let month = monthStart; month <= monthEnd; month++) {
-        const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
-        stats[monthKey] = { bets: 0, wins: 0, losses: 0, totalOdds: 0 };
+    // Add each day of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const stats = dayStats[day] || { wins: 0, losses: 0, totalOdds: 0, bets: 0 };
+      const avgOdds = stats.bets > 0 ? Math.round(stats.totalOdds / stats.bets) : 0;
+      const isToday = day === now.getDate();
+
+      currentWeek.push({ day, wins: stats.wins, losses: stats.losses, avgOdds, isToday });
+
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
       }
     }
 
-    // Populate with bet data
-    finishedBets.forEach(bet => {
-      const date = new Date(bet.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    // Fill remaining days in last week
+    while (currentWeek.length > 0 && currentWeek.length < 7) {
+      currentWeek.push({ day: null, wins: 0, losses: 0, avgOdds: 0, isToday: false });
+    }
+    if (currentWeek.length > 0) {
+      weeks.push(currentWeek);
+    }
 
-      if (!stats[monthKey]) stats[monthKey] = { bets: 0, wins: 0, losses: 0, totalOdds: 0 };
-
-      stats[monthKey].bets += 1;
-      stats[monthKey].totalOdds += bet.odds;
-      if (bet.status === 'Won') {
-        stats[monthKey].wins += 1;
-      } else if (bet.status === 'Lost') {
-        stats[monthKey].losses += 1;
-      }
-    });
-
-    return Object.keys(stats)
-      .sort()
-      .map(key => {
-        // Parse year and month from key (YYYY-MM) to avoid timezone issues
-        const [year, month] = key.split('-').map(Number);
-        const date = new Date(year, month - 1, 1); // month is 0-indexed
-        const isCurrentMonth = key === currentMonthKey;
-        const avgOdds = stats[key].bets > 0 ? stats[key].totalOdds / stats[key].bets : 0;
-        return {
-          month: date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }),
-          wins: stats[key].wins,
-          losses: stats[key].losses,
-          bets: stats[key].bets,
-          winRate: stats[key].bets > 0 ? (stats[key].wins / stats[key].bets) * 100 : 0,
-          avgOdds: Math.round(avgOdds),
-          isCurrentMonth
-        };
-      });
+    return {
+      monthName: now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      weeks
+    };
   }, [finishedBets]);
 
   const COLORS = ['#00FF85', '#00C2FF', '#FF4757', '#FFD166', '#8B5CF6', '#F472B6'];
@@ -467,39 +467,75 @@ export const Analytics = () => {
             </div>
           </Card>
 
-          {/* Monthly Performance - Bar Chart */}
+          {/* Monthly Performance - Calendar View */}
           <Card>
-            <h3 className="text-lg font-bold mb-4">Monthly Performance</h3>
-            <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={monthlyPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                  <XAxis dataKey="month" stroke="#666" fontSize={11} tickLine={false} />
-                  <YAxis yAxisId="left" stroke="#666" fontSize={11} tickLine={false} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#666" fontSize={11} tickLine={false} tickFormatter={(val) => val > 0 ? `+${val}` : val} />
-                  <RechartsTooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#141417', borderColor: '#1F1F23', borderRadius: '8px' }}
-                    formatter={(value: number, name: string) => {
-                      if (name === 'Avg Odds') return [value > 0 ? `+${value}` : value, name];
-                      return [value, name];
-                    }}
-                  />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="wins" name="Wins" fill="#00FF85" radius={[4, 4, 0, 0]} />
-                  <Bar yAxisId="left" dataKey="losses" name="Losses" fill="#FF4757" radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="avgOdds" name="Avg Odds" stroke="#FFD166" strokeWidth={2} dot={{ fill: '#FFD166', r: 4 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
-              {monthlyPerformance.slice(-3).map(m => (
-                <div key={m.month} className={cn("p-2 rounded-lg", m.isCurrentMonth ? "bg-accent/10 border border-accent/30" : "bg-white/5")}>
-                  <div className="font-medium text-gray-400">{m.month}</div>
-                  <div className="text-white font-bold">{m.wins}W - {m.losses}L</div>
-                  <div className="text-gray-500">{m.winRate.toFixed(0)}% · {m.avgOdds > 0 ? '+' : ''}{m.avgOdds}</div>
+            <h3 className="text-lg font-bold mb-4">{calendarData.monthName}</h3>
+            <div className="w-full">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-center text-xs text-gray-500 font-medium py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              {/* Calendar grid */}
+              <div className="space-y-1">
+                {calendarData.weeks.map((week, weekIdx) => (
+                  <div key={weekIdx} className="grid grid-cols-7 gap-1">
+                    {week.map((dayData, dayIdx) => (
+                      <div
+                        key={dayIdx}
+                        className={cn(
+                          "aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative",
+                          dayData.day === null ? "bg-transparent" :
+                          dayData.wins > 0 && dayData.losses === 0 ? "bg-green-500/30 border border-green-500/50" :
+                          dayData.losses > 0 && dayData.wins === 0 ? "bg-red-500/30 border border-red-500/50" :
+                          dayData.wins > 0 && dayData.losses > 0 ? "bg-yellow-500/20 border border-yellow-500/50" :
+                          "bg-white/5",
+                          dayData.isToday && "ring-2 ring-accent"
+                        )}
+                      >
+                        {dayData.day && (
+                          <>
+                            <span className={cn(
+                              "font-medium",
+                              dayData.isToday ? "text-accent" : "text-gray-300"
+                            )}>
+                              {dayData.day}
+                            </span>
+                            {(dayData.wins > 0 || dayData.losses > 0) && (
+                              <span className="text-[10px] text-gray-400">
+                                {dayData.wins}W-{dayData.losses}L
+                              </span>
+                            )}
+                            {dayData.avgOdds !== 0 && (
+                              <span className="text-[9px] text-gray-500">
+                                {dayData.avgOdds > 0 ? '+' : ''}{dayData.avgOdds}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              {/* Legend */}
+              <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-400">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded bg-green-500/30 border border-green-500/50" />
+                  <span>Wins Only</span>
                 </div>
-              ))}
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded bg-red-500/30 border border-red-500/50" />
+                  <span>Losses Only</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded bg-yellow-500/20 border border-yellow-500/50" />
+                  <span>Mixed</span>
+                </div>
+              </div>
             </div>
           </Card>
 
