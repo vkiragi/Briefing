@@ -551,7 +551,11 @@ export const AddBet = () => {
         {/* Step Progress */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCurrentStep('league')}
+            onClick={() => {
+              setCurrentStep('league');
+              setFormData(prev => ({ ...prev, sport: '' }));
+              setSelectedGame(null);
+            }}
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer hover:opacity-80",
               currentStep === 'league' ? "bg-accent text-background" : "bg-accent/20 text-accent"
