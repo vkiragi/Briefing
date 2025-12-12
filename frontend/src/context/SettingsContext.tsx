@@ -65,13 +65,27 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Merge with defaults to handle new settings added in updates
+
+        // Get all available section IDs
+        const allSectionIds = AVAILABLE_SECTIONS.map(s => s.id);
+
+        // Merge enabled sections - add any new sections that aren't in the saved settings
+        const savedEnabled = parsed.homeScreen?.enabledSections || [];
+        const savedOrder = parsed.homeScreen?.sectionOrder || [];
+
+        // Find new sections that aren't in the saved settings
+        const newSections = allSectionIds.filter(id => !savedOrder.includes(id));
+
+        // Add new sections to both enabled and order arrays
+        const mergedEnabled = [...savedEnabled, ...newSections];
+        const mergedOrder = [...savedOrder, ...newSections];
+
         return {
           ...defaultSettings,
           ...parsed,
           homeScreen: {
-            ...defaultSettings.homeScreen,
-            ...parsed.homeScreen,
+            enabledSections: mergedEnabled,
+            sectionOrder: mergedOrder,
           },
         };
       }
