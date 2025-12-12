@@ -6,6 +6,7 @@ import { BetHistory } from './pages/BetHistory';
 import { Analytics } from './pages/Analytics';
 import { BetProvider } from './context/BetContext';
 import { AuthProvider } from './context/AuthContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { AuthGate } from './components/auth/AuthGate';
 import { ToastProvider } from './components/ui/Toast';
 
@@ -13,20 +14,22 @@ function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <BetProvider>
-          <Router>
-            <AuthGate>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/add" element={<AddBet />} />
-                  <Route path="/history" element={<BetHistory />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                </Routes>
-              </Layout>
-            </AuthGate>
-          </Router>
-        </BetProvider>
+        <SettingsProvider>
+          <BetProvider>
+            <Router>
+              <AuthGate>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/add" element={<AddBet />} />
+                    <Route path="/history" element={<BetHistory />} />
+                    <Route path="/analytics" element={<Analytics />} />
+                  </Routes>
+                </Layout>
+              </AuthGate>
+            </Router>
+          </BetProvider>
+        </SettingsProvider>
       </AuthProvider>
     </ToastProvider>
   );

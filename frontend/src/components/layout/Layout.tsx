@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, PlusCircle, List, BarChart2, Settings, User } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -18,15 +18,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState<number>(() => {
-    const saved = localStorage.getItem('refreshInterval');
-    return saved ? parseInt(saved, 10) : 30000;
-  });
-
-  const handleRefreshIntervalChange = (interval: number) => {
-    setRefreshInterval(interval);
-    localStorage.setItem('refreshInterval', interval.toString());
-  };
 
   return (
     <div className="min-h-screen bg-background text-white pb-20 md:pb-0">
@@ -159,8 +150,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        refreshInterval={refreshInterval}
-        onRefreshIntervalChange={handleRefreshIntervalChange}
       />
 
       {/* Profile Modal */}

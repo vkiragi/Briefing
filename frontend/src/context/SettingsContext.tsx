@@ -1,0 +1,157 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+
+// Available sports sections for the home screen
+export const AVAILABLE_SECTIONS = [
+  { id: 'nba', label: 'NBA', icon: '🏀' },
+  { id: 'nfl', label: 'NFL', icon: '🏈' },
+  { id: 'mlb', label: 'MLB', icon: '⚾' },
+  { id: 'epl', label: 'Premier League', icon: '⚽' },
+  { id: 'laliga', label: 'La Liga', icon: '⚽' },
+  { id: 'ucl', label: 'Champions League', icon: '🏆' },
+  { id: 'tennis', label: 'Tennis', icon: '🎾' },
+] as const;
+
+export type SectionId = typeof AVAILABLE_SECTIONS[number]['id'];
+
+interface HomeScreenSettings {
+  enabledSections: SectionId[];
+  sectionOrder: SectionId[];
+}
+
+interface AppSettings {
+  refreshInterval: number;
+  homeScreen: HomeScreenSettings;
+  showPropTracker: boolean;
+  compactMode: boolean;
+}
+
+interface SettingsContextType {
+  settings: AppSettings;
+  updateRefreshInterval: (interval: number) => void;
+  toggleSection: (sectionId: SectionId) => void;
+  setSectionOrder: (order: SectionId[]) => void;
+  togglePropTracker: () => void;
+  toggleCompactMode: () => void;
+  resetToDefaults: () => void;
+  isSectionEnabled: (sectionId: SectionId) => boolean;
+}
+
+const defaultSettings: AppSettings = {
+  refreshInterval: 30000,
+  homeScreen: {
+    enabledSections: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'tennis'],
+    sectionOrder: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'tennis'],
+  },
+  showPropTracker: true,
+  compactMode: false,
+};
+
+const STORAGE_KEY = 'briefing_settings';
+
+const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+
+export const useSettings = () => {
+  const context = useContext(SettingsContext);
+  if (!context) {
+    throw new Error('useSettings must be used within a SettingsProvider');
+  }
+  return context;
+};
+
+export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge with defaults to handle new settings added in updates
+        return {
+          ...defaultSettings,
+          ...parsed,
+          homeScreen: {
+            ...defaultSettings.homeScreen,
+            ...parsed.homeScreen,
+          },
+        };
+      }
+    } catch (e) {
+      console.error('Failed to load settings:', e);
+    }
+    return defaultSettings;
+  });
+
+  // Persist settings to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      // Also update the legacy refreshInterval key for backward compatibility
+      localStorage.setItem('refreshInterval', settings.refreshInterval.toString());
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
+  }, [settings]);
+
+  const updateRefreshInterval = useCallback((interval: number) => {
+    setSettings(prev => ({ ...prev, refreshInterval: interval }));
+  }, []);
+
+  const toggleSection = useCallback((sectionId: SectionId) => {
+    setSettings(prev => {
+      const isEnabled = prev.homeScreen.enabledSections.includes(sectionId);
+      const newEnabledSections = isEnabled
+        ? prev.homeScreen.enabledSections.filter(id => id !== sectionId)
+        : [...prev.homeScreen.enabledSections, sectionId];
+
+      return {
+        ...prev,
+        homeScreen: {
+          ...prev.homeScreen,
+          enabledSections: newEnabledSections,
+        },
+      };
+    });
+  }, []);
+
+  const setSectionOrder = useCallback((order: SectionId[]) => {
+    setSettings(prev => ({
+      ...prev,
+      homeScreen: {
+        ...prev.homeScreen,
+        sectionOrder: order,
+      },
+    }));
+  }, []);
+
+  const togglePropTracker = useCallback(() => {
+    setSettings(prev => ({ ...prev, showPropTracker: !prev.showPropTracker }));
+  }, []);
+
+  const toggleCompactMode = useCallback(() => {
+    setSettings(prev => ({ ...prev, compactMode: !prev.compactMode }));
+  }, []);
+
+  const resetToDefaults = useCallback(() => {
+    setSettings(defaultSettings);
+  }, []);
+
+  const isSectionEnabled = useCallback((sectionId: SectionId) => {
+    return settings.homeScreen.enabledSections.includes(sectionId);
+  }, [settings.homeScreen.enabledSections]);
+
+  return (
+    <SettingsContext.Provider
+      value={{
+        settings,
+        updateRefreshInterval,
+        toggleSection,
+        setSectionOrder,
+        togglePropTracker,
+        toggleCompactMode,
+        resetToDefaults,
+        isSectionEnabled,
+      }}
+    >
+      {children}
+    </SettingsContext.Provider>
+  );
+};

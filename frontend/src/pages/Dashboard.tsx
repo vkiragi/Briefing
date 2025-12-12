@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { TrendingUp, Activity, Clock, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBets } from "../context/BetContext";
+import { useSettings } from "../context/SettingsContext";
 import { Card } from "../components/ui/Card";
 import { PropTracker } from "../components/PropTracker";
 import { api } from "../lib/api";
@@ -10,6 +11,7 @@ import { cn } from "../lib/utils";
 
 export const Dashboard = () => {
   const { stats, bets, clearPendingBets } = useBets();
+  const { settings, isSectionEnabled } = useSettings();
   const [liveGames, setLiveGames] = useState<Game[]>([]);
   const [nflGames, setNflGames] = useState<Game[]>([]);
   const [mlbGames, setMlbGames] = useState<Game[]>([]);
@@ -34,10 +36,8 @@ export const Dashboard = () => {
   const [laligaGamesLastUpdated, setLaligaGamesLastUpdated] = useState<Date | null>(null);
   const [uclGamesLastUpdated, setUclGamesLastUpdated] = useState<Date | null>(null);
   const [tennisGamesLastUpdated, setTennisGamesLastUpdated] = useState<Date | null>(null);
-  const [refreshInterval] = useState<number>(() => {
-    const saved = localStorage.getItem('refreshInterval');
-    return saved ? parseInt(saved, 10) : 30000; // Default 30 seconds
-  });
+  // Use refresh interval from settings
+  const refreshInterval = settings.refreshInterval;
 
   // Bet types that support live tracking
   const trackableTypes = ['Prop', '1st Half', '1st Quarter', 'Team Total', 'Moneyline', 'Spread', 'Total'];
@@ -243,11 +243,6 @@ export const Dashboard = () => {
       setRefreshing(false);
     }
   }, [allPropsToTrack]);
-
-  // Save refresh interval to localStorage
-  useEffect(() => {
-    localStorage.setItem('refreshInterval', refreshInterval.toString());
-  }, [refreshInterval]);
 
   // Auto-refresh props based on user setting
   useEffect(() => {
@@ -541,12 +536,13 @@ export const Dashboard = () => {
     sport: string
   ) => {
     const hasLiveGames = games.some(game => game.state === 'in');
+    const isCompact = settings.compactMode;
 
     return (
-      <div className="space-y-4">
+      <div className={cn("space-y-4", isCompact && "space-y-2")}>
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <h2 className={cn("font-bold text-white", isCompact ? "text-lg" : "text-xl")}>{title}</h2>
             {hasLiveGames && (
               <>
                 <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -566,11 +562,14 @@ export const Dashboard = () => {
           <div className="w-full h-0.5 bg-accent/40 rounded-full" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={cn(
+          "grid grid-cols-1 md:grid-cols-2 gap-4",
+          isCompact ? "lg:grid-cols-4 gap-2" : "lg:grid-cols-3 gap-4"
+        )}>
           {loading ? (
             <>
               {[1,2,3,4,5].map(i => (
-                <div key={i} className="h-24 bg-card/50 animate-pulse rounded-lg" />
+                <div key={i} className={cn("bg-card/50 animate-pulse rounded-lg", isCompact ? "h-16" : "h-24")} />
               ))}
             </>
           ) : games.length > 0 ? (
@@ -586,18 +585,23 @@ export const Dashboard = () => {
                 return (
                   <div
                     key={i}
-                    className="bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all"
+                    className={cn(
+                      "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                      isCompact ? "p-2" : "p-4"
+                    )}
                   >
                     <div className="text-center">
-                      <div className="text-sm font-mono text-gray-400 mb-2">
+                      <div className={cn("font-mono text-gray-400", isCompact ? "text-xs mb-1" : "text-sm mb-2")}>
                         {formatGameTime(game, sport)}
                       </div>
-                      <div className="text-base font-semibold text-white">
+                      <div className={cn("font-semibold text-white", isCompact ? "text-sm" : "text-base")}>
                         {game.tournament || game.home_team}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Upcoming Tournament
-                      </div>
+                      {!isCompact && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Upcoming Tournament
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -608,7 +612,10 @@ export const Dashboard = () => {
                 return (
                   <div
                     key={i}
-                    className="bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all"
+                    className={cn(
+                      "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                      isCompact ? "p-2" : "p-4"
+                    )}
                   >
                     {/* Tournament name */}
                     {showTournament && (
@@ -684,34 +691,38 @@ export const Dashboard = () => {
               return (
                 <div
                   key={i}
-                  className="bg-card border border-border rounded-lg p-4 hover:bg-card/80 transition-all"
+                  className={cn(
+                    "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                    isCompact ? "p-2" : "p-4"
+                  )}
                 >
                   {/* Tournament name for tennis tournaments list */}
-                  {showTournament && (
+                  {showTournament && !isCompact && (
                     <div className="text-xs text-accent font-medium mb-2 truncate">
                       {game.tournament}
                     </div>
                   )}
                   <div className={cn(
-                    "flex items-center mb-3",
+                    "flex items-center",
+                    isCompact ? "mb-1" : "mb-3",
                     isLive ? "justify-between" : "justify-center"
                   )}>
                     {isLive && (
-                      <span className="text-xs uppercase font-medium text-red-500">
+                      <span className={cn("uppercase font-medium text-red-500", isCompact ? "text-[10px]" : "text-xs")}>
                         Live
                       </span>
                     )}
-                    <span className="text-sm font-mono font-semibold text-gray-400">
+                    <span className={cn("font-mono font-semibold text-gray-400", isCompact ? "text-xs" : "text-sm")}>
                       {formatGameTime(game, sport)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-base font-semibold text-white truncate">{game.home_team}</span>
-                    <span className="text-xl font-mono font-semibold text-white ml-2">{game.home_score}</span>
+                  <div className={cn("flex justify-between items-center", isCompact ? "mb-1" : "mb-2")}>
+                    <span className={cn("font-semibold text-white truncate", isCompact ? "text-sm" : "text-base")}>{game.home_team}</span>
+                    <span className={cn("font-mono font-semibold text-white ml-2", isCompact ? "text-base" : "text-xl")}>{game.home_score}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-base font-semibold text-white truncate">{game.away_team}</span>
-                    <span className="text-xl font-mono font-semibold text-white ml-2">{game.away_score}</span>
+                    <span className={cn("font-semibold text-white truncate", isCompact ? "text-sm" : "text-base")}>{game.away_team}</span>
+                    <span className={cn("font-mono font-semibold text-white ml-2", isCompact ? "text-base" : "text-xl")}>{game.away_score}</span>
                   </div>
                 </div>
               );
@@ -901,26 +912,29 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* NBA Games Section */}
-      {renderGameSection('NBA Action', liveGames, loadingGames, gamesLastUpdated, 'nba')}
+      {/* Sports Sections - rendered based on settings order and enabled state */}
+      {settings.homeScreen.sectionOrder.map(sectionId => {
+        if (!isSectionEnabled(sectionId)) return null;
 
-      {/* NFL Games Section */}
-      {renderGameSection('NFL Action', nflGames, loadingNflGames, nflGamesLastUpdated, 'nfl')}
-
-      {/* MLB Games Section */}
-      {renderGameSection('MLB Action', mlbGames, loadingMlbGames, mlbGamesLastUpdated, 'mlb')}
-
-      {/* Premier League Section */}
-      {renderGameSection('Premier League', eplGames, loadingEplGames, eplGamesLastUpdated, 'epl')}
-
-      {/* La Liga Section */}
-      {renderGameSection('La Liga', laligaGames, loadingLaligaGames, laligaGamesLastUpdated, 'laliga')}
-
-      {/* Champions League Section */}
-      {renderGameSection('Champions League', uclGames, loadingUclGames, uclGamesLastUpdated, 'ucl')}
-
-      {/* Tennis Games Section */}
-      {renderGameSection('Tennis Action', tennisGames, loadingTennisGames, tennisGamesLastUpdated, 'tennis')}
+        switch (sectionId) {
+          case 'nba':
+            return <div key="nba">{renderGameSection('NBA Action', liveGames, loadingGames, gamesLastUpdated, 'nba')}</div>;
+          case 'nfl':
+            return <div key="nfl">{renderGameSection('NFL Action', nflGames, loadingNflGames, nflGamesLastUpdated, 'nfl')}</div>;
+          case 'mlb':
+            return <div key="mlb">{renderGameSection('MLB Action', mlbGames, loadingMlbGames, mlbGamesLastUpdated, 'mlb')}</div>;
+          case 'epl':
+            return <div key="epl">{renderGameSection('Premier League', eplGames, loadingEplGames, eplGamesLastUpdated, 'epl')}</div>;
+          case 'laliga':
+            return <div key="laliga">{renderGameSection('La Liga', laligaGames, loadingLaligaGames, laligaGamesLastUpdated, 'laliga')}</div>;
+          case 'ucl':
+            return <div key="ucl">{renderGameSection('Champions League', uclGames, loadingUclGames, uclGamesLastUpdated, 'ucl')}</div>;
+          case 'tennis':
+            return <div key="tennis">{renderGameSection('Tennis Action', tennisGames, loadingTennisGames, tennisGamesLastUpdated, 'tennis')}</div>;
+          default:
+            return null;
+        }
+      })}
     </motion.div>
   );
 };
