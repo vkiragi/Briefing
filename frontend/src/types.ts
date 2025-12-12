@@ -71,6 +71,38 @@ export interface BankrollTransaction {
   note?: string;
 }
 
+// Box Score Types
+export interface BoxScorePlayer {
+  id: string;
+  name: string;
+  position: string;
+  jersey: string;
+  starter: boolean;
+  stats: Record<string, string>;
+}
+
+export interface BoxScoreTeam {
+  team_id: string;
+  team_name: string;
+  team_abbrev: string;
+  logo: string;
+  players: BoxScorePlayer[];
+}
+
+export interface LineScores {
+  home: number[];
+  away: number[];
+  home_team: string;
+  away_team: string;
+}
+
+export interface BoxScoreData {
+  game_state: string;
+  game_status: string;
+  linescores: LineScores;
+  teams: BoxScoreTeam[];
+}
+
 
 
 

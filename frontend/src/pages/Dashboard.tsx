@@ -5,6 +5,7 @@ import { useBets } from "../context/BetContext";
 import { useSettings } from "../context/SettingsContext";
 import { Card } from "../components/ui/Card";
 import { PropTracker } from "../components/PropTracker";
+import { GameDetailModal } from "../components/GameDetailModal";
 import { api } from "../lib/api";
 import { Game, Bet } from "../types";
 import { cn } from "../lib/utils";
@@ -56,6 +57,10 @@ export const Dashboard = () => {
   const [propsData, setPropsData] = useState<Map<string, any>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Box score modal state
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [selectedSport, setSelectedSport] = useState<string>('');
 
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -589,12 +594,20 @@ export const Dashboard = () => {
               }
 
               // Standard layout for other sports
+              const isClickable = sport === 'nba' && game.event_id;
               return (
                 <div
                   key={i}
+                  onClick={() => {
+                    if (isClickable) {
+                      setSelectedGame(game);
+                      setSelectedSport(sport);
+                    }
+                  }}
                   className={cn(
                     "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
-                    isCompact ? "p-2" : "p-4"
+                    isCompact ? "p-2" : "p-4",
+                    isClickable && "cursor-pointer hover:border-accent/50"
                   )}
                 >
                   {/* Tournament name for tennis tournaments list */}
@@ -848,6 +861,14 @@ export const Dashboard = () => {
           </div>
         );
       })}
+
+      {/* Box Score Modal */}
+      <GameDetailModal
+        isOpen={!!selectedGame}
+        onClose={() => setSelectedGame(null)}
+        game={selectedGame}
+        sport={selectedSport}
+      />
     </motion.div>
   );
 };

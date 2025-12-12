@@ -155,6 +155,72 @@ def get_sports_news(sport: str, limit: int = 10):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/sports/boxscore")
+def get_boxscore(sport: str, event_id: str):
+    """
+    Get detailed box score for a specific game.
+    Returns player stats for both teams and quarter scores.
+    """
+    try:
+        sport = sport.lower()
+        if sport != 'nba':
+            raise HTTPException(status_code=400, detail=f"Box score not supported for {sport}")
+
+        raw_data = sports_fetcher.fetch_nba_game_player_stats(event_id)
+
+        # Transform raw ESPN data into frontend-friendly format
+        result = {
+            "game_state": raw_data.get("_game_state", "unknown"),
+            "game_status": raw_data.get("_game_status_detail", ""),
+            "linescores": raw_data.get("_linescores", {}),
+            "teams": []
+        }
+
+        box = raw_data.get("boxscore", {})
+        players_by_team = box.get("players", [])
+
+        for team_block in players_by_team:
+            team_info = team_block.get("team", {})
+            team_data = {
+                "team_id": team_info.get("id", ""),
+                "team_name": team_info.get("displayName", "Unknown"),
+                "team_abbrev": team_info.get("abbreviation", ""),
+                "logo": team_info.get("logo", ""),
+                "players": []
+            }
+
+            # Get player stats from statistics block
+            for cat in team_block.get("statistics", []):
+                col_names = cat.get("names", [])  # ['MIN', 'PTS', 'FG', '3PT', ...]
+
+                for athlete_stat in cat.get("athletes", []):
+                    athlete = athlete_stat.get("athlete", {})
+                    stats_values = athlete_stat.get("stats", [])
+
+                    player_data = {
+                        "id": athlete.get("id", ""),
+                        "name": athlete.get("displayName", "Unknown"),
+                        "position": athlete.get("position", {}).get("abbreviation", "") if isinstance(athlete.get("position"), dict) else "",
+                        "jersey": athlete.get("jersey", ""),
+                        "starter": athlete_stat.get("starter", False),
+                        "stats": {}
+                    }
+
+                    # Map stat values to column names
+                    for i, col in enumerate(col_names):
+                        if i < len(stats_values):
+                            player_data["stats"][col] = stats_values[i]
+
+                    team_data["players"].append(player_data)
+
+            result["teams"].append(team_data)
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/bets")
 def get_bets(user_id: str = Depends(get_current_user)):
     """Get all bets for the authenticated user"""

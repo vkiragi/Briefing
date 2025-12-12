@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { BoxScoreData } from '../types';
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
 
@@ -158,7 +159,15 @@ export const api = {
         prop_status?: string;
       }>;
     }>;
-  }
+  },
+
+  getBoxScore: async (sport: string, eventId: string) => {
+    const response = await fetch(
+      `${API_BASE_URL}/sports/boxscore?sport=${sport}&event_id=${eventId}`
+    );
+    if (!response.ok) throw new Error(`Failed to fetch box score for ${sport}`);
+    return response.json() as Promise<BoxScoreData>;
+  },
 };
 
 
