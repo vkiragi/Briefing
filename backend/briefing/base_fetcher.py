@@ -444,14 +444,15 @@ class BaseSportsFetcher:
                             continue
                 
                 # Strategy 2: If calendar failed or empty, brute force check future dates
-                # Check daily for first week, then weekly up to 60 days (for tournaments with long breaks like UCL)
+                # Check daily for first week, then every few days up to 60 days (for tournaments with long breaks like UCL)
                 if not games:
                     from datetime import datetime, timedelta
                     now = datetime.now()
 
-                    # Build list of days to check: daily for 7 days, then weekly for 8 more weeks
-                    days_to_check = list(range(1, 8))  # Days 1-7
-                    days_to_check.extend(range(14, 61, 7))  # Days 14, 21, 28, 35, 42, 49, 56
+                    # Build list of days to check: daily for 7 days, then every 3 days up to 60 days
+                    # This ensures we don't miss games that fall between weekly checks
+                    days_to_check = list(range(1, 8))  # Days 1-7 (daily)
+                    days_to_check.extend(range(10, 61, 3))  # Days 10, 13, 16, 19, ... 58 (every 3 days)
 
                     for i in days_to_check:
                         try:

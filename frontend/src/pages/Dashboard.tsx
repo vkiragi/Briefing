@@ -408,12 +408,57 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchUcl = async () => {
       try {
-        const games = await api.getScores('ucl', 6, true);
-        if (!games || games.length === 0 || (games.length === 1 && games[0].status === 'No live games')) {
-            const scheduled = await api.getSchedule('ucl', 6);
-            setUclGames(scheduled);
+        // Fetch both live/recent scores and scheduled games
+        const [liveGamesData, recentScores, scheduled] = await Promise.all([
+          api.getScores('ucl', 6, true),
+          api.getScores('ucl', 10, false),
+          api.getSchedule('ucl', 6)
+        ]);
+
+        // Combine live, recent, and scheduled games, deduplicating by event_id
+        const seenIds = new Set<string>();
+        const combinedGames: Game[] = [];
+
+        // Add live games first
+        for (const game of liveGamesData) {
+          if (game.event_id && !seenIds.has(game.event_id) && game.status !== 'No live games') {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          }
+        }
+
+        // Add recent/completed games
+        for (const game of recentScores) {
+          if (game.event_id && !seenIds.has(game.event_id)) {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          }
+        }
+
+        // Add scheduled games
+        for (const game of scheduled) {
+          if (game.event_id && !seenIds.has(game.event_id) && game.state !== 'tbd') {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          } else if (!game.event_id && game.state === 'pre') {
+            // Include scheduled games without event_id
+            combinedGames.push(game);
+          }
+        }
+
+        if (combinedGames.length > 0) {
+          setUclGames(combinedGames.slice(0, 10));
         } else {
-            setUclGames(games);
+          setUclGames([{
+            home_team: 'No games available',
+            away_team: 'Check back later',
+            home_score: '-',
+            away_score: '-',
+            status: 'TBD',
+            completed: false,
+            date: '-',
+            state: 'tbd',
+          }]);
         }
         setUclGamesLastUpdated(new Date());
       } catch (e) {
