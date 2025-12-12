@@ -7,8 +7,21 @@ export const AVAILABLE_SECTIONS = [
   { id: 'mlb', label: 'MLB', icon: '⚾' },
   { id: 'epl', label: 'Premier League', icon: '⚽' },
   { id: 'laliga', label: 'La Liga', icon: '⚽' },
+  { id: 'seriea', label: 'Serie A', icon: '⚽' },
+  { id: 'bundesliga', label: 'Bundesliga', icon: '⚽' },
+  { id: 'ligue1', label: 'Ligue 1', icon: '⚽' },
   { id: 'ucl', label: 'Champions League', icon: '🏆' },
   { id: 'europa', label: 'Europa League', icon: '🏆' },
+  { id: 'ligaportugal', label: 'Liga Portugal', icon: '⚽' },
+  { id: 'saudi', label: 'Saudi Pro League', icon: '⚽' },
+  { id: 'mls', label: 'MLS', icon: '⚽' },
+  { id: 'brasileirao', label: 'Brasileirão', icon: '⚽' },
+  { id: 'ligamx', label: 'Liga MX', icon: '⚽' },
+  { id: 'scottish', label: 'Scottish Premiership', icon: '⚽' },
+  { id: 'greek', label: 'Greek Super League', icon: '⚽' },
+  { id: 'russian', label: 'Russian Premier League', icon: '⚽' },
+  { id: 'turkish', label: 'Turkish Süper Lig', icon: '⚽' },
+  { id: 'austrian', label: 'Austrian Bundesliga', icon: '⚽' },
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
 ] as const;
 
@@ -40,8 +53,9 @@ interface SettingsContextType {
 const defaultSettings: AppSettings = {
   refreshInterval: 30000,
   homeScreen: {
-    enabledSections: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'europa', 'tennis'],
-    sectionOrder: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'europa', 'tennis'],
+    // Only enable major leagues by default - users can enable others in settings
+    enabledSections: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'tennis'],
+    sectionOrder: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian', 'tennis'],
   },
   showPropTracker: true,
   compactMode: false,

@@ -24,6 +24,19 @@ class BaseSportsFetcher:
         'laliga': 'soccer/esp.1',  # Spanish La Liga
         'ucl': 'soccer/uefa.champions',  # UEFA Champions League
         'europa': 'soccer/uefa.europa',  # UEFA Europa League
+        'seriea': 'soccer/ita.1',  # Italian Serie A
+        'ligue1': 'soccer/fra.1',  # French Ligue 1
+        'bundesliga': 'soccer/ger.1',  # German Bundesliga
+        'ligaportugal': 'soccer/por.1',  # Portuguese Primeira Liga
+        'saudi': 'soccer/ksa.1',  # Saudi Pro League
+        'mls': 'soccer/usa.1',  # Major League Soccer
+        'brasileirao': 'soccer/bra.1',  # Brazilian Serie A
+        'ligamx': 'soccer/mex.1',  # Mexican Liga BBVA MX
+        'scottish': 'soccer/sco.1',  # Scottish Premiership
+        'greek': 'soccer/gre.1',  # Greek Super League
+        'russian': 'soccer/rus.1',  # Russian Premier League
+        'turkish': 'soccer/tur.1',  # Turkish Super Lig
+        'austrian': 'soccer/aut.1',  # Austrian Bundesliga
         'ncaaf': 'football/college-football',
         'ncaab': 'basketball/mens-college-basketball',
         'f1': 'racing/f1',  # Formula 1
