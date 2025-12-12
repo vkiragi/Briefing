@@ -14,7 +14,7 @@ const SPORTS = [
   { id: 'nfl', label: 'NFL', icon: '🏈', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png' },
   { id: 'mlb', label: 'MLB', icon: '⚾', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/mlb.png&w=100&h=100&transparent=true' },
   { id: 'nhl', label: 'NHL', icon: '🏒', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nhl.png' },
-  { id: 'soccer', label: 'Soccer', icon: '⚽', logo: 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/23.png' },
+  { id: 'soccer', label: 'Soccer', icon: '⚽', logo: '' },
   { id: 'tennis', label: 'Tennis', icon: '🎾', logo: 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-tennis.png&w=100&h=100' },
   { id: 'f1', label: 'F1', icon: '🏎️', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/f1.png&w=100&h=100' },
   { id: 'ufc', label: 'UFC', icon: '🥊', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png' },
@@ -550,30 +550,43 @@ export const AddBet = () => {
 
         {/* Step Progress */}
         <div className="flex items-center gap-2">
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-            currentStep === 'league' ? "bg-accent text-background" : "bg-accent/20 text-accent"
-          )}>
+          <button
+            onClick={() => setCurrentStep('league')}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer hover:opacity-80",
+              currentStep === 'league' ? "bg-accent text-background" : "bg-accent/20 text-accent"
+            )}
+          >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">1</span>
             League
-          </div>
+          </button>
           <ChevronRight size={16} className="text-gray-600" />
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-            currentStep === 'game' ? "bg-accent text-background" :
-            currentStep === 'bet' ? "bg-accent/20 text-accent" : "bg-gray-800 text-gray-500"
-          )}>
+          <button
+            onClick={() => formData.sport && setCurrentStep('game')}
+            disabled={!formData.sport}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+              currentStep === 'game' ? "bg-accent text-background" :
+              currentStep === 'bet' ? "bg-accent/20 text-accent cursor-pointer hover:opacity-80" : "bg-gray-800 text-gray-500",
+              !formData.sport && "cursor-not-allowed opacity-50"
+            )}
+          >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">2</span>
             Game
-          </div>
+          </button>
           <ChevronRight size={16} className="text-gray-600" />
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-            currentStep === 'bet' ? "bg-accent text-background" : "bg-gray-800 text-gray-500"
-          )}>
+          <button
+            onClick={() => selectedGame && setCurrentStep('bet')}
+            disabled={!selectedGame}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+              currentStep === 'bet' ? "bg-accent text-background" : "bg-gray-800 text-gray-500",
+              !selectedGame && "cursor-not-allowed opacity-50"
+            )}
+          >
             <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">3</span>
             Bet
-          </div>
+          </button>
         </div>
       </div>
 
