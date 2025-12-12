@@ -489,9 +489,9 @@ export const Analytics = () => {
                         className={cn(
                           "aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative",
                           dayData.day === null ? "bg-transparent" :
-                          dayData.wins > 0 && dayData.losses === 0 ? "bg-green-500/30 border border-green-500/50" :
-                          dayData.losses > 0 && dayData.wins === 0 ? "bg-red-500/30 border border-red-500/50" :
-                          dayData.wins > 0 && dayData.losses > 0 ? "bg-yellow-500/20 border border-yellow-500/50" :
+                          dayData.wins > dayData.losses ? "bg-green-500/30 border border-green-500/50" :
+                          dayData.losses > dayData.wins ? "bg-red-500/30 border border-red-500/50" :
+                          (dayData.wins > 0 && dayData.wins === dayData.losses) ? "bg-gray-500/30 border border-gray-500/50" :
                           "bg-white/5",
                           dayData.isToday && "ring-2 ring-accent"
                         )}
@@ -509,11 +509,6 @@ export const Analytics = () => {
                                 {dayData.wins}W-{dayData.losses}L
                               </span>
                             )}
-                            {dayData.avgOdds !== 0 && (
-                              <span className="text-[9px] text-gray-500">
-                                {dayData.avgOdds > 0 ? '+' : ''}{dayData.avgOdds}
-                              </span>
-                            )}
                           </>
                         )}
                       </div>
@@ -525,15 +520,15 @@ export const Analytics = () => {
               <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-400">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded bg-green-500/30 border border-green-500/50" />
-                  <span>Wins Only</span>
+                  <span>Winning Day</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded bg-red-500/30 border border-red-500/50" />
-                  <span>Losses Only</span>
+                  <span>Losing Day</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-yellow-500/20 border border-yellow-500/50" />
-                  <span>Mixed</span>
+                  <div className="w-3 h-3 rounded bg-white/5" />
+                  <span>No Bets</span>
                 </div>
               </div>
             </div>
