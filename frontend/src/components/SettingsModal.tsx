@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical } from 'lucide-react';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
@@ -27,6 +27,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [localInterval, setLocalInterval] = useState(settings.refreshInterval);
   const [activeTab, setActiveTab] = useState<'general' | 'homescreen'>('general');
   const [draggedItem, setDraggedItem] = useState<SectionId | null>(null);
+
+  // Sync local interval when global settings change
+  useEffect(() => {
+    setLocalInterval(settings.refreshInterval);
+  }, [settings.refreshInterval]);
 
   if (!isOpen) return null;
 
