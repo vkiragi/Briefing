@@ -18,6 +18,7 @@ export const Dashboard = () => {
   const [eplGames, setEplGames] = useState<Game[]>([]);
   const [laligaGames, setLaligaGames] = useState<Game[]>([]);
   const [uclGames, setUclGames] = useState<Game[]>([]);
+  const [europaGames, setEuropaGames] = useState<Game[]>([]);
   const [tennisGames, setTennisGames] = useState<Game[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [loadingNflGames, setLoadingNflGames] = useState(true);
@@ -25,6 +26,7 @@ export const Dashboard = () => {
   const [loadingEplGames, setLoadingEplGames] = useState(true);
   const [loadingLaligaGames, setLoadingLaligaGames] = useState(true);
   const [loadingUclGames, setLoadingUclGames] = useState(true);
+  const [loadingEuropaGames, setLoadingEuropaGames] = useState(true);
   const [loadingTennisGames, setLoadingTennisGames] = useState(true);
   const [propsData, setPropsData] = useState<Map<string, any>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
@@ -35,6 +37,7 @@ export const Dashboard = () => {
   const [eplGamesLastUpdated, setEplGamesLastUpdated] = useState<Date | null>(null);
   const [laligaGamesLastUpdated, setLaligaGamesLastUpdated] = useState<Date | null>(null);
   const [uclGamesLastUpdated, setUclGamesLastUpdated] = useState<Date | null>(null);
+  const [europaGamesLastUpdated, setEuropaGamesLastUpdated] = useState<Date | null>(null);
   const [tennisGamesLastUpdated, setTennisGamesLastUpdated] = useState<Date | null>(null);
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -97,8 +100,8 @@ export const Dashboard = () => {
 
   // Combine all games (including pre-game) for matching
   const allGamesForMatching = useMemo(() => {
-    return [...liveGames, ...nflGames, ...mlbGames, ...eplGames, ...laligaGames, ...uclGames, ...tennisGames];
-  }, [liveGames, nflGames, mlbGames, eplGames, laligaGames, uclGames, tennisGames]);
+    return [...liveGames, ...nflGames, ...mlbGames, ...eplGames, ...laligaGames, ...uclGames, ...europaGames, ...tennisGames];
+  }, [liveGames, nflGames, mlbGames, eplGames, laligaGames, uclGames, europaGames, tennisGames]);
 
   // Helper to match a bet to a game by matchup string
   const findMatchingGame = useCallback((bet: Bet) => {
@@ -470,6 +473,74 @@ export const Dashboard = () => {
     fetchUcl();
 
     const interval = setInterval(fetchUcl, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Fetch Europa League games
+  useEffect(() => {
+    const fetchEuropa = async () => {
+      try {
+        // Fetch both live/recent scores and scheduled games
+        const [liveGamesData, recentScores, scheduled] = await Promise.all([
+          api.getScores('europa', 6, true),
+          api.getScores('europa', 10, false),
+          api.getSchedule('europa', 6)
+        ]);
+
+        // Combine live, recent, and scheduled games, deduplicating by event_id
+        const seenIds = new Set<string>();
+        const combinedGames: Game[] = [];
+
+        // Add live games first
+        for (const game of liveGamesData) {
+          if (game.event_id && !seenIds.has(game.event_id) && game.status !== 'No live games') {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          }
+        }
+
+        // Add recent/completed games
+        for (const game of recentScores) {
+          if (game.event_id && !seenIds.has(game.event_id)) {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          }
+        }
+
+        // Add scheduled games
+        for (const game of scheduled) {
+          if (game.event_id && !seenIds.has(game.event_id) && game.state !== 'tbd') {
+            seenIds.add(game.event_id);
+            combinedGames.push(game);
+          } else if (!game.event_id && game.state === 'pre') {
+            combinedGames.push(game);
+          }
+        }
+
+        if (combinedGames.length > 0) {
+          setEuropaGames(combinedGames.slice(0, 10));
+        } else {
+          setEuropaGames([{
+            home_team: 'No games available',
+            away_team: 'Check back later',
+            home_score: '-',
+            away_score: '-',
+            status: 'TBD',
+            completed: false,
+            date: '-',
+            state: 'tbd',
+          }]);
+        }
+        setEuropaGamesLastUpdated(new Date());
+      } catch (e) {
+        console.error("Failed to fetch Europa League games", e);
+      } finally {
+        setLoadingEuropaGames(false);
+      }
+    };
+    fetchEuropa();
+
+    const interval = setInterval(fetchEuropa, refreshInterval);
     return () => clearInterval(interval);
   }, [refreshInterval]);
 
@@ -994,6 +1065,8 @@ export const Dashboard = () => {
             return <div key="laliga">{renderGameSection('La Liga', laligaGames, loadingLaligaGames, laligaGamesLastUpdated, 'laliga')}</div>;
           case 'ucl':
             return <div key="ucl">{renderGameSection('Champions League', uclGames, loadingUclGames, uclGamesLastUpdated, 'ucl')}</div>;
+          case 'europa':
+            return <div key="europa">{renderGameSection('Europa League', europaGames, loadingEuropaGames, europaGamesLastUpdated, 'europa')}</div>;
           case 'tennis':
             return <div key="tennis">{renderGameSection('Tennis Action', tennisGames, loadingTennisGames, tennisGamesLastUpdated, 'tennis')}</div>;
           default:

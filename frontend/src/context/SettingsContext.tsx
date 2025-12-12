@@ -8,6 +8,7 @@ export const AVAILABLE_SECTIONS = [
   { id: 'epl', label: 'Premier League', icon: '⚽' },
   { id: 'laliga', label: 'La Liga', icon: '⚽' },
   { id: 'ucl', label: 'Champions League', icon: '🏆' },
+  { id: 'europa', label: 'Europa League', icon: '🏆' },
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
 ] as const;
 
@@ -39,8 +40,8 @@ interface SettingsContextType {
 const defaultSettings: AppSettings = {
   refreshInterval: 30000,
   homeScreen: {
-    enabledSections: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'tennis'],
-    sectionOrder: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'tennis'],
+    enabledSections: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'europa', 'tennis'],
+    sectionOrder: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'ucl', 'europa', 'tennis'],
   },
   showPropTracker: true,
   compactMode: false,
