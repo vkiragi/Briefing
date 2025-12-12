@@ -176,15 +176,39 @@ export const Analytics = () => {
     });
   }, [finishedBets]);
 
-  // Monthly Performance (ensure current month is always shown)
+  // Monthly Performance (show all months from first bet to current month)
   const monthlyPerformance = useMemo(() => {
     const stats: Record<string, { bets: number, wins: number, losses: number, totalOdds: number }> = {};
 
-    // Always include current month
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    stats[currentMonthKey] = { bets: 0, wins: 0, losses: 0, totalOdds: 0 };
 
+    // Find the earliest bet date
+    let earliestDate = now;
+    finishedBets.forEach(bet => {
+      const betDate = new Date(bet.date);
+      if (betDate < earliestDate) {
+        earliestDate = betDate;
+      }
+    });
+
+    // Generate all months from earliest bet to current month
+    const startYear = earliestDate.getFullYear();
+    const startMonth = earliestDate.getMonth();
+    const endYear = now.getFullYear();
+    const endMonth = now.getMonth();
+
+    for (let year = startYear; year <= endYear; year++) {
+      const monthStart = (year === startYear) ? startMonth : 0;
+      const monthEnd = (year === endYear) ? endMonth : 11;
+
+      for (let month = monthStart; month <= monthEnd; month++) {
+        const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+        stats[monthKey] = { bets: 0, wins: 0, losses: 0, totalOdds: 0 };
+      }
+    }
+
+    // Populate with bet data
     finishedBets.forEach(bet => {
       const date = new Date(bet.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
