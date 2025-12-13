@@ -21,6 +21,8 @@ export interface Game {
   away_set_scores?: string; // e.g., "7-6(7-4) 7-5"
   home_winner?: boolean;
   away_winner?: boolean;
+  end_date?: string; // For tournaments
+  location?: string; // For tournaments
 }
 
 export interface NewsItem {

@@ -309,6 +309,14 @@ class TennisFetcherMixin:
                 name = event.get('name', 'Unknown Tournament')
                 date = event.get('date', '')
                 end_date = event.get('endDate', '')
+                event_id = event.get('id', '')
+
+                # Get venue info if available
+                venue = event.get('venue', {})
+                venue_name = venue.get('fullName', '')
+                city = venue.get('address', {}).get('city', '')
+                country = venue.get('address', {}).get('country', '')
+                location = ', '.join(filter(None, [city, country])) or venue_name
 
                 tournaments.append({
                     'home_team': name,
@@ -323,6 +331,8 @@ class TennisFetcherMixin:
                     'tournament': name,
                     'match_type': 'tournament',
                     'end_date': end_date,
+                    'event_id': str(event_id) if event_id else None,
+                    'location': location,
                 })
 
             # Always check future dates to find more upcoming tournaments
@@ -349,10 +359,18 @@ class TennisFetcherMixin:
                             name = event.get('name', 'Unknown Tournament')
                             date = event.get('date', '')
                             end_date = event.get('endDate', '')
+                            event_id = event.get('id', '')
 
                             # Avoid duplicates
                             if any(t['home_team'] == name for t in tournaments):
                                 continue
+
+                            # Get venue info if available
+                            venue = event.get('venue', {})
+                            venue_name = venue.get('fullName', '')
+                            city = venue.get('address', {}).get('city', '')
+                            country = venue.get('address', {}).get('country', '')
+                            location = ', '.join(filter(None, [city, country])) or venue_name
 
                             tournaments.append({
                                 'home_team': name,
@@ -367,6 +385,8 @@ class TennisFetcherMixin:
                                 'tournament': name,
                                 'match_type': 'tournament',
                                 'end_date': end_date,
+                                'event_id': str(event_id) if event_id else None,
+                                'location': location,
                             })
 
                             if len(tournaments) >= limit:

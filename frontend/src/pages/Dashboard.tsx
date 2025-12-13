@@ -488,12 +488,20 @@ export const Dashboard = () => {
 
               // For upcoming tennis tournaments (no matches yet), show a clean card
               if (isTennisTournament) {
+                const tournamentClickable = !!game.event_id;
                 return (
                   <div
                     key={i}
+                    onClick={() => {
+                      if (tournamentClickable) {
+                        setSelectedGame(game);
+                        setSelectedSport(sport);
+                      }
+                    }}
                     className={cn(
                       "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
-                      isCompact ? "p-2" : "p-4"
+                      isCompact ? "p-2" : "p-4",
+                      tournamentClickable && "cursor-pointer hover:border-accent/50"
                     )}
                   >
                     <div className="text-center">

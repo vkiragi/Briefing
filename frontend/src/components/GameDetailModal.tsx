@@ -29,11 +29,14 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
 
+  const isTennisTournament = sport.startsWith('tennis') && game?.match_type === 'tournament';
+
   useEffect(() => {
-    if (isOpen && game?.event_id) {
+    // Don't fetch box score for tournament cards - we already have the data
+    if (isOpen && game?.event_id && !isTennisTournament) {
       fetchBoxScore();
     }
-  }, [isOpen, game?.event_id]);
+  }, [isOpen, game?.event_id, isTennisTournament]);
 
   const fetchBoxScore = async () => {
     if (!game?.event_id) return;
@@ -53,6 +56,75 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   };
 
   if (!isOpen || !game) return null;
+
+  // Render simple tournament info modal
+  if (isTennisTournament) {
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={onClose}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md"
+            >
+              <Card className="p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-lg font-semibold text-white">Upcoming Tournament</span>
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Tournament Info */}
+                <div className="text-center space-y-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-accent">{game.tournament || game.home_team}</h2>
+                    {game.location && (
+                      <div className="text-sm text-gray-400 mt-1 flex items-center justify-center gap-1">
+                        <MapPin size={14} />
+                        {game.location}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-background rounded-lg p-4">
+                    <div className="text-sm text-gray-400 mb-1">Tournament Dates</div>
+                    <div className="text-white font-medium">
+                      {formatDate(game.date)}
+                      {game.end_date && ` - ${formatDate(game.end_date)}`}
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-gray-500">
+                    Matches will appear here once the tournament begins
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   // NBA stat columns
   const nbaStatColumns = ['MIN', 'PTS', 'REB', 'AST', 'FG', '3PT', 'FT', 'STL', 'BLK', 'TO', 'PF', '+/-'];
