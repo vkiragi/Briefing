@@ -752,7 +752,7 @@ class BaseSportsFetcher:
             # Extract Quarter/Half scores for props
             # Competitors -> Linescores
             # Note: Competitors are usually [home, away] or vice versa
-            
+
             try:
                 comps = header.get("competitions", [])
                 if comps:
@@ -761,20 +761,31 @@ class BaseSportsFetcher:
                     away_linescores = []
                     home_id = ""
                     away_id = ""
-                    
+
                     for c in competitors:
                         ha = c.get("homeAway")
                         ls = c.get("linescores", [])
-                        ls_vals = [float(x.get("value", 0)) for x in ls]
+                        # Handle both NBA format (value) and NFL format (displayValue)
+                        ls_vals = []
+                        for x in ls:
+                            # Try 'value' first (NBA), then 'displayValue' (NFL)
+                            val = x.get("value")
+                            if val is None:
+                                val = x.get("displayValue", 0)
+                            try:
+                                ls_vals.append(float(val))
+                            except (ValueError, TypeError):
+                                ls_vals.append(0)
+
                         tid = c.get("team", {}).get("displayName", "")
-                        
+
                         if ha == "home":
                             home_linescores = ls_vals
                             home_id = tid
                         else:
                             away_linescores = ls_vals
                             away_id = tid
-                            
+
                     data["_linescores"] = {
                         "home": home_linescores,
                         "away": away_linescores,

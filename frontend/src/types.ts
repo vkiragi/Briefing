@@ -78,7 +78,14 @@ export interface BoxScorePlayer {
   position: string;
   jersey: string;
   starter: boolean;
-  stats: Record<string, string>;
+  stats: Record<string, string> | string[];  // NBA uses dict, NFL uses array
+}
+
+// NFL-specific category with players
+export interface NFLStatCategory {
+  name: string;  // e.g., 'passing', 'rushing', 'receiving'
+  labels: string[];  // Column headers like ['C/ATT', 'YDS', 'TD', 'INT']
+  players: BoxScorePlayer[];
 }
 
 export interface BoxScoreTeam {
@@ -86,7 +93,8 @@ export interface BoxScoreTeam {
   team_name: string;
   team_abbrev: string;
   logo: string;
-  players: BoxScorePlayer[];
+  players: BoxScorePlayer[];  // Used for NBA
+  categories?: NFLStatCategory[];  // Used for NFL
 }
 
 export interface LineScores {
@@ -101,6 +109,7 @@ export interface BoxScoreData {
   game_status: string;
   linescores: LineScores;
   teams: BoxScoreTeam[];
+  sport?: string;  // 'nba' or 'nfl'
 }
 
 

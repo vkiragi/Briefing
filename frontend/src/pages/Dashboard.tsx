@@ -594,7 +594,7 @@ export const Dashboard = () => {
               }
 
               // Standard layout for other sports
-              const isClickable = sport === 'nba' && game.event_id;
+              const isClickable = (sport === 'nba' || sport === 'nfl') && game.event_id;
               return (
                 <div
                   key={i}
