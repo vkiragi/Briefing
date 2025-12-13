@@ -59,6 +59,19 @@ class BetLeg(BaseModel):
     matchup: str
     selection: str
     odds: float
+    # Tracking fields
+    event_id: Optional[str] = None
+    player_name: Optional[str] = None
+    team_name: Optional[str] = None
+    market_type: Optional[str] = None
+    line: Optional[float] = None
+    side: Optional[str] = None
+    # Live tracking data (populated by refresh)
+    current_value: Optional[float] = None
+    current_value_str: Optional[str] = None
+    game_state: Optional[str] = None
+    game_status_text: Optional[str] = None
+    prop_status: Optional[str] = None
 
 class Bet(BaseModel):
     id: str
@@ -105,18 +118,27 @@ def get_news_sources():
     return news_fetcher.list_default_sources()
 
 @app.get("/api/sports/scores")
-def get_scores(sport: str, limit: int = 10, live: bool = False):
+def get_scores(
+    sport: str,
+    limit: int = 10,
+    live: bool = False,
+    date: Optional[str] = Query(None, description="Date in YYYYMMDD format")
+):
     try:
         if live:
             return sports_fetcher.fetch_live(sport, limit)
-        return sports_fetcher.fetch_scores(sport, limit)
+        return sports_fetcher.fetch_scores(sport, limit, date=date)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/sports/schedule")
-def get_schedule(sport: str, limit: int = 10):
+def get_schedule(
+    sport: str,
+    limit: int = 10,
+    date: Optional[str] = Query(None, description="Date in YYYYMMDD format")
+):
     try:
-        return sports_fetcher.fetch_schedule(sport, limit)
+        return sports_fetcher.fetch_schedule(sport, limit, date=date)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -141,6 +163,17 @@ def get_standings(sport: str):
 def get_f1_races():
     try:
         return sports_fetcher.fetch_f1_races()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/sports/nfl/week")
+def get_nfl_week(date: Optional[str] = Query(None, description="Date in YYYYMMDD format")):
+    """
+    Get NFL week information for a given date.
+    Returns week number and date range for that week.
+    """
+    try:
+        return sports_fetcher.get_nfl_week_info(date)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -533,5 +566,134 @@ def refresh_props(bet_ids: List[str] = Body(...), user_id: str = Depends(get_cur
     except Exception as e:
         import traceback
         print(f"Error refreshing props: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/bets/refresh-parlay-legs")
+def refresh_parlay_legs(bet_ids: List[str] = Body(...), user_id: str = Depends(get_current_user)):
+    """
+    Refresh live stats for parlay legs and return updated leg data.
+    Each parlay's legs are refreshed individually.
+    """
+    try:
+        from briefing.props_dashboard import PropsDashboard
+
+        print(f"[RefreshParlayLegs] Requested bet IDs: {bet_ids}")
+
+        # Get user's bets from Supabase
+        all_bets = supabase_service.get_bets(user_id)
+        updated_parlays = []
+
+        # Filter for parlays with the requested bet IDs
+        parlay_bets = [b for b in all_bets if b.get('id') in bet_ids and b.get('type') == 'Parlay']
+        print(f"[RefreshParlayLegs] Found {len(parlay_bets)} matching parlays")
+
+        if not parlay_bets:
+            print("[RefreshParlayLegs] No parlays found, returning empty")
+            return {"parlays": []}
+
+        for parlay in parlay_bets:
+            legs = parlay.get('legs', [])
+            print(f"[RefreshParlayLegs] Parlay {parlay.get('id')} has {len(legs)} legs")
+            if not legs:
+                continue
+
+            # Debug: print leg details
+            for i, leg in enumerate(legs):
+                print(f"[RefreshParlayLegs] Leg {i}: event_id={leg.get('event_id')}, player={leg.get('player_name')}, market={leg.get('market_type')}, line={leg.get('line')}")
+
+            updated_legs = []
+
+            # Group legs by sport for efficient fetching
+            legs_by_sport = {}
+            for idx, leg in enumerate(legs):
+                sport = leg.get('sport', 'nba').lower()
+                if sport not in legs_by_sport:
+                    legs_by_sport[sport] = []
+                legs_by_sport[sport].append((idx, leg))
+
+            # Process each sport group
+            for sport, sport_legs in legs_by_sport.items():
+                dashboard = PropsDashboard(sport=sport)
+
+                # Add each leg as a prop
+                for idx, leg in sport_legs:
+                    event_id = leg.get('event_id')
+                    if not event_id:
+                        # No event_id, skip but preserve original leg
+                        updated_legs.append((idx, leg))
+                        continue
+
+                    dashboard.add_prop(
+                        game_id=str(event_id),
+                        game_label=leg.get('matchup', ''),
+                        player_name=leg.get('player_name', ''),
+                        team_name=leg.get('team_name', ''),
+                        market_type=leg.get('market_type', ''),
+                        line=float(leg.get('line', 0) or 0),
+                        side=leg.get('side', 'over'),
+                        stake=0,
+                        odds=0
+                    )
+
+                # Refresh all props for this sport
+                try:
+                    print(f"[RefreshParlayLegs] Refreshing {len(dashboard.props)} props for {sport}")
+                    dashboard.refresh_props(sports_fetcher)
+                    print(f"[RefreshParlayLegs] Refresh complete for {sport}")
+                except Exception as e:
+                    print(f"Error refreshing parlay legs for {sport}: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    # Keep original legs on error
+                    for idx, leg in sport_legs:
+                        updated_legs.append((idx, leg))
+                    continue
+
+                # Map refreshed data back to legs
+                prop_idx = 0
+                for idx, leg in sport_legs:
+                    if not leg.get('event_id'):
+                        continue
+
+                    if prop_idx < len(dashboard.props):
+                        prop = dashboard.props[prop_idx]
+                        print(f"[RefreshParlayLegs] Prop {prop_idx}: game_state={prop.game_state}, current_value={prop.current_value}, prop_status={prop.prop_status}")
+                        updated_leg = {
+                            **leg,
+                            'current_value': prop.current_value,
+                            'current_value_str': prop.current_value_str,
+                            'game_state': prop.game_state,
+                            'game_status_text': prop.game_status_text,
+                            'prop_status': prop.prop_status,
+                        }
+                        updated_legs.append((idx, updated_leg))
+                        prop_idx += 1
+
+            # Sort legs by original index and extract
+            updated_legs.sort(key=lambda x: x[0])
+            final_legs = [leg for _, leg in updated_legs]
+
+            # Fill in any missing legs (that weren't updated)
+            if len(final_legs) < len(legs):
+                final_legs_dict = {i: leg for i, leg in updated_legs}
+                final_legs = []
+                for i, original_leg in enumerate(legs):
+                    if i in final_legs_dict:
+                        final_legs.append(final_legs_dict[i])
+                    else:
+                        final_legs.append(original_leg)
+
+            updated_parlays.append({
+                'id': parlay['id'],
+                'legs': final_legs
+            })
+
+        print(f"[RefreshParlayLegs] Returning {len(updated_parlays)} updated parlays")
+        return {"parlays": updated_parlays}
+
+    except Exception as e:
+        import traceback
+        print(f"Error refreshing parlay legs: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))

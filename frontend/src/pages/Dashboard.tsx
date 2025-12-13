@@ -1,19 +1,24 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { TrendingUp, Activity, Clock, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { format, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { useBets } from "../context/BetContext";
 import { useSettings } from "../context/SettingsContext";
 import { Card } from "../components/ui/Card";
 import { PropTracker } from "../components/PropTracker";
+import { ParlayTracker } from "../components/ParlayTracker";
 import { GameDetailModal } from "../components/GameDetailModal";
+import { DateNavigator } from "../components/DateNavigator";
 import { api } from "../lib/api";
-import { Game, Bet } from "../types";
+import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
 import { cn } from "../lib/utils";
 
 // League configuration for fetching
 const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: boolean; useScheduleFallback: boolean }> = {
   nba: { apiId: 'nba', title: 'NBA Action', isSoccer: false, useScheduleFallback: true },
+  ncaab: { apiId: 'ncaab', title: 'NCAA Basketball', isSoccer: false, useScheduleFallback: true },
   nfl: { apiId: 'nfl', title: 'NFL Action', isSoccer: false, useScheduleFallback: true },
+  ncaaf: { apiId: 'ncaaf', title: 'NCAA Football', isSoccer: false, useScheduleFallback: true },
   mlb: { apiId: 'mlb', title: 'MLB Action', isSoccer: false, useScheduleFallback: true },
   epl: { apiId: 'epl', title: 'Premier League', isSoccer: true, useScheduleFallback: true },
   laliga: { apiId: 'laliga', title: 'La Liga', isSoccer: true, useScheduleFallback: true },
@@ -55,12 +60,26 @@ export const Dashboard = () => {
   });
 
   const [propsData, setPropsData] = useState<Map<string, any>>(new Map());
+  const [parlayLegsData, setParlayLegsData] = useState<Map<string, any[]>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Box score modal state
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [selectedSport, setSelectedSport] = useState<string>('');
+
+  // Date navigation state per league
+  const [leagueDates, setLeagueDates] = useState<Record<string, Date>>(() => {
+    const initial: Record<string, Date> = {};
+    const today = new Date();
+    Object.keys(LEAGUE_CONFIG).forEach(id => {
+      initial[id] = today;
+    });
+    return initial;
+  });
+
+  // NFL week info cache
+  const [nflWeekInfo, setNflWeekInfo] = useState<NFLWeekInfo | null>(null);
 
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -184,9 +203,40 @@ export const Dashboard = () => {
     [activeProps]
   );
 
+  // Get pending parlays that need leg tracking
+  const parlaysToTrack = useMemo(() => {
+    const parlays = pendingBets.filter(b => b.type === 'Parlay' && b.legs && b.legs.length > 0);
+    console.log('[ParlaysToTrack] Found', parlays.length, 'pending parlays');
+
+    parlays.forEach(p => {
+      console.log('[ParlaysToTrack] Parlay', p.id, 'legs:');
+      p.legs?.forEach((leg: any, i: number) => {
+        console.log(`  Leg ${i}: event_id=${leg.event_id}, player=${leg.player_name}, market=${leg.market_type}, line=${leg.line}`);
+      });
+    });
+
+    const trackable = parlays.filter(b => b.legs!.some((leg: any) => leg.event_id));
+    console.log('[ParlaysToTrack] Trackable parlays (have event_id):', trackable.length);
+
+    if (parlays.length > 0 && trackable.length === 0) {
+      console.warn('[ParlaysToTrack] WARNING: Parlays exist but none have event_id. You may need to delete and recreate the parlay after the database migration.');
+    }
+
+    return trackable.map(b => b.id);
+  }, [pendingBets]);
+
   // Compute enriched pending bets with prop_status from game matching
   const enrichedPendingBets = useMemo(() => {
     return pendingBets.map(bet => {
+      // For parlays, apply updated legs data
+      if (bet.type === 'Parlay') {
+        const updatedLegs = parlayLegsData.get(bet.id);
+        if (updatedLegs) {
+          return { ...bet, legs: updatedLegs };
+        }
+        return bet;
+      }
+
       // First check if we have live tracking data
       const liveData = propsData.get(bet.id);
       if (liveData) {
@@ -226,7 +276,7 @@ export const Dashboard = () => {
 
       return bet;
     });
-  }, [pendingBets, propsData, findMatchingGame]);
+  }, [pendingBets, propsData, parlayLegsData, findMatchingGame]);
 
   // Check if all pending bets have finished games (can be resolved)
   const canResolveAll = useMemo(() => {
@@ -249,51 +299,94 @@ export const Dashboard = () => {
 
   // Refresh props data
   const refreshPropsData = useCallback(async () => {
-    if (allPropsToTrack.length === 0) return;
-    
+    const hasPropsToRefresh = allPropsToTrack.length > 0;
+    const hasParlaysToRefresh = parlaysToTrack.length > 0;
+
+    console.log('[Refresh] Props to track:', allPropsToTrack.length, 'Parlays to track:', parlaysToTrack.length);
+    console.log('[Refresh] Parlay IDs:', parlaysToTrack);
+
+    if (!hasPropsToRefresh && !hasParlaysToRefresh) return;
+
     setRefreshing(true);
     try {
-      const result = await api.refreshProps(allPropsToTrack);
-      
-      setPropsData(prev => {
-        const newPropsData = new Map(prev);
-        result.bets.forEach((propData: any) => {
-          newPropsData.set(propData.id, propData);
+      // Refresh both regular props and parlay legs in parallel
+      const [propsResult, parlaysResult] = await Promise.all([
+        hasPropsToRefresh ? api.refreshProps(allPropsToTrack) : Promise.resolve({ bets: [] }),
+        hasParlaysToRefresh ? api.refreshParlayLegs(parlaysToTrack) : Promise.resolve({ parlays: [] }),
+      ]);
+
+      console.log('[Refresh] Parlay result:', JSON.stringify(parlaysResult, null, 2));
+      if (parlaysResult.parlays.length > 0) {
+        parlaysResult.parlays.forEach((parlay: any) => {
+          console.log(`[Refresh] Parlay ${parlay.id} updated legs:`);
+          parlay.legs?.forEach((leg: any, i: number) => {
+            console.log(`  Leg ${i}: game_state=${leg.game_state}, current_value=${leg.current_value}, prop_status=${leg.prop_status}`);
+          });
         });
-        return newPropsData;
-      });
+      }
+
+      // Update props data
+      if (propsResult.bets.length > 0) {
+        setPropsData(prev => {
+          const newPropsData = new Map(prev);
+          propsResult.bets.forEach((propData: any) => {
+            newPropsData.set(propData.id, propData);
+          });
+          return newPropsData;
+        });
+      }
+
+      // Update parlay legs data
+      if (parlaysResult.parlays.length > 0) {
+        setParlayLegsData(prev => {
+          const newParlayData = new Map(prev);
+          parlaysResult.parlays.forEach((parlay: any) => {
+            newParlayData.set(parlay.id, parlay.legs);
+          });
+          return newParlayData;
+        });
+      }
+
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to refresh props:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [allPropsToTrack]);
+  }, [allPropsToTrack, parlaysToTrack]);
 
   // Auto-refresh props based on user setting
   useEffect(() => {
-    if (allPropsToTrack.length > 0) {
+    if (allPropsToTrack.length > 0 || parlaysToTrack.length > 0) {
       refreshPropsData(); // Initial load
-      
+
       const interval = setInterval(() => {
         refreshPropsData();
       }, refreshInterval);
-      
+
       return () => clearInterval(interval);
     }
-  }, [allPropsToTrack.length, refreshPropsData, refreshInterval]); // Re-run when props to track change or interval changes
+  }, [allPropsToTrack.length, parlaysToTrack.length, refreshPropsData, refreshInterval]); // Re-run when props/parlays to track change or interval changes
 
   // Generic fetch function for all leagues
-  const fetchLeagueData = useCallback(async (leagueId: string) => {
+  const fetchLeagueData = useCallback(async (leagueId: string, dateOverride?: Date) => {
     const config = LEAGUE_CONFIG[leagueId];
     if (!config) return;
+
+    // Use provided date or the stored date for this league
+    const targetDate = dateOverride || leagueDates[leagueId] || new Date();
+    const isToday = isSameDay(targetDate, new Date());
+
+    // Format date for API (YYYYMMDD)
+    const dateParam = isToday ? undefined : format(targetDate, 'yyyyMMdd');
 
     try {
       // Fetch both live/recent scores and scheduled games
       const [liveGamesData, recentScores, scheduled] = await Promise.all([
-        api.getScores(config.apiId, 6, true),
-        api.getScores(config.apiId, 10, false),
-        api.getSchedule(config.apiId, 6)
+        // Only fetch live games if looking at today
+        isToday ? api.getScores(config.apiId, 6, true) : Promise.resolve([]),
+        api.getScores(config.apiId, 10, false, dateParam),
+        api.getSchedule(config.apiId, 6, dateParam)
       ]);
 
       // Combine live, recent, and scheduled games, deduplicating by event_id
@@ -341,7 +434,84 @@ export const Dashboard = () => {
         [leagueId]: { ...prev[leagueId], loading: false }
       }));
     }
-  }, []);
+  }, [leagueDates]);
+
+  // Date navigation handlers
+  const handleDateChange = useCallback((leagueId: string, newDate: Date) => {
+    setLeagueDates(prev => ({
+      ...prev,
+      [leagueId]: newDate
+    }));
+    // Set loading state
+    setLeagueData(prev => ({
+      ...prev,
+      [leagueId]: { ...prev[leagueId], loading: true }
+    }));
+    // Fetch with new date
+    fetchLeagueData(leagueId, newDate);
+
+    // If NFL, fetch week info
+    if (leagueId === 'nfl') {
+      api.getNFLWeekInfo(format(newDate, 'yyyyMMdd'))
+        .then(info => setNflWeekInfo(info))
+        .catch(console.error);
+    }
+  }, [fetchLeagueData]);
+
+  const handlePrevious = useCallback((leagueId: string) => {
+    const navType = SPORT_NAVIGATION[leagueId] || 'daily';
+    const currentDate = leagueDates[leagueId] || new Date();
+
+    const newDate = navType === 'daily'
+      ? subDays(currentDate, 1)
+      : subWeeks(currentDate, 1);
+
+    handleDateChange(leagueId, newDate);
+  }, [leagueDates, handleDateChange]);
+
+  const handleNext = useCallback((leagueId: string) => {
+    const navType = SPORT_NAVIGATION[leagueId] || 'daily';
+    const currentDate = leagueDates[leagueId] || new Date();
+
+    const newDate = navType === 'daily'
+      ? addDays(currentDate, 1)
+      : addWeeks(currentDate, 1);
+
+    handleDateChange(leagueId, newDate);
+  }, [leagueDates, handleDateChange]);
+
+  const handleToday = useCallback((leagueId: string) => {
+    handleDateChange(leagueId, new Date());
+  }, [handleDateChange]);
+
+  // Generate display label for date navigation
+  const getDateDisplayLabel = useCallback((leagueId: string): string => {
+    const selectedDate = leagueDates[leagueId] || new Date();
+    const navType = SPORT_NAVIGATION[leagueId] || 'daily';
+    const today = new Date();
+
+    // NFL special handling - show week number
+    if (leagueId === 'nfl' && nflWeekInfo && nflWeekInfo.week_number) {
+      return nflWeekInfo.display_label;
+    }
+
+    if (navType === 'daily') {
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const selectedStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      const diffDays = Math.round((selectedStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) return 'Today';
+      if (diffDays === -1) return 'Yesterday';
+      if (diffDays === 1) return 'Tomorrow';
+
+      return format(selectedDate, 'EEE, MMM d');
+    }
+
+    // Weekly: show date range
+    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+    return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`;
+  }, [leagueDates, nflWeekInfo]);
 
   // Fetch all leagues on mount and set up refresh intervals
   useEffect(() => {
@@ -349,6 +519,11 @@ export const Dashboard = () => {
     Object.keys(LEAGUE_CONFIG).forEach(leagueId => {
       fetchLeagueData(leagueId);
     });
+
+    // Fetch NFL week info on mount
+    api.getNFLWeekInfo()
+      .then(info => setNflWeekInfo(info))
+      .catch(console.error);
 
     // Set up refresh interval
     const interval = setInterval(() => {
@@ -387,6 +562,22 @@ export const Dashboard = () => {
     }
     
     if (game.state === 'post' || game.completed) {
+      // Show date for finished games
+      if (game.date && game.date !== 'TBD' && game.date !== 'Unknown date') {
+        try {
+          const date = new Date(game.date);
+          if (!isNaN(date.getTime())) {
+            const dateFormatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: 'America/Los_Angeles',
+              month: 'short',
+              day: 'numeric',
+            });
+            return `Final • ${dateFormatter.format(date)}`;
+          }
+        } catch {
+          // Fall through to just "Final"
+        }
+      }
       return 'Final';
     }
     
@@ -435,6 +626,7 @@ export const Dashboard = () => {
 
   // Helper function to render game cards
   const renderGameSection = (
+    leagueId: string,
     title: string,
     games: Game[],
     loading: boolean,
@@ -443,26 +635,43 @@ export const Dashboard = () => {
   ) => {
     const hasLiveGames = games.some(game => game.state === 'in');
     const isCompact = settings.compactMode;
+    const navType = SPORT_NAVIGATION[leagueId] || 'daily';
+    const selectedDate = leagueDates[leagueId] || new Date();
 
     return (
       <div className={cn("space-y-4", isCompact && "space-y-2")}>
         <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <h2 className={cn("font-bold text-white", isCompact ? "text-lg" : "text-xl")}>{title}</h2>
-            {hasLiveGames && (
-              <>
-                <span className="text-xs text-gray-500 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                  Live
-                </span>
-                {lastUpdated && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Clock size={12} />
-                    <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-                  </div>
-                )}
-              </>
-            )}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <h2 className={cn("font-bold text-white", isCompact ? "text-lg" : "text-xl")}>{title}</h2>
+
+              {hasLiveGames && (
+                <>
+                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    Live
+                  </span>
+                  {lastUpdated && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Clock size={12} />
+                      <span>Updated {lastUpdated.toLocaleTimeString()}</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Date Navigator */}
+            <DateNavigator
+              displayLabel={getDateDisplayLabel(leagueId)}
+              navigationType={navType}
+              selectedDate={selectedDate}
+              onPrevious={() => handlePrevious(leagueId)}
+              onNext={() => handleNext(leagueId)}
+              onToday={() => handleToday(leagueId)}
+              onDateSelect={(date) => handleDateChange(leagueId, date)}
+              compact={isCompact}
+            />
           </div>
           {/* Accent line under title */}
           <div className="w-full h-0.5 bg-accent/40 rounded-full" />
@@ -798,6 +1007,23 @@ export const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AnimatePresence mode="popLayout">
                 {pendingBets.map(bet => {
+                  // For parlays, apply updated legs data from parlay refresh
+                  if (bet.type === 'Parlay') {
+                    const updatedLegs = parlayLegsData.get(bet.id);
+                    const enrichedParlay = updatedLegs ? { ...bet, legs: updatedLegs } : bet;
+                    return (
+                      <motion.div
+                        key={bet.id}
+                        initial={false}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                      >
+                        <ParlayTracker bet={enrichedParlay} />
+                      </motion.div>
+                    );
+                  }
+
+                  // For regular bets, apply live data or game matching
                   const liveData = propsData.get(bet.id);
                   let enrichedBet = liveData ? { ...bet, ...liveData } : bet;
 
@@ -880,7 +1106,7 @@ export const Dashboard = () => {
 
         return (
           <div key={sectionId}>
-            {renderGameSection(config.title, data.games, data.loading, data.lastUpdated, sectionId)}
+            {renderGameSection(sectionId, config.title, data.games, data.loading, data.lastUpdated, sectionId)}
           </div>
         );
       })}

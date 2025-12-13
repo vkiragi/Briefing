@@ -3,7 +3,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 // Available sports sections for the home screen
 export const AVAILABLE_SECTIONS = [
   { id: 'nba', label: 'NBA', icon: '🏀' },
+  { id: 'ncaab', label: 'NCAA Basketball', icon: '🏀' },
   { id: 'nfl', label: 'NFL', icon: '🏈' },
+  { id: 'ncaaf', label: 'NCAA Football', icon: '🏈' },
   { id: 'mlb', label: 'MLB', icon: '⚾' },
   { id: 'epl', label: 'Premier League', icon: '⚽' },
   { id: 'laliga', label: 'La Liga', icon: '⚽' },
@@ -51,11 +53,11 @@ interface SettingsContextType {
 }
 
 const defaultSettings: AppSettings = {
-  refreshInterval: 30000,
+  refreshInterval: 5000,
   homeScreen: {
     // Only enable major leagues by default - users can enable others in settings
-    enabledSections: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'tennis'],
-    sectionOrder: ['nba', 'nfl', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian', 'tennis'],
+    enabledSections: ['nba', 'ncaab', 'nfl', 'ncaaf', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'tennis'],
+    sectionOrder: ['nba', 'ncaab', 'nfl', 'ncaaf', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian', 'tennis'],
   },
   showPropTracker: true,
   compactMode: false,

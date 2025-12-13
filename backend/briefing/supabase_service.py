@@ -87,7 +87,14 @@ class SupabaseService:
                     'matchup': leg.get('matchup', ''),
                     'selection': leg.get('selection', ''),
                     'odds': leg.get('odds', 0),
-                    'leg_order': i
+                    'leg_order': i,
+                    # Tracking fields
+                    'event_id': leg.get('event_id'),
+                    'player_name': leg.get('player_name'),
+                    'team_name': leg.get('team_name'),
+                    'market_type': leg.get('market_type'),
+                    'line': leg.get('line'),
+                    'side': leg.get('side'),
                 }
                 self.client.table('parlay_legs').insert(leg_data).execute()
 
@@ -275,6 +282,13 @@ class SupabaseService:
                     'matchup': leg['matchup'],
                     'selection': leg['selection'],
                     'odds': float(leg['odds']),
+                    # Tracking fields
+                    'event_id': leg.get('event_id'),
+                    'player_name': leg.get('player_name'),
+                    'team_name': leg.get('team_name'),
+                    'market_type': leg.get('market_type'),
+                    'line': float(leg['line']) if leg.get('line') is not None else None,
+                    'side': leg.get('side'),
                 }
                 for leg in sorted(db_bet['parlay_legs'], key=lambda x: x['leg_order'])
             ]

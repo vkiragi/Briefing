@@ -26,13 +26,15 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
   // Full-game bets that show score (Moneyline, Spread also tracked but display differently)
   const isTeamBet = bet.type === 'Moneyline' || bet.type === 'Spread';
 
-  // Determine final status from prop_status
+  // Determine final status from prop_status (only for finished games)
   const getFinalStatus = (): 'Won' | 'Lost' | 'Pushed' | null => {
-    if (bet.prop_status === 'won' || bet.prop_status === 'live_hit') return 'Won';
-    if (bet.prop_status === 'lost' || bet.prop_status === 'live_miss') return 'Lost';
-    if (bet.prop_status === 'push' || bet.prop_status === 'live_push') return 'Pushed';
+    // Only resolve on final statuses, not live statuses
+    if (bet.prop_status === 'won') return 'Won';
+    if (bet.prop_status === 'lost') return 'Lost';
+    if (bet.prop_status === 'push') return 'Pushed';
     // If game is over but no clear prop_status, mark as Lost
     if (isPostGame && !bet.prop_status) return 'Lost';
+    // Don't auto-resolve live_hit/live_miss - game is still going
     return null;
   };
 
@@ -104,8 +106,8 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
       return 'text-red-500';
     } else if (bet.prop_status === 'push' || bet.prop_status === 'live_push') {
       return 'text-yellow-500';
-    } else if (isLive && bet.prop_status === 'live_miss') {
-      return 'text-blue-400';
+    } else if (bet.prop_status === 'live_miss') {
+      return 'text-orange-400'; // Live behind is orange, not red
     }
     return 'text-gray-400';
   };
@@ -330,13 +332,14 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
               <span className={cn(
                 "text-xs font-semibold",
                 bet.prop_status === 'won' || bet.prop_status === 'live_hit' ? "text-accent"
-                  : bet.prop_status === 'lost' || bet.prop_status === 'live_miss' ? "text-red-500"
+                  : bet.prop_status === 'lost' ? "text-red-500"
+                  : bet.prop_status === 'live_miss' ? "text-orange-400" // Live behind is orange
                   : "text-blue-400"
               )}>
                 {bet.prop_status === 'won' ? '✓ WON'
                   : bet.prop_status === 'lost' ? '✗ LOST'
                   : bet.prop_status === 'live_hit' ? '✓ WINNING'
-                  : bet.prop_status === 'live_miss' ? '✗ LOSING'
+                  : bet.prop_status === 'live_miss' ? 'BEHIND'
                   : ''}
               </span>
             )}
@@ -361,13 +364,14 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
             <span className={cn(
               "text-xs font-semibold",
               bet.prop_status === 'won' || bet.prop_status === 'live_hit' ? "text-accent"
-                : bet.prop_status === 'lost' || bet.prop_status === 'live_miss' ? "text-red-500"
+                : bet.prop_status === 'lost' ? "text-red-500"
+                : bet.prop_status === 'live_miss' ? "text-orange-400" // Live behind is orange
                 : "text-blue-400"
             )}>
               {bet.prop_status === 'won' ? '✓ WON'
                 : bet.prop_status === 'lost' ? '✗ LOST'
                 : bet.prop_status === 'live_hit' ? '✓ WINNING'
-                : bet.prop_status === 'live_miss' ? '✗ LOSING'
+                : bet.prop_status === 'live_miss' ? 'BEHIND'
                 : ''}
             </span>
           )}
@@ -396,6 +400,8 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
                   ? "bg-accent"
                   : bet.prop_status === 'lost'
                   ? "bg-red-500"
+                  : bet.prop_status === 'live_miss'
+                  ? "bg-orange-500" // Live behind is orange
                   : isLive
                   ? "bg-blue-500"
                   : "bg-gray-600"

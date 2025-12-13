@@ -32,6 +32,27 @@ export interface NewsItem {
   published: string;
 }
 
+// Parlay leg with tracking support
+export interface ParlayLeg {
+  sport: string;
+  matchup: string;
+  selection: string;
+  odds: number;
+  // Tracking fields
+  event_id?: string;
+  player_name?: string;
+  team_name?: string;
+  market_type?: string;
+  line?: number;
+  side?: string;
+  // Live tracking data (populated by refresh)
+  current_value?: number;
+  current_value_str?: string;
+  game_state?: string;
+  game_status_text?: string;
+  prop_status?: string; // 'pending', 'live_hit', 'live_miss', 'won', 'lost'
+}
+
 export interface Bet {
   id: string;
   sport: string;
@@ -44,12 +65,7 @@ export interface Bet {
   date: string;
   book?: string;
   potentialPayout: number;
-  legs?: {
-    sport: string;
-    matchup: string;
-    selection: string;
-    odds: number;
-  }[];
+  legs?: ParlayLeg[];
   // Prop tracking data
   event_id?: string;
   player_name?: string;
@@ -145,6 +161,53 @@ export interface TennisMatchData {
   completed: boolean;
   players: TennisPlayer[];
   sport: 'tennis';
+}
+
+// Date Navigation Types
+export type NavigationType = 'daily' | 'weekly';
+
+export const SPORT_NAVIGATION: Record<string, NavigationType> = {
+  // Daily sports
+  nba: 'daily',
+  ncaab: 'daily',
+  mlb: 'daily',
+  tennis: 'daily',
+  'tennis-atp-singles': 'daily',
+  'tennis-atp-doubles': 'daily',
+  'tennis-wta-singles': 'daily',
+  'tennis-wta-doubles': 'daily',
+
+  // Weekly sports
+  nfl: 'weekly',
+  ncaaf: 'weekly',
+
+  // Soccer leagues (all weekly)
+  epl: 'weekly',
+  laliga: 'weekly',
+  seriea: 'weekly',
+  bundesliga: 'weekly',
+  ligue1: 'weekly',
+  ucl: 'weekly',
+  europa: 'weekly',
+  ligaportugal: 'weekly',
+  saudi: 'weekly',
+  mls: 'weekly',
+  brasileirao: 'weekly',
+  ligamx: 'weekly',
+  scottish: 'weekly',
+  greek: 'weekly',
+  russian: 'weekly',
+  turkish: 'weekly',
+  austrian: 'weekly',
+};
+
+export interface NFLWeekInfo {
+  week_number: number | null;
+  season_year: number;
+  start_date: string | null;
+  end_date: string | null;
+  display_label: string;
+  is_regular_season: boolean;
 }
 
 

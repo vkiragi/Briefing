@@ -1,17 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Plus, Trash2, Clock, Calendar, AlertCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, Plus, Calendar, AlertCircle, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBets } from '../context/BetContext';
 import { Card } from '../components/ui/Card';
 import { Autocomplete } from '../components/ui/Autocomplete';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
-import { Game } from '../types';
+import { Game, ParlayLeg as ParlayLegType } from '../types';
+
+type BetMode = 'single' | 'parlay';
+
+// Extended leg info for UI (includes sportLabel for display)
+interface ParlayLegUI extends ParlayLegType {
+  sportLabel: string;
+  game?: Game;
+}
 
 const SPORTS = [
   { id: 'nba', label: 'NBA', icon: '🏀', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/nba.png&w=100&h=100&transparent=true' },
+  { id: 'ncaab', label: 'NCAA Basketball', icon: '🏀', logo: 'https://a.espncdn.com/i/espn/misc_logos/500/ncaa.png' },
   { id: 'nfl', label: 'NFL', icon: '🏈', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png' },
+  { id: 'ncaaf', label: 'NCAA Football', icon: '🏈', logo: 'https://a.espncdn.com/i/espn/misc_logos/500/ncaa_football.png' },
   { id: 'mlb', label: 'MLB', icon: '⚾', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/mlb.png&w=100&h=100&transparent=true' },
   { id: 'nhl', label: 'NHL', icon: '🏒', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nhl.png' },
   { id: 'soccer', label: 'Soccer', icon: '⚽', logo: '' },
@@ -31,17 +41,20 @@ const NBA_BET_TYPES = [
   { id: 'team_total', label: 'Team Total' },
 ];
 
-// Generic bet types for other sports
-const GENERIC_BET_TYPES = ['Moneyline', 'Spread', 'Total', 'Parlay', 'Prop'];
+// Generic bet types for other sports (Parlay is now a separate mode)
+const GENERIC_BET_TYPES = ['Moneyline', 'Spread', 'Total', 'Prop'];
 
-type Step = 'league' | 'game' | 'bet';
+type Step = 'mode' | 'league' | 'game' | 'bet';
 
 export const AddBet = () => {
   const navigate = useNavigate();
   const { addBet } = useBets();
 
+  // Bet mode (single vs parlay)
+  const [betMode, setBetMode] = useState<BetMode>('single');
+
   // Step management
-  const [currentStep, setCurrentStep] = useState<Step>('league');
+  const [currentStep, setCurrentStep] = useState<Step>('mode');
 
   const [formData, setFormData] = useState({
     sport: '',
@@ -68,7 +81,9 @@ export const AddBet = () => {
   const [liveGames, setLiveGames] = useState<Game[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [parlayLegs, setParlayLegs] = useState<any[]>([]);
+  const [parlayLegs, setParlayLegs] = useState<ParlayLegUI[]>([]);
+  const [parlayRisk, setParlayRisk] = useState<string>('');
+  const [parlayPayout, setParlayPayout] = useState<string>('');
   const [playerValidation, setPlayerValidation] = useState<{
     status: 'idle' | 'validating' | 'valid' | 'invalid';
     message: string;
@@ -79,7 +94,8 @@ export const AddBet = () => {
 
   // Get bet types based on sport
   const getBetTypes = () => {
-    if (formData.sport === 'nba') {
+    // NBA and NCAA Basketball share the same bet types
+    if (formData.sport === 'nba' || formData.sport === 'ncaab') {
       return NBA_BET_TYPES;
     }
     return GENERIC_BET_TYPES.map(t => ({ id: t.toLowerCase(), label: t }));
@@ -137,7 +153,7 @@ export const AddBet = () => {
       }
     };
 
-    if (['nfl', 'nba', 'mlb', 'nhl', 'soccer', 'f1', 'tennis', 'ufc'].includes(formData.sport)) {
+    if (['nfl', 'nba', 'ncaab', 'ncaaf', 'mlb', 'nhl', 'soccer', 'f1', 'tennis', 'ufc'].includes(formData.sport)) {
       fetchGames();
     } else {
       setGames([]);
@@ -200,28 +216,22 @@ export const AddBet = () => {
     }
   };
 
-  const getDecimalOdds = (american: number) => {
-    if (american > 0) return (american / 100) + 1;
-    return (100 / Math.abs(american)) + 1;
-  };
+  // Calculate American odds from risk/payout for display
+  const getParlayOddsFromPayout = () => {
+    const risk = Number(parlayRisk) || 0;
+    const payout = Number(parlayPayout) || 0;
+    if (risk <= 0 || payout <= 0) return 0;
 
-  const calculateParlayOdds = () => {
-    const combinedDecimal = parlayLegs.reduce((acc, leg) => acc * getDecimalOdds(leg.odds), 1);
-    if (combinedDecimal === 1) return 0;
-
-    let american = 0;
-    if (combinedDecimal >= 2) {
-      american = (combinedDecimal - 1) * 100;
+    const decimalOdds = payout / risk;
+    if (decimalOdds >= 2) {
+      return Math.floor((decimalOdds - 1) * 100);
     } else {
-      american = -100 / (combinedDecimal - 1);
+      return Math.ceil(-100 / (decimalOdds - 1));
     }
-    return Math.round(american);
   };
 
-  const totalParlayOdds = calculateParlayOdds();
-  const potentialProfit = formData.type === 'parlay'
-    ? calculatePayout(Number(formData.stake), totalParlayOdds)
-    : calculatePayout(Number(formData.stake), Number(formData.odds));
+  const parlayDisplayOdds = getParlayOddsFromPayout();
+  const potentialProfit = calculatePayout(Number(formData.stake), Number(formData.odds));
 
   // Handle sport selection
   const handleSportSelect = (sportId: string) => {
@@ -253,7 +263,9 @@ export const AddBet = () => {
 
   // Go back to previous step
   const goBack = () => {
-    if (currentStep === 'game') {
+    if (currentStep === 'league') {
+      setCurrentStep('mode');
+    } else if (currentStep === 'game') {
       setCurrentStep('league');
       setFormData(prev => ({ ...prev, sport: '' }));
     } else if (currentStep === 'bet') {
@@ -262,37 +274,184 @@ export const AddBet = () => {
     }
   };
 
+  // Handle mode selection
+  const handleModeSelect = (mode: BetMode) => {
+    setBetMode(mode);
+    setParlayLegs([]);
+    setParlayRisk('');
+    setParlayPayout('');
+    setCurrentStep('league');
+  };
+
+  // Remove a leg from parlay
+  const removeParlayLeg = (index: number) => {
+    setParlayLegs(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleAddLeg = () => {
     if (!formData.selection) {
       alert("Please make a selection");
       return;
     }
-    const leg = {
+    const currentSportInfo = SPORTS.find(s => s.id === formData.sport);
+
+    // Build tracking data based on bet type
+    let trackingData: Partial<ParlayLegUI> = {};
+
+    if (selectedGame) {
+      trackingData.event_id = selectedGame.event_id || selectedGame.competition_id;
+    }
+
+    // Player props
+    if (formData.type === 'player_prop' && formData.playerName) {
+      trackingData.player_name = formData.playerName;
+      trackingData.market_type = formData.marketType;
+      trackingData.line = parseFloat(formData.line) || 0;
+      trackingData.side = formData.side.toLowerCase();
+      trackingData.team_name = ''; // Will be filled during validation if needed
+    }
+    // Moneyline
+    else if (formData.type === 'moneyline' && formData.selectedTeam) {
+      trackingData.player_name = 'Moneyline';
+      trackingData.team_name = formData.selectedTeam;
+      trackingData.market_type = 'moneyline';
+      trackingData.line = 0;
+      trackingData.side = formData.selectedTeam.toLowerCase();
+    }
+    // Spread
+    else if (formData.type === 'spread' && formData.selectedTeam) {
+      trackingData.player_name = 'Spread';
+      trackingData.team_name = formData.selectedTeam;
+      trackingData.market_type = 'spread';
+      trackingData.line = parseFloat(formData.spreadValue) || 0;
+      trackingData.side = formData.selectedTeam.toLowerCase();
+    }
+    // Total
+    else if (formData.type === 'total') {
+      trackingData.player_name = 'Total Score';
+      trackingData.market_type = 'total_score';
+      trackingData.line = parseFloat(formData.totalLine) || 0;
+      trackingData.side = formData.overUnder.toLowerCase();
+    }
+    // 1st Half/Quarter
+    else if ((formData.type === '1h_bets' || formData.type === '1q_bets') && formData.periodBetType) {
+      const period = formData.type === '1h_bets' ? '1h' : '1q';
+      trackingData.team_name = formData.selectedTeam;
+      if (formData.periodBetType === 'moneyline') {
+        trackingData.player_name = `${period.toUpperCase()} Moneyline`;
+        trackingData.market_type = `${period}_moneyline`;
+        trackingData.line = 0;
+        trackingData.side = formData.selectedTeam.toLowerCase();
+      } else if (formData.periodBetType === 'spread') {
+        trackingData.player_name = `${period.toUpperCase()} Spread`;
+        trackingData.market_type = `${period}_spread`;
+        trackingData.line = parseFloat(formData.line) || 0;
+        trackingData.side = formData.selectedTeam.toLowerCase();
+      } else if (formData.periodBetType === 'total') {
+        trackingData.player_name = `${period.toUpperCase()} Total`;
+        trackingData.market_type = `${period}_total_score`;
+        trackingData.line = parseFloat(formData.line) || 0;
+        trackingData.side = formData.side.toLowerCase();
+      }
+    }
+    // Team Total
+    else if (formData.type === 'team_total' && formData.selectedTeam && selectedGame) {
+      const isHome = formData.selectedTeam === selectedGame.home_team;
+      trackingData.player_name = `${formData.selectedTeam} Total Points`;
+      trackingData.team_name = formData.selectedTeam;
+      trackingData.market_type = isHome ? 'home_team_points' : 'away_team_points';
+      trackingData.line = parseFloat(formData.line) || 0;
+      trackingData.side = formData.side.toLowerCase();
+    }
+
+    const leg: ParlayLegUI = {
       sport: formData.sport,
+      sportLabel: currentSportInfo?.label || formData.sport.toUpperCase(),
       matchup: formData.matchup,
       selection: formData.selection,
-      odds: Number(formData.odds),
+      odds: 0, // Not tracking per-leg odds
+      game: selectedGame || undefined,
+      ...trackingData,
     };
     setParlayLegs([...parlayLegs, leg]);
 
+    // Reset form for next leg
     setFormData(prev => ({
       ...prev,
+      sport: '',
+      type: '',
+      matchup: '',
       selection: '',
       selectedTeam: '',
       spreadValue: '',
       totalLine: '',
+      overUnder: 'Over',
+      playerName: '',
+      marketType: '',
+      line: '',
+      side: 'Over',
+      periodBetType: '',
       odds: -110
     }));
     setSelectedGame(null);
+    setCurrentStep('league');
+  };
+
+  // Submit parlay bet
+  const handleParlaySubmit = () => {
+    if (parlayLegs.length < 2) {
+      alert("Please add at least 2 legs for a parlay");
+      return;
+    }
+
+    const risk = Number(parlayRisk) || 0;
+    const payout = Number(parlayPayout) || 0;
+
+    if (risk <= 0 || payout <= 0) {
+      alert("Please enter total risk and total payout");
+      return;
+    }
+
+    addBet({
+      sport: 'Mixed',
+      type: 'Parlay',
+      matchup: `${parlayLegs.length} Leg Parlay`,
+      selection: parlayLegs.map(l => l.selection).join(' + '),
+      odds: parlayDisplayOdds,
+      stake: risk,
+      date: new Date().toISOString().split('T')[0],
+      book: formData.book,
+      potentialPayout: payout,
+      legs: parlayLegs.map(l => ({
+        sport: l.sport,
+        matchup: l.matchup,
+        selection: l.selection,
+        odds: 0,
+        // Include tracking data
+        event_id: l.event_id,
+        player_name: l.player_name,
+        team_name: l.team_name,
+        market_type: l.market_type,
+        line: l.line,
+        side: l.side,
+      }))
+    });
+    navigate('/');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // If in parlay mode, add as leg instead of submitting
+    if (betMode === 'parlay') {
+      handleAddLeg();
+      return;
+    }
+
     let validatedPlayerName = formData.playerName;
     let validatedTeamName = '';
 
-    if (formData.sport === 'nba' && formData.type === 'player_prop' && formData.playerName.trim()) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'player_prop' && formData.playerName.trim()) {
       if (!selectedGame) {
         setPlayerValidation({ status: 'invalid', message: 'Please select a game first' });
         return;
@@ -328,34 +487,8 @@ export const AddBet = () => {
       setPlayerValidation({ status: 'idle', message: '' });
     }
 
-    if (formData.type === 'parlay') {
-      if (parlayLegs.length < 2) {
-        alert("Please add at least 2 legs for a parlay");
-        return;
-      }
-
-      const totalOdds = calculateParlayOdds();
-      const stakeAmount = Number(formData.stake) || 0;
-      const payout = calculatePayout(stakeAmount, totalOdds);
-
-      addBet({
-        sport: 'Mixed',
-        type: 'Parlay',
-        matchup: 'Parlay',
-        selection: `${parlayLegs.length} Leg Parlay`,
-        odds: totalOdds,
-        stake: stakeAmount,
-        date: formData.date,
-        book: formData.book,
-        potentialPayout: payout,
-        legs: parlayLegs
-      });
-      navigate('/');
-      return;
-    }
-
     let betType = formData.type;
-    if (formData.sport === 'nba') {
+    if (formData.sport === 'nba' || formData.sport === 'ncaab') {
       if (formData.type === 'player_prop') betType = 'Prop';
       else if (formData.type === 'moneyline') betType = 'Moneyline';
       else if (formData.type === 'spread') betType = 'Spread';
@@ -383,7 +516,7 @@ export const AddBet = () => {
     };
 
     // Add prop tracking data for player props
-    if (formData.sport === 'nba' && formData.type === 'player_prop' && selectedGame) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'player_prop' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = validatedPlayerName;
       betData.team_name = validatedTeamName;
@@ -393,7 +526,7 @@ export const AddBet = () => {
     }
 
     // Add tracking data for other bet types...
-    if (formData.sport === 'nba' && formData.type === '1h_bets' && selectedGame && formData.periodBetType) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === '1h_bets' && selectedGame && formData.periodBetType) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.team_name = formData.selectedTeam;
       if (formData.periodBetType === 'moneyline') {
@@ -414,7 +547,7 @@ export const AddBet = () => {
       }
     }
 
-    if (formData.sport === 'nba' && formData.type === '1q_bets' && selectedGame && formData.periodBetType) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === '1q_bets' && selectedGame && formData.periodBetType) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.team_name = formData.selectedTeam;
       if (formData.periodBetType === 'moneyline') {
@@ -435,7 +568,7 @@ export const AddBet = () => {
       }
     }
 
-    if (formData.sport === 'nba' && formData.type === 'team_total' && selectedGame) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'team_total' && selectedGame) {
       const isHome = formData.selectedTeam === selectedGame.home_team;
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = `${formData.selectedTeam} Total Points`;
@@ -445,7 +578,7 @@ export const AddBet = () => {
       betData.side = formData.side.toLowerCase();
     }
 
-    if (formData.sport === 'nba' && formData.type === 'moneyline' && selectedGame) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'moneyline' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = 'Moneyline';
       betData.team_name = formData.selectedTeam;
@@ -454,7 +587,7 @@ export const AddBet = () => {
       betData.side = formData.selectedTeam.toLowerCase();
     }
 
-    if (formData.sport === 'nba' && formData.type === 'spread' && selectedGame) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'spread' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = 'Spread';
       betData.team_name = formData.selectedTeam;
@@ -463,7 +596,7 @@ export const AddBet = () => {
       betData.side = formData.selectedTeam.toLowerCase();
     }
 
-    if (formData.sport === 'nba' && formData.type === 'total' && selectedGame) {
+    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'total' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = 'Total Score';
       betData.team_name = `${selectedGame.away_team} / ${selectedGame.home_team}`;
@@ -478,7 +611,7 @@ export const AddBet = () => {
 
   // Auto-build selection string based on inputs
   useEffect(() => {
-    if (formData.sport === 'nba') {
+    if (formData.sport === 'nba' || formData.sport === 'ncaab') {
       if (formData.type === 'player_prop' && formData.playerName && formData.marketType && formData.line && formData.side) {
         const marketLabel = formData.marketType.replace(/_/g, ' ');
         setFormData(prev => ({ ...prev, selection: `${formData.playerName} ${formData.side} ${formData.line} ${marketLabel}` }));
@@ -536,7 +669,7 @@ export const AddBet = () => {
       <div className="flex-shrink-0 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            {currentStep !== 'league' && (
+            {currentStep !== 'mode' && (
               <button
                 onClick={goBack}
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -544,62 +677,113 @@ export const AddBet = () => {
                 <ChevronLeft size={24} />
               </button>
             )}
-            <h1 className="text-3xl font-bold">New Wager</h1>
+            <h1 className="text-3xl font-bold">
+              {betMode === 'parlay' ? 'New Parlay' : 'New Wager'}
+            </h1>
+            {betMode === 'parlay' && parlayLegs.length > 0 && (
+              <span className="bg-accent/20 text-accent px-3 py-1 rounded-full text-sm font-medium">
+                {parlayLegs.length} leg{parlayLegs.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Step Progress */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              if (currentStep !== 'league') {
-                setCurrentStep('league');
-                setFormData(prev => ({ ...prev, sport: '' }));
-                setSelectedGame(null);
-              }
-            }}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
-              currentStep === 'league' ? "bg-accent text-background" : "bg-accent/20 text-accent cursor-pointer hover:opacity-80"
-            )}
-          >
-            <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">1</span>
-            League
-          </button>
-          <ChevronRight size={16} className="text-gray-600" />
-          <button
-            onClick={() => {
-              // Only allow going back to game from bet step
-              if (currentStep === 'bet') {
-                setCurrentStep('game');
-                setSelectedGame(null);
-              }
-            }}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all !cursor-default",
-              currentStep === 'game' ? "bg-accent text-background" :
-              currentStep === 'bet' ? "bg-accent/20 text-accent !cursor-pointer hover:opacity-80" : "bg-gray-800 text-gray-500"
-            )}
-          >
-            <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">2</span>
-            Game
-          </button>
-          <ChevronRight size={16} className="text-gray-600" />
-          <div
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-default",
-              currentStep === 'bet' ? "bg-accent text-background" : "bg-gray-800 text-gray-500"
-            )}
-          >
-            <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">3</span>
-            Bet
+        {/* Step Progress - only show after mode selection */}
+        {currentStep !== 'mode' && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (currentStep !== 'league') {
+                  setCurrentStep('league');
+                  setFormData(prev => ({ ...prev, sport: '' }));
+                  setSelectedGame(null);
+                }
+              }}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                currentStep === 'league' ? "bg-accent text-background" : "bg-accent/20 text-accent cursor-pointer hover:opacity-80"
+              )}
+            >
+              <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">1</span>
+              League
+            </button>
+            <ChevronRight size={16} className="text-gray-600" />
+            <button
+              onClick={() => {
+                // Only allow going back to game from bet step
+                if (currentStep === 'bet') {
+                  setCurrentStep('game');
+                  setSelectedGame(null);
+                }
+              }}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all !cursor-default",
+                currentStep === 'game' ? "bg-accent text-background" :
+                currentStep === 'bet' ? "bg-accent/20 text-accent !cursor-pointer hover:opacity-80" : "bg-gray-800 text-gray-500"
+              )}
+            >
+              <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">2</span>
+              Game
+            </button>
+            <ChevronRight size={16} className="text-gray-600" />
+            <div
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all cursor-default",
+                currentStep === 'bet' ? "bg-accent text-background" : "bg-gray-800 text-gray-500"
+              )}
+            >
+              <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">3</span>
+              {betMode === 'parlay' ? 'Add Leg' : 'Bet'}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Step Content */}
       <div className="flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
+          {/* Step 0: Mode Selection (Single vs Parlay) */}
+          {currentStep === 'mode' && (
+            <motion.div
+              key="mode"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="h-full"
+            >
+              <Card className="p-6">
+                <h2 className="text-xl font-bold mb-2">What type of bet?</h2>
+                <p className="text-gray-400 mb-6">Choose between a single bet or combine multiple selections into a parlay</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleModeSelect('single')}
+                    className="flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-border bg-card hover:border-accent hover:bg-accent/5 transition-all group"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                      <CheckCircle size={32} className="text-accent" />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold mb-1">Single Bet</h3>
+                      <p className="text-sm text-gray-400">One selection, one wager</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleModeSelect('parlay')}
+                    className="flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-border bg-card hover:border-accent hover:bg-accent/5 transition-all group"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                      <Plus size={32} className="text-accent" />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold mb-1">Parlay</h3>
+                      <p className="text-sm text-gray-400">Combine multiple selections for bigger payouts</p>
+                    </div>
+                  </button>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Step 1: League Selection */}
           {currentStep === 'league' && (
             <motion.div
@@ -835,8 +1019,8 @@ export const AddBet = () => {
 
                   {/* Dynamic Bet Form Fields */}
                   <div className="space-y-4 bg-background/50 p-4 rounded-xl border border-border/50">
-                    {/* NBA Player Prop */}
-                    {formData.type === 'player_prop' && formData.sport === 'nba' && (
+                    {/* Basketball Player Prop (NBA & NCAA) */}
+                    {formData.type === 'player_prop' && (formData.sport === 'nba' || formData.sport === 'ncaab') && (
                       <>
                         <div className="space-y-2">
                           <label className="text-xs font-medium text-gray-400 uppercase">Player Name</label>
@@ -1058,61 +1242,86 @@ export const AddBet = () => {
                     )}
                   </div>
 
-                  {/* Odds & Stake */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-400 uppercase">Odds</label>
-                      <input
-                        type="number"
-                        placeholder="-110"
-                        className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-accent"
-                        value={formData.odds}
-                        onChange={(e) => setFormData({...formData, odds: Number(e.target.value)})}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-400 uppercase">Stake (Optional)</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-3.5 text-gray-500">$</span>
+                  {/* Odds & Stake - only show for single bets */}
+                  {betMode === 'single' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-400 uppercase">Odds</label>
                         <input
                           type="number"
-                          placeholder="100"
-                          className="w-full bg-background border border-border rounded-lg p-3 pl-7 text-white focus:outline-none focus:border-accent"
-                          value={formData.stake}
-                          onChange={(e) => setFormData({...formData, stake: e.target.value})}
+                          placeholder="-110"
+                          className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-accent"
+                          value={formData.odds}
+                          onChange={(e) => setFormData({...formData, odds: Number(e.target.value)})}
+                          required
                         />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-400 uppercase">Stake (Optional)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-3.5 text-gray-500">$</span>
+                          <input
+                            type="number"
+                            placeholder="100"
+                            className="w-full bg-background border border-border rounded-lg p-3 pl-7 text-white focus:outline-none focus:border-accent"
+                            value={formData.stake}
+                            onChange={(e) => setFormData({...formData, stake: e.target.value})}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Submit */}
                   <div className="pt-4 flex items-center justify-between border-t border-border">
-                    <div>
-                      <div className="text-xs text-gray-400">Potential Payout</div>
-                      <div className="text-xl font-bold text-accent">
-                        ${(Number(formData.stake || 0) + potentialProfit).toFixed(2)}
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={playerValidation.status === 'validating'}
-                      className={cn(
-                        "bg-accent text-background font-bold py-3 px-8 rounded-lg transition-colors flex items-center gap-2",
-                        playerValidation.status === 'validating'
-                          ? "opacity-70 cursor-not-allowed"
-                          : "hover:bg-accent/90"
-                      )}
-                    >
-                      {playerValidation.status === 'validating' ? (
-                        <>
-                          <Loader2 size={18} className="animate-spin" />
-                          Validating...
-                        </>
-                      ) : (
-                        'Place Bet'
-                      )}
-                    </button>
+                    {betMode === 'single' ? (
+                      <>
+                        <div>
+                          <div className="text-xs text-gray-400">Potential Payout</div>
+                          <div className="text-xl font-bold text-accent">
+                            ${(Number(formData.stake || 0) + potentialProfit).toFixed(2)}
+                          </div>
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={playerValidation.status === 'validating'}
+                          className={cn(
+                            "bg-accent text-background font-bold py-3 px-8 rounded-lg transition-colors flex items-center gap-2",
+                            playerValidation.status === 'validating'
+                              ? "opacity-70 cursor-not-allowed"
+                              : "hover:bg-accent/90"
+                          )}
+                        >
+                          {playerValidation.status === 'validating' ? (
+                            <>
+                              <Loader2 size={18} className="animate-spin" />
+                              Validating...
+                            </>
+                          ) : (
+                            'Place Bet'
+                          )}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-sm text-gray-400">
+                          You'll enter risk & payout after adding all legs
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={!formData.selection}
+                          className={cn(
+                            "bg-accent text-background font-bold py-3 px-8 rounded-lg transition-colors flex items-center gap-2",
+                            !formData.selection
+                              ? "opacity-50 cursor-not-allowed"
+                              : "hover:bg-accent/90"
+                          )}
+                        >
+                          <Plus size={18} />
+                          Add Leg
+                        </button>
+                      </>
+                    )}
                   </div>
                 </form>
               </Card>
@@ -1120,6 +1329,121 @@ export const AddBet = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Parlay Slip - Fixed bottom bar when in parlay mode */}
+      {betMode === 'parlay' && currentStep !== 'mode' && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="flex-shrink-0 bg-card border-t border-border mt-4"
+        >
+          <div className="p-4">
+            {/* Parlay Header */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-lg">
+                Parlay Slip ({parlayLegs.length} leg{parlayLegs.length !== 1 ? 's' : ''})
+              </h3>
+              {parlayDisplayOdds !== 0 && (
+                <div className="text-right">
+                  <div className="text-xs text-gray-400">Odds</div>
+                  <div className="font-bold text-accent">
+                    {parlayDisplayOdds > 0 ? '+' : ''}{parlayDisplayOdds}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Legs List */}
+            {parlayLegs.length > 0 ? (
+              <div className="space-y-2 mb-4 max-h-32 overflow-y-auto">
+                {parlayLegs.map((leg, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between bg-background/50 rounded-lg p-2.5 border border-border/50"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded">
+                          {leg.sportLabel}
+                        </span>
+                        <span className="text-xs text-gray-500 truncate">
+                          {leg.matchup}
+                        </span>
+                      </div>
+                      <div className="font-medium text-white truncate mt-1 text-sm">
+                        {leg.selection}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeParlayLeg(index)}
+                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors ml-2"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500 bg-background/30 rounded-lg mb-4">
+                <Plus size={20} className="mx-auto mb-1 opacity-50" />
+                <p className="text-sm">Add selections to build your parlay</p>
+              </div>
+            )}
+
+            {/* Risk and Payout inputs */}
+            {parlayLegs.length >= 2 && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-gray-400 uppercase mb-1 block">Total Risk</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="1.00"
+                      className="w-full bg-background border border-border rounded-lg p-2 pl-7 text-white focus:outline-none focus:border-accent"
+                      value={parlayRisk}
+                      onChange={(e) => setParlayRisk(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-gray-400 uppercase mb-1 block">Total Payout</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="6.19"
+                      className="w-full bg-background border border-border rounded-lg p-2 pl-7 text-white focus:outline-none focus:border-accent"
+                      value={parlayPayout}
+                      onChange={(e) => setParlayPayout(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleParlaySubmit}
+                  disabled={!parlayRisk || !parlayPayout}
+                  className={cn(
+                    "bg-accent text-background font-bold py-2.5 px-6 rounded-lg transition-colors whitespace-nowrap",
+                    (!parlayRisk || !parlayPayout) ? "opacity-50 cursor-not-allowed" : "hover:bg-accent/90"
+                  )}
+                >
+                  Place Parlay
+                </button>
+              </div>
+            )}
+
+            {/* Not enough legs warning */}
+            {parlayLegs.length === 1 && (
+              <div className="flex items-center gap-2 text-amber-500 text-sm">
+                <AlertCircle size={16} />
+                <span>Add at least 1 more leg to place your parlay</span>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 };

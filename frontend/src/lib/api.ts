@@ -27,16 +27,41 @@ export const api = {
     return response.json() as Promise<string[]>;
   },
 
-  getScores: async (sport: string, limit = 10, live = false) => {
-    const response = await fetch(`${API_BASE_URL}/sports/scores?sport=${sport}&limit=${limit}&live=${live}`);
+  getScores: async (sport: string, limit = 10, live = false, date?: string) => {
+    let url = `${API_BASE_URL}/sports/scores?sport=${sport}&limit=${limit}&live=${live}`;
+    if (date) {
+      url += `&date=${date}`;
+    }
+    const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to fetch scores for ${sport}`);
     return response.json() as Promise<any[]>;
   },
 
-  getSchedule: async (sport: string, limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/sports/schedule?sport=${sport}&limit=${limit}`);
+  getSchedule: async (sport: string, limit = 10, date?: string) => {
+    let url = `${API_BASE_URL}/sports/schedule?sport=${sport}&limit=${limit}`;
+    if (date) {
+      url += `&date=${date}`;
+    }
+    const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to fetch schedule for ${sport}`);
     return response.json() as Promise<any[]>;
+  },
+
+  getNFLWeekInfo: async (date?: string) => {
+    let url = `${API_BASE_URL}/sports/nfl/week`;
+    if (date) {
+      url += `?date=${date}`;
+    }
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch NFL week info');
+    return response.json() as Promise<{
+      week_number: number | null;
+      season_year: number;
+      start_date: string | null;
+      end_date: string | null;
+      display_label: string;
+      is_regular_season: boolean;
+    }>;
   },
 
   getNews: async (sport: string, limit = 5) => {
@@ -157,6 +182,41 @@ export const api = {
         game_state?: string;
         game_status_text?: string;
         prop_status?: string;
+      }>;
+    }>;
+  },
+
+  refreshParlayLegs: async (betIds: string[]) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/bets/refresh-parlay-legs`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(betIds),
+    });
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Not authenticated');
+      throw new Error('Failed to refresh parlay legs');
+    }
+    return response.json() as Promise<{
+      parlays: Array<{
+        id: string;
+        legs: Array<{
+          sport: string;
+          matchup: string;
+          selection: string;
+          odds: number;
+          event_id?: string;
+          player_name?: string;
+          team_name?: string;
+          market_type?: string;
+          line?: number;
+          side?: string;
+          current_value?: number;
+          current_value_str?: string;
+          game_state?: string;
+          game_status_text?: string;
+          prop_status?: string;
+        }>;
       }>;
     }>;
   },

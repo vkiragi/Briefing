@@ -71,13 +71,14 @@ class BaseSportsFetcher:
         session.mount('https://', adapter)
         return session
 
-    def fetch_scores(self, sport: str, limit: int = 10) -> List[Dict]:
+    def fetch_scores(self, sport: str, limit: int = 10, date: Optional[str] = None) -> List[Dict]:
         """
         Fetch recent scores for a specific sport.
 
         Args:
             sport: Sport name (e.g., 'nfl', 'nba', 'mlb')
             limit: Maximum number of games to return
+            date: Optional date in YYYYMMDD format
 
         Returns:
             List of game information dictionaries
@@ -91,6 +92,10 @@ class BaseSportsFetcher:
             raise ValueError(f"Unknown sport: {sport}. Available: {', '.join(self.SPORTS.keys())}")
 
         url = f"{self.BASE_URL}/{sport_path}/scoreboard"
+
+        # Add date parameter if provided
+        if date:
+            url += f"?dates={date}"
 
         try:
             response = self.session.get(url, timeout=self.timeout)
@@ -348,13 +353,14 @@ class BaseSportsFetcher:
         except Exception as e:
             raise Exception(f"Error parsing {sport} news: {str(e)}")
 
-    def fetch_schedule(self, sport: str, limit: int = 10) -> List[Dict]:
+    def fetch_schedule(self, sport: str, limit: int = 10, date: Optional[str] = None) -> List[Dict]:
         """
         Fetch upcoming games schedule for a specific sport.
 
         Args:
             sport: Sport name (e.g., 'nfl', 'nba', 'mlb')
             limit: Maximum number of games to return
+            date: Optional date in YYYYMMDD format
 
         Returns:
             List of scheduled game dictionaries
@@ -369,6 +375,10 @@ class BaseSportsFetcher:
             raise ValueError(f"Unknown sport: {sport}. Available: {', '.join(self.SPORTS.keys())}")
 
         url = f"{self.BASE_URL}/{sport_path}/scoreboard"
+
+        # Add date parameter if provided
+        if date:
+            url += f"?dates={date}"
 
         try:
             response = self.session.get(url, timeout=self.timeout)
@@ -1230,6 +1240,122 @@ class BaseSportsFetcher:
             return dt.isoformat()
         except:
             return timestamp
+
+    # NFL 2024-2025 Season Week Dates (Regular Season + Playoffs)
+    # Each tuple is (start_date, end_date) in YYYY-MM-DD format
+    NFL_SEASON_WEEKS = {
+        2024: {
+            1: ('2024-09-05', '2024-09-09'),
+            2: ('2024-09-12', '2024-09-16'),
+            3: ('2024-09-19', '2024-09-23'),
+            4: ('2024-09-26', '2024-09-30'),
+            5: ('2024-10-03', '2024-10-07'),
+            6: ('2024-10-10', '2024-10-14'),
+            7: ('2024-10-17', '2024-10-21'),
+            8: ('2024-10-24', '2024-10-28'),
+            9: ('2024-10-31', '2024-11-04'),
+            10: ('2024-11-07', '2024-11-11'),
+            11: ('2024-11-14', '2024-11-18'),
+            12: ('2024-11-21', '2024-11-25'),
+            13: ('2024-11-28', '2024-12-02'),
+            14: ('2024-12-05', '2024-12-09'),
+            15: ('2024-12-12', '2024-12-16'),
+            16: ('2024-12-19', '2024-12-23'),
+            17: ('2024-12-25', '2024-12-30'),
+            18: ('2025-01-02', '2025-01-05'),
+            # Playoffs
+            19: ('2025-01-11', '2025-01-13'),  # Wild Card
+            20: ('2025-01-18', '2025-01-19'),  # Divisional
+            21: ('2025-01-26', '2025-01-26'),  # Conference Championships
+            22: ('2025-02-09', '2025-02-09'),  # Super Bowl
+        }
+    }
+
+    def get_nfl_week_info(self, date_str: Optional[str] = None) -> Dict:
+        """
+        Get NFL week information for a given date.
+
+        Args:
+            date_str: Date in YYYYMMDD format (defaults to today)
+
+        Returns:
+            Dict with week_number, season_year, start_date, end_date, display_label
+        """
+        if date_str:
+            try:
+                target_date = datetime.strptime(date_str, '%Y%m%d').date()
+            except ValueError:
+                target_date = datetime.now().date()
+        else:
+            target_date = datetime.now().date()
+
+        # Determine season year (NFL season spans two calendar years)
+        # If before September, it's the previous year's season
+        if target_date.month < 9:
+            season_year = target_date.year - 1
+        else:
+            season_year = target_date.year
+
+        season_weeks = self.NFL_SEASON_WEEKS.get(season_year, {})
+
+        for week_num, (start, end) in season_weeks.items():
+            start_date = datetime.strptime(start, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end, '%Y-%m-%d').date()
+
+            if start_date <= target_date <= end_date:
+                # Determine display label
+                if week_num <= 18:
+                    display_label = f'Week {week_num}'
+                elif week_num == 19:
+                    display_label = 'Wild Card'
+                elif week_num == 20:
+                    display_label = 'Divisional'
+                elif week_num == 21:
+                    display_label = 'Conference Championships'
+                elif week_num == 22:
+                    display_label = 'Super Bowl'
+                else:
+                    display_label = f'Week {week_num}'
+
+                return {
+                    'week_number': week_num,
+                    'season_year': season_year,
+                    'start_date': start,
+                    'end_date': end,
+                    'display_label': display_label,
+                    'is_regular_season': week_num <= 18
+                }
+
+        # If not in any defined week, return off-season
+        return {
+            'week_number': None,
+            'season_year': season_year,
+            'start_date': None,
+            'end_date': None,
+            'display_label': 'Off-Season',
+            'is_regular_season': False
+        }
+
+    def get_nfl_week_dates(self, season_year: int, week_number: int) -> Optional[Dict]:
+        """
+        Get start and end dates for a specific NFL week.
+
+        Args:
+            season_year: The NFL season year (e.g., 2024)
+            week_number: The week number (1-18 for regular season, 19-22 for playoffs)
+
+        Returns:
+            Dict with start_date and end_date, or None if not found
+        """
+        season_weeks = self.NFL_SEASON_WEEKS.get(season_year, {})
+        week_data = season_weeks.get(week_number)
+
+        if week_data:
+            return {
+                'start_date': week_data[0],
+                'end_date': week_data[1]
+            }
+        return None
 
     @classmethod
     def list_available_sports(cls) -> List[str]:

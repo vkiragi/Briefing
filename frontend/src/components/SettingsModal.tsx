@@ -27,6 +27,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [localInterval, setLocalInterval] = useState(settings.refreshInterval);
   const [activeTab, setActiveTab] = useState<'general' | 'homescreen'>('general');
   const [draggedItem, setDraggedItem] = useState<SectionId | null>(null);
+  const [customSeconds, setCustomSeconds] = useState('');
 
   // Sync local interval when global settings change
   useEffect(() => {
@@ -41,11 +42,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const presetIntervals = [
+    { label: '5 sec', value: 5000 },
+    { label: '10 sec', value: 10000 },
     { label: '15 sec', value: 15000 },
     { label: '30 sec', value: 30000 },
     { label: '1 min', value: 60000 },
-    { label: '2 min', value: 120000 },
-    { label: '5 min', value: 300000 },
   ];
 
   const handleDragStart = (e: React.DragEvent, sectionId: SectionId) => {
@@ -150,10 +151,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {presetIntervals.map((preset) => (
                       <button
                         key={preset.value}
-                        onClick={() => setLocalInterval(preset.value)}
+                        onClick={() => {
+                          setLocalInterval(preset.value);
+                          setCustomSeconds('');
+                        }}
                         className={cn(
                           "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
-                          localInterval === preset.value
+                          localInterval === preset.value && !customSeconds
                             ? "bg-accent text-background border-accent"
                             : "bg-card border-border text-gray-400 hover:text-white hover:border-gray-600"
                         )}
@@ -161,6 +165,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {preset.label}
                       </button>
                     ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-400">Custom:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="600"
+                      value={customSeconds}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomSeconds(val);
+                        if (val && !isNaN(parseInt(val)) && parseInt(val) >= 1) {
+                          setLocalInterval(parseInt(val) * 1000);
+                        }
+                      }}
+                      placeholder="seconds"
+                      className="w-24 px-3 py-2 bg-card border border-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent"
+                    />
+                    <span className="text-sm text-gray-500">seconds</span>
                   </div>
                   <p className="text-xs text-gray-500">
                     Current: {localInterval / 1000} seconds

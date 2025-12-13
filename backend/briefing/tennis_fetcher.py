@@ -106,13 +106,13 @@ class TennisFetcherMixin:
 
         return result
 
-    def fetch_scores(self, sport: str, limit: int = 10) -> List[Dict]:
+    def fetch_scores(self, sport: str, limit: int = 10, date: Optional[str] = None) -> List[Dict]:
         """
         Fetch recent tennis scores using the header API endpoint.
         Falls back to showing upcoming tournaments if no matches available.
         """
         if not (sport.lower().startswith('tennis-') or sport.lower() == 'tennis'):
-            return super().fetch_scores(sport, limit)
+            return super().fetch_scores(sport, limit, date=date)
 
         return self._fetch_tennis_scores_from_header(sport, limit)
 
@@ -139,12 +139,12 @@ class TennisFetcherMixin:
             'state': 'no_live',
         }]
 
-    def fetch_schedule(self, sport: str, limit: int = 10) -> List[Dict]:
+    def fetch_schedule(self, sport: str, limit: int = 10, date: Optional[str] = None) -> List[Dict]:
         """
         Fetch upcoming tennis tournaments when no matches are available.
         """
         if not (sport.lower().startswith('tennis-') or sport.lower() == 'tennis'):
-            return super().fetch_schedule(sport, limit)
+            return super().fetch_schedule(sport, limit, date=date)
 
         league = 'wta' if 'wta' in sport.lower() else 'atp'
         return self._fetch_tennis_upcoming_tournaments(league, limit)
