@@ -110,7 +110,39 @@ export interface BoxScoreData {
   game_status: string;
   linescores: LineScores;
   teams: BoxScoreTeam[];
-  sport?: string;  // 'nba' or 'nfl'
+  sport?: string;  // 'nba', 'nfl', 'mlb', 'soccer', or 'tennis'
+}
+
+// Tennis Match Types
+export interface TennisSetScore {
+  games: number;
+  winner: boolean;
+  tiebreak?: number;
+}
+
+export interface TennisPlayer {
+  name: string;
+  seed?: number;
+  rank?: number;
+  winner: boolean;
+  score: string;  // e.g., "7-5 6-3"
+  sets: TennisSetScore[];
+  country?: string;
+  record?: string;
+}
+
+export interface TennisMatchData {
+  tournament: string;
+  location: string;
+  round: string;
+  competition_type: string;  // "Men's Singles", "Women's Doubles", etc.
+  match_note: string;
+  venue: string;
+  status: string;
+  state: string;
+  completed: boolean;
+  players: TennisPlayer[];
+  sport: 'tennis';
 }
 
 

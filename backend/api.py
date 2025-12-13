@@ -160,7 +160,7 @@ def get_boxscore(sport: str, event_id: str):
     """
     Get detailed box score for a specific game.
     Returns player stats for both teams and period scores.
-    Supports: nba, nfl, mlb, and soccer leagues (epl, laliga, ucl, etc.)
+    Supports: nba, nfl, mlb, soccer leagues, and tennis
     """
     try:
         sport = sport.lower()
@@ -169,10 +169,20 @@ def get_boxscore(sport: str, event_id: str):
         soccer_leagues = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa',
                          'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish',
                          'greek', 'russian', 'turkish', 'austrian', 'soccer']
-        supported_sports = ['nba', 'nfl', 'mlb'] + soccer_leagues
+        tennis_types = ['tennis', 'tennis-atp-singles', 'tennis-atp-doubles',
+                       'tennis-wta-singles', 'tennis-wta-doubles']
+        supported_sports = ['nba', 'nfl', 'mlb'] + soccer_leagues + tennis_types
 
         if sport not in supported_sports:
             raise HTTPException(status_code=400, detail=f"Box score not supported for {sport}")
+
+        # Handle tennis separately - returns different structure
+        if sport in tennis_types:
+            league = 'wta' if 'wta' in sport else 'atp'
+            result = sports_fetcher.fetch_tennis_match_details(league, event_id)
+            if result.get('error'):
+                raise HTTPException(status_code=404, detail=result['error'])
+            return result
 
         # Fetch raw data based on sport type
         if sport == 'nba':

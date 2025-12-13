@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Trophy, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
-import { Game, BoxScoreData, BoxScoreTeam, BoxScorePlayer, NFLStatCategory } from '../types';
+import { Game, BoxScoreData, BoxScoreTeam, BoxScorePlayer, NFLStatCategory, TennisMatchData } from '../types';
 
 interface GameDetailModalProps {
   isOpen: boolean;
@@ -13,13 +13,18 @@ interface GameDetailModalProps {
   sport: string;
 }
 
+// Type guard to check if data is tennis match
+const isTennisMatch = (data: BoxScoreData | TennisMatchData): data is TennisMatchData => {
+  return data.sport === 'tennis';
+};
+
 export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   isOpen,
   onClose,
   game,
   sport,
 }) => {
-  const [boxScore, setBoxScore] = useState<BoxScoreData | null>(null);
+  const [boxScore, setBoxScore] = useState<BoxScoreData | TennisMatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
@@ -40,7 +45,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
       const data = await api.getBoxScore(sport, game.event_id);
       setBoxScore(data);
     } catch (e) {
-      setError('Failed to load box score');
+      setError('Failed to load match details');
       console.error(e);
     } finally {
       setLoading(false);
@@ -404,17 +409,221 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
 
   // Main render function that switches based on sport
   const renderTeamStats = (team: BoxScoreTeam) => {
-    if (boxScore?.sport === 'nfl') {
-      return renderNFLTeamStats(team);
-    }
-    if (boxScore?.sport === 'mlb') {
-      return renderMLBTeamStats(team);
-    }
-    if (boxScore?.sport === 'soccer') {
-      return renderSoccerTeamStats(team);
+    if (boxScore && !isTennisMatch(boxScore)) {
+      if (boxScore.sport === 'nfl') {
+        return renderNFLTeamStats(team);
+      }
+      if (boxScore.sport === 'mlb') {
+        return renderMLBTeamStats(team);
+      }
+      if (boxScore.sport === 'soccer') {
+        return renderSoccerTeamStats(team);
+      }
     }
     return renderNBATeamStats(team);
   };
+
+  // Render tennis match content
+  const renderTennisMatch = (match: TennisMatchData) => {
+    const player1 = match.players[0];
+    const player2 = match.players[1];
+    const numSets = Math.max(player1?.sets.length || 0, player2?.sets.length || 0);
+
+    return (
+      <div className="flex flex-col h-full">
+        {/* Tournament Header */}
+        <div className="text-center px-4 py-3 border-b border-border">
+          <div className="text-accent font-semibold">{match.tournament}</div>
+          <div className="text-sm text-gray-400 flex items-center justify-center gap-2 mt-1">
+            <MapPin size={14} />
+            <span>{match.location}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {match.competition_type} • {match.round}
+          </div>
+          {match.venue && (
+            <div className="text-xs text-gray-500">{match.venue}</div>
+          )}
+        </div>
+
+        {/* Match Score */}
+        <div className="p-4 flex-1 overflow-auto">
+          {/* Status */}
+          <div className="text-center mb-4">
+            <span className={cn(
+              "px-3 py-1 rounded-full text-xs font-medium",
+              match.completed ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"
+            )}>
+              {match.status}
+            </span>
+          </div>
+
+          {/* Set-by-set breakdown table */}
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 px-3 font-medium text-gray-400 min-w-[180px]">Player</th>
+                  {Array.from({ length: numSets }, (_, i) => (
+                    <th key={i} className="text-center py-2 px-3 font-medium text-gray-400 w-16">
+                      Set {i + 1}
+                    </th>
+                  ))}
+                  <th className="text-center py-2 px-3 font-medium text-gray-400 w-16">Sets</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Player 1 */}
+                <tr className={cn("border-b border-border/30", player1?.winner && "bg-accent/5")}>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2">
+                      {player1?.winner && <Trophy size={14} className="text-accent" />}
+                      <div>
+                        <div className="font-medium text-white">{player1?.name || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500">
+                          {player1?.seed && <span className="mr-2">Seed: {player1.seed}</span>}
+                          {player1?.rank && <span>Rank: #{player1.rank}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {Array.from({ length: numSets }, (_, i) => {
+                    const set = player1?.sets[i];
+                    return (
+                      <td key={i} className={cn(
+                        "text-center py-3 px-3 font-mono",
+                        set?.winner ? "text-white font-bold" : "text-gray-400"
+                      )}>
+                        {set ? (
+                          <div>
+                            <span>{set.games}</span>
+                            {set.tiebreak !== undefined && set.tiebreak !== null && (
+                              <sup className="text-xs text-accent ml-0.5">{set.tiebreak}</sup>
+                            )}
+                          </div>
+                        ) : '-'}
+                      </td>
+                    );
+                  })}
+                  <td className="text-center py-3 px-3 text-white font-bold text-lg">
+                    {player1?.sets.filter(s => s.winner).length || 0}
+                  </td>
+                </tr>
+
+                {/* Player 2 */}
+                <tr className={cn(player2?.winner && "bg-accent/5")}>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2">
+                      {player2?.winner && <Trophy size={14} className="text-accent" />}
+                      <div>
+                        <div className="font-medium text-white">{player2?.name || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500">
+                          {player2?.seed && <span className="mr-2">Seed: {player2.seed}</span>}
+                          {player2?.rank && <span>Rank: #{player2.rank}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {Array.from({ length: numSets }, (_, i) => {
+                    const set = player2?.sets[i];
+                    return (
+                      <td key={i} className={cn(
+                        "text-center py-3 px-3 font-mono",
+                        set?.winner ? "text-white font-bold" : "text-gray-400"
+                      )}>
+                        {set ? (
+                          <div>
+                            <span>{set.games}</span>
+                            {set.tiebreak !== undefined && set.tiebreak !== null && (
+                              <sup className="text-xs text-accent ml-0.5">{set.tiebreak}</sup>
+                            )}
+                          </div>
+                        ) : '-'}
+                      </td>
+                    );
+                  })}
+                  <td className="text-center py-3 px-3 text-white font-bold text-lg">
+                    {player2?.sets.filter(s => s.winner).length || 0}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Full Score Display */}
+          <div className="text-center text-gray-400 text-sm mb-4">
+            <div className="font-mono">
+              {player1?.name}: <span className="text-white">{player1?.score || '-'}</span>
+            </div>
+            <div className="font-mono">
+              {player2?.name}: <span className="text-white">{player2?.score || '-'}</span>
+            </div>
+          </div>
+
+          {/* Match Note */}
+          {match.match_note && (
+            <div className="text-center text-xs text-gray-500 italic border-t border-border pt-4">
+              {match.match_note}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Check if this is a tennis match
+  if (boxScore && isTennisMatch(boxScore)) {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={onClose}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl max-h-[90vh] overflow-hidden"
+            >
+              <Card className="flex flex-col h-full max-h-[90vh]">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold text-white">Match Details</span>
+                  </div>
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Content */}
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin text-accent" size={32} />
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-12 text-red-400">{error}</div>
+                ) : (
+                  renderTennisMatch(boxScore)
+                )}
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // Cast boxScore to BoxScoreData for team sports
+  const teamBoxScore = boxScore as BoxScoreData | null;
 
   return (
     <AnimatePresence>
@@ -458,23 +667,23 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               </div>
 
               {/* Game status and period scores */}
-              {boxScore && (
+              {teamBoxScore && (
                 <div className="px-4 py-3 border-b border-border flex-shrink-0">
                   <div className="text-center text-sm text-gray-400 mb-3">
-                    {boxScore.game_status}
+                    {teamBoxScore.game_status}
                   </div>
-                  {boxScore.linescores?.home?.length > 0 && (
+                  {teamBoxScore.linescores?.home?.length > 0 && (
                     <div className="flex justify-center">
                       <table className="text-xs">
                         <thead>
                           <tr className="text-gray-500">
                             <th className="w-24 text-left px-2 py-1"></th>
-                            {boxScore.linescores.home.map((_, i) => {
+                            {teamBoxScore.linescores.home.map((_: number, i: number) => {
                               // Different labels based on sport
                               let label = `${i + 1}`;
-                              if (boxScore.sport === 'soccer') {
+                              if (teamBoxScore.sport === 'soccer') {
                                 label = i === 0 ? '1H' : '2H';
-                              } else if (boxScore.sport === 'mlb') {
+                              } else if (teamBoxScore.sport === 'mlb') {
                                 label = `${i + 1}`;
                               } else {
                                 label = `Q${i + 1}`;
@@ -490,25 +699,25 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                         </thead>
                         <tbody>
                           <tr>
-                            <td className="text-gray-400 text-left px-2 py-1 font-medium">{boxScore.linescores.away_team}</td>
-                            {boxScore.linescores.away.map((score, i) => (
+                            <td className="text-gray-400 text-left px-2 py-1 font-medium">{teamBoxScore.linescores.away_team}</td>
+                            {teamBoxScore.linescores.away.map((score: number, i: number) => (
                               <td key={i} className="text-center px-2 py-1 text-gray-300 bg-background rounded">
                                 {score}
                               </td>
                             ))}
                             <td className="text-center px-2 py-1 text-white font-bold">
-                              {boxScore.linescores.away.reduce((a, b) => a + b, 0)}
+                              {teamBoxScore.linescores.away.reduce((a: number, b: number) => a + b, 0)}
                             </td>
                           </tr>
                           <tr>
-                            <td className="text-gray-400 text-left px-2 py-1 font-medium">{boxScore.linescores.home_team}</td>
-                            {boxScore.linescores.home.map((score, i) => (
+                            <td className="text-gray-400 text-left px-2 py-1 font-medium">{teamBoxScore.linescores.home_team}</td>
+                            {teamBoxScore.linescores.home.map((score: number, i: number) => (
                               <td key={i} className="text-center px-2 py-1 text-gray-300 bg-background rounded">
                                 {score}
                               </td>
                             ))}
                             <td className="text-center px-2 py-1 text-white font-bold">
-                              {boxScore.linescores.home.reduce((a, b) => a + b, 0)}
+                              {teamBoxScore.linescores.home.reduce((a: number, b: number) => a + b, 0)}
                             </td>
                           </tr>
                         </tbody>
@@ -519,9 +728,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               )}
 
               {/* Team selector tabs */}
-              {boxScore && boxScore.teams.length > 0 && (
+              {teamBoxScore && teamBoxScore.teams.length > 0 && (
                 <div className="flex gap-2 p-4 flex-shrink-0">
-                  {boxScore.teams.map((team, index) => (
+                  {teamBoxScore.teams.map((team: BoxScoreTeam, index: number) => (
                     <button
                       key={team.team_id}
                       onClick={() => setSelectedTeamIndex(index)}
@@ -547,8 +756,8 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                   </div>
                 ) : error ? (
                   <div className="text-center py-12 text-red-400">{error}</div>
-                ) : boxScore && boxScore.teams[selectedTeamIndex] ? (
-                  renderTeamStats(boxScore.teams[selectedTeamIndex])
+                ) : teamBoxScore && teamBoxScore.teams[selectedTeamIndex] ? (
+                  renderTeamStats(teamBoxScore.teams[selectedTeamIndex])
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     No box score data available

@@ -3,12 +3,105 @@ Tennis specific fetcher logic using the header API for match data.
 """
 
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 
 
 class TennisFetcherMixin:
     """Mixin for Tennis specific fetcher logic using header API."""
+
+    def fetch_tennis_match_details(self, league: str, event_id: str) -> Dict:
+        """
+        Fetch detailed tennis match info from the header API.
+
+        Args:
+            league: 'atp' or 'wta'
+            event_id: ESPN event ID
+
+        Returns:
+            Match details including set-by-set breakdown
+        """
+        url = f"https://site.api.espn.com/apis/v2/scoreboard/header?sport=tennis&league={league}"
+
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+
+            # Find the matching event
+            sports = data.get('sports', [])
+            for sport_data in sports:
+                for league_data in sport_data.get('leagues', []):
+                    events = league_data.get('events', [])
+                    for event in events:
+                        if str(event.get('id')) == str(event_id) or str(event.get('competitionId')) == str(event_id):
+                            return self._parse_tennis_match(event)
+
+            return {"error": "Match not found"}
+
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _parse_tennis_match(self, event: Dict) -> Dict:
+        """Parse tennis event into detailed match data."""
+        competitors = event.get('competitors', [])
+        if len(competitors) < 2:
+            return {"error": "Invalid match data"}
+
+        # Parse both players/teams
+        players = []
+        for c in competitors:
+            linescores = c.get('linescores', [])
+            sets = []
+            for i, ls in enumerate(linescores):
+                set_data = {
+                    "games": int(ls.get('displayValue', 0)),
+                    "winner": ls.get('winner', False),
+                    "tiebreak": ls.get('tiebreak')
+                }
+                sets.append(set_data)
+
+            player_data = {
+                "name": c.get('displayName', 'Unknown'),
+                "seed": c.get('tournamentSeed'),
+                "rank": c.get('rank'),
+                "winner": c.get('winner', False),
+                "score": c.get('score', ''),
+                "sets": sets,
+                "country": c.get('name', ''),  # Sometimes has country code
+            }
+
+            # Get record if available
+            records = c.get('records', [])
+            if records:
+                player_data['record'] = records[0].get('displayValue', '')
+
+            players.append(player_data)
+
+        # Parse match notes for additional info
+        notes = event.get('notes', [])
+        match_note = notes[0].get('text', '') if notes else ''
+        venue = notes[0].get('type', '') if notes else ''
+
+        # Get status
+        full_status = event.get('fullStatus', {})
+        status_type = full_status.get('type', {})
+
+        result = {
+            "tournament": event.get('name', ''),
+            "location": event.get('location', ''),
+            "round": event.get('summary', ''),
+            "competition_type": event.get('competitionType', {}).get('text', 'Singles'),
+            "match_note": match_note,
+            "venue": venue,
+            "status": status_type.get('description', 'Unknown'),
+            "state": status_type.get('state', 'unknown'),
+            "completed": status_type.get('completed', False),
+            "players": players,
+            "sport": "tennis"
+        }
+
+        return result
 
     def fetch_scores(self, sport: str, limit: int = 10) -> List[Dict]:
         """

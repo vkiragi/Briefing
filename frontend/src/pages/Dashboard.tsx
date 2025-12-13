@@ -597,8 +597,11 @@ export const Dashboard = () => {
               // Sports with box score support
               const soccerLeagues = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa',
                 'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian', 'soccer'];
-              const boxScoreSports = ['nba', 'nfl', 'mlb', ...soccerLeagues];
-              const isClickable = boxScoreSports.includes(sport) && game.event_id;
+              const tennisTypes = ['tennis', 'tennis-atp-singles', 'tennis-atp-doubles', 'tennis-wta-singles', 'tennis-wta-doubles'];
+              const boxScoreSports = ['nba', 'nfl', 'mlb', ...soccerLeagues, ...tennisTypes];
+              // For tennis, only clickable if it's a match (not a tournament placeholder)
+              const isTennisActualMatch = tennisTypes.includes(sport) && game.match_type !== 'tournament';
+              const isClickable = boxScoreSports.includes(sport) && game.event_id && (tennisTypes.includes(sport) ? isTennisActualMatch : true);
               return (
                 <div
                   key={i}
