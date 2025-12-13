@@ -28,13 +28,16 @@ class TennisFetcherMixin:
             response.raise_for_status()
             data = response.json()
 
-            # Find the matching event
+            # Find the matching event - prioritize competitionId for unique match identification
             sports = data.get('sports', [])
             for sport_data in sports:
                 for league_data in sport_data.get('leagues', []):
                     events = league_data.get('events', [])
                     for event in events:
-                        if str(event.get('id')) == str(event_id) or str(event.get('competitionId')) == str(event_id):
+                        # Check competitionId first (unique per match), then fall back to id (tournament-level)
+                        comp_id = str(event.get('competitionId', ''))
+                        evt_id = str(event.get('id', ''))
+                        if comp_id == str(event_id) or evt_id == str(event_id):
                             return self._parse_tennis_match(event)
 
             return {"error": "Match not found"}
@@ -245,9 +248,13 @@ class TennisFetcherMixin:
                             'away_winner': away_winner,
                         }
 
-                        # Add event ID if available
+                        # Add event ID if available - use competitionId for unique match identification
+                        # competitionId is unique per match, while id is shared across tournament
+                        competition_id = event.get('competitionId')
                         event_id = event.get('id')
-                        if event_id:
+                        if competition_id:
+                            game_info['event_id'] = str(competition_id)
+                        elif event_id:
                             game_info['event_id'] = str(event_id)
 
                         games.append(game_info)

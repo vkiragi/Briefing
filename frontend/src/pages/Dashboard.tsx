@@ -481,7 +481,7 @@ export const Dashboard = () => {
           ) : games.length > 0 ? (
             games.map((game, i) => {
               const isLive = game.state === 'in';
-              const isTennis = sport === 'tennis';
+              const isTennis = sport.startsWith('tennis');
               const showTournament = isTennis && game.tournament && game.match_type !== 'tournament';
               const isTennisMatch = isTennis && game.match_type !== 'tournament';
               const isTennisTournament = isTennis && game.match_type === 'tournament';
@@ -515,12 +515,20 @@ export const Dashboard = () => {
 
               // For tennis matches, render a special layout
               if (isTennisMatch) {
+                const tennisClickable = game.event_id;
                 return (
                   <div
                     key={i}
+                    onClick={() => {
+                      if (tennisClickable) {
+                        setSelectedGame(game);
+                        setSelectedSport(sport);
+                      }
+                    }}
                     className={cn(
                       "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
-                      isCompact ? "p-2" : "p-4"
+                      isCompact ? "p-2" : "p-4",
+                      tennisClickable && "cursor-pointer hover:border-accent/50"
                     )}
                   >
                     {/* Tournament name */}
