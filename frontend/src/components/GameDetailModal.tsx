@@ -225,10 +225,193 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     );
   };
 
+  // Render MLB team stats (batting and pitching categories)
+  const renderMLBTeamStats = (team: BoxScoreTeam) => {
+    if (!team.categories || team.categories.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          No stats available for this team
+        </div>
+      );
+    }
+
+    // Order: batting first, then pitching
+    const categoryOrder = ['batting', 'pitching'];
+    const sortedCategories = [...team.categories].sort((a, b) => {
+      const aIdx = categoryOrder.indexOf(a.name);
+      const bIdx = categoryOrder.indexOf(b.name);
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    });
+
+    const formatMLBCategoryName = (name: string) => {
+      const names: Record<string, string> = {
+        batting: 'Batting',
+        pitching: 'Pitching',
+      };
+      return names[name] || name.charAt(0).toUpperCase() + name.slice(1);
+    };
+
+    return (
+      <div className="space-y-2">
+        {sortedCategories.map(category => (
+          <div key={category.name} className="mb-6">
+            <h4 className="text-sm font-bold text-accent uppercase tracking-wider mb-2 px-2">
+              {formatMLBCategoryName(category.name)}
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-2 font-medium text-gray-400 sticky left-0 bg-card min-w-[140px]">Player</th>
+                    {category.labels.map((label, idx) => (
+                      <th key={idx} className="text-center py-2 px-2 font-medium text-gray-400 min-w-[45px]">
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {category.players.map((player) => (
+                    <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
+                      <td className="py-2 px-2 sticky left-0 bg-card">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
+                          <span className="font-medium text-white">{player.name}</span>
+                          <span className="text-gray-500 text-xs">{player.position}</span>
+                        </div>
+                      </td>
+                      {Array.isArray(player.stats) ? (
+                        player.stats.map((stat, idx) => (
+                          <td key={idx} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
+                            {stat ?? '-'}
+                          </td>
+                        ))
+                      ) : (
+                        category.labels.map((label, idx) => (
+                          <td key={idx} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
+                            {(player.stats as Record<string, string>)[label] ?? '-'}
+                          </td>
+                        ))
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Soccer stat columns to display
+  const soccerStatColumns = ['G', 'A', 'SH', 'ST', 'FC', 'FA', 'YC', 'RC'];
+  const soccerStatLabels: Record<string, string> = {
+    'G': 'Goals',
+    'A': 'Assists',
+    'SH': 'Shots',
+    'ST': 'On Target',
+    'FC': 'Fouls',
+    'FA': 'Fouled',
+    'YC': 'Yellow',
+    'RC': 'Red',
+  };
+
+  // Render Soccer team stats
+  const renderSoccerTeamStats = (team: BoxScoreTeam) => {
+    const starters = team.players.filter(p => p.starter);
+    const bench = team.players.filter(p => !p.starter);
+
+    return (
+      <div>
+        {team.formation && (
+          <div className="text-center text-sm text-accent mb-3">
+            Formation: {team.formation}
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 px-2 font-medium text-gray-400 sticky left-0 bg-card min-w-[160px]">Player</th>
+                {soccerStatColumns.map(col => (
+                  <th key={col} className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title={soccerStatLabels[col]}>
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Starting XI */}
+              {starters.length > 0 && (
+                <>
+                  <tr className="bg-accent/5">
+                    <td colSpan={soccerStatColumns.length + 1} className="py-1 px-2 text-xs font-bold text-accent uppercase tracking-wider">
+                      Starting XI
+                    </td>
+                  </tr>
+                  {starters.map(player => (
+                    <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
+                      <td className="py-2 px-2 sticky left-0 bg-card">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
+                          <span className="font-medium text-white">{player.name}</span>
+                          <span className="text-gray-500 text-xs">{player.position}</span>
+                        </div>
+                      </td>
+                      {soccerStatColumns.map(col => (
+                        <td key={col} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
+                          {!Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </>
+              )}
+
+              {/* Substitutes */}
+              {bench.length > 0 && (
+                <>
+                  <tr className="bg-gray-800/30">
+                    <td colSpan={soccerStatColumns.length + 1} className="py-1 px-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Substitutes
+                    </td>
+                  </tr>
+                  {bench.map(player => (
+                    <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
+                      <td className="py-2 px-2 sticky left-0 bg-card">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
+                          <span className="font-medium text-white">{player.name}</span>
+                          <span className="text-gray-500 text-xs">{player.position}</span>
+                        </div>
+                      </td>
+                      {soccerStatColumns.map(col => (
+                        <td key={col} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
+                          {!Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   // Main render function that switches based on sport
   const renderTeamStats = (team: BoxScoreTeam) => {
     if (boxScore?.sport === 'nfl') {
       return renderNFLTeamStats(team);
+    }
+    if (boxScore?.sport === 'mlb') {
+      return renderMLBTeamStats(team);
+    }
+    if (boxScore?.sport === 'soccer') {
+      return renderSoccerTeamStats(team);
     }
     return renderNBATeamStats(team);
   };
@@ -274,7 +457,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 </button>
               </div>
 
-              {/* Game status and quarter scores */}
+              {/* Game status and period scores */}
               {boxScore && (
                 <div className="px-4 py-3 border-b border-border flex-shrink-0">
                   <div className="text-center text-sm text-gray-400 mb-3">
@@ -286,11 +469,22 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                         <thead>
                           <tr className="text-gray-500">
                             <th className="w-24 text-left px-2 py-1"></th>
-                            {boxScore.linescores.home.map((_, i) => (
-                              <th key={i} className="w-10 text-center px-2 py-1 font-medium">
-                                {sport === 'nba' ? `Q${i + 1}` : `Q${i + 1}`}
-                              </th>
-                            ))}
+                            {boxScore.linescores.home.map((_, i) => {
+                              // Different labels based on sport
+                              let label = `${i + 1}`;
+                              if (boxScore.sport === 'soccer') {
+                                label = i === 0 ? '1H' : '2H';
+                              } else if (boxScore.sport === 'mlb') {
+                                label = `${i + 1}`;
+                              } else {
+                                label = `Q${i + 1}`;
+                              }
+                              return (
+                                <th key={i} className="w-10 text-center px-2 py-1 font-medium">
+                                  {label}
+                                </th>
+                              );
+                            })}
                             <th className="w-10 text-center px-2 py-1 font-bold text-gray-400">T</th>
                           </tr>
                         </thead>

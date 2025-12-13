@@ -594,7 +594,11 @@ export const Dashboard = () => {
               }
 
               // Standard layout for other sports
-              const isClickable = (sport === 'nba' || sport === 'nfl') && game.event_id;
+              // Sports with box score support
+              const soccerLeagues = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa',
+                'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian', 'soccer'];
+              const boxScoreSports = ['nba', 'nfl', 'mlb', ...soccerLeagues];
+              const isClickable = boxScoreSports.includes(sport) && game.event_id;
               return (
                 <div
                   key={i}

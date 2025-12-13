@@ -93,8 +93,9 @@ export interface BoxScoreTeam {
   team_name: string;
   team_abbrev: string;
   logo: string;
-  players: BoxScorePlayer[];  // Used for NBA
-  categories?: NFLStatCategory[];  // Used for NFL
+  players: BoxScorePlayer[];  // Used for NBA and Soccer
+  categories?: NFLStatCategory[];  // Used for NFL and MLB
+  formation?: string;  // Used for Soccer
 }
 
 export interface LineScores {

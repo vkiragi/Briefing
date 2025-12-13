@@ -159,17 +159,35 @@ def get_sports_news(sport: str, limit: int = 10):
 def get_boxscore(sport: str, event_id: str):
     """
     Get detailed box score for a specific game.
-    Returns player stats for both teams and quarter scores.
+    Returns player stats for both teams and period scores.
+    Supports: nba, nfl, mlb, and soccer leagues (epl, laliga, ucl, etc.)
     """
     try:
         sport = sport.lower()
-        if sport not in ['nba', 'nfl']:
+
+        # List of supported sports
+        soccer_leagues = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa',
+                         'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish',
+                         'greek', 'russian', 'turkish', 'austrian', 'soccer']
+        supported_sports = ['nba', 'nfl', 'mlb'] + soccer_leagues
+
+        if sport not in supported_sports:
             raise HTTPException(status_code=400, detail=f"Box score not supported for {sport}")
 
+        # Fetch raw data based on sport type
         if sport == 'nba':
             raw_data = sports_fetcher.fetch_nba_game_player_stats(event_id)
-        else:  # nfl
+        elif sport == 'nfl':
             raw_data = sports_fetcher.fetch_nfl_game_player_stats(event_id)
+        elif sport == 'mlb':
+            raw_data = sports_fetcher.fetch_mlb_game_player_stats(event_id)
+        elif sport in soccer_leagues:
+            raw_data = sports_fetcher.fetch_soccer_game_stats(sport, event_id)
+        else:
+            raise HTTPException(status_code=400, detail=f"Box score not supported for {sport}")
+
+        # Determine sport type for frontend rendering
+        sport_type = 'soccer' if sport in soccer_leagues else sport
 
         # Transform raw ESPN data into frontend-friendly format
         result = {
@@ -177,9 +195,104 @@ def get_boxscore(sport: str, event_id: str):
             "game_status": raw_data.get("_game_status_detail", ""),
             "linescores": raw_data.get("_linescores", {}),
             "teams": [],
-            "sport": sport  # Include sport type for frontend to use appropriate columns
+            "sport": sport_type  # Normalized sport type for frontend
         }
 
+        # Handle soccer separately (uses rosters instead of boxscore.players)
+        if sport_type == 'soccer':
+            rosters = raw_data.get("rosters", [])
+            for roster in rosters:
+                team_info = roster.get("team", {})
+                team_data = {
+                    "team_id": team_info.get("id", ""),
+                    "team_name": team_info.get("displayName", "Unknown"),
+                    "team_abbrev": team_info.get("abbreviation", ""),
+                    "logo": team_info.get("logo", ""),
+                    "formation": roster.get("formation", ""),
+                    "players": [],
+                    "categories": []
+                }
+
+                players = roster.get("roster", [])
+                for player in players:
+                    athlete = player.get("athlete", {})
+                    position = player.get("position", {})
+                    stats_list = player.get("stats", [])
+
+                    # Convert stats array to dict with abbreviation as key
+                    stats_dict = {}
+                    for stat in stats_list:
+                        abbrev = stat.get("abbreviation", stat.get("shortDisplayName", ""))
+                        value = stat.get("displayValue", stat.get("value", "0"))
+                        if abbrev:
+                            stats_dict[abbrev] = value
+
+                    player_data = {
+                        "id": athlete.get("id", ""),
+                        "name": athlete.get("displayName", "Unknown"),
+                        "position": position.get("abbreviation", "") if isinstance(position, dict) else "",
+                        "jersey": player.get("jersey", ""),
+                        "starter": player.get("starter", False),
+                        "stats": stats_dict
+                    }
+                    team_data["players"].append(player_data)
+
+                result["teams"].append(team_data)
+            return result
+
+        # Handle MLB (has batting and pitching categories)
+        if sport_type == 'mlb':
+            box = raw_data.get("boxscore", {})
+            players_by_team = box.get("players", [])
+
+            for team_block in players_by_team:
+                team_info = team_block.get("team", {})
+                team_data = {
+                    "team_id": team_info.get("id", ""),
+                    "team_name": team_info.get("displayName", "Unknown"),
+                    "team_abbrev": team_info.get("abbreviation", ""),
+                    "logo": team_info.get("logo", ""),
+                    "players": [],
+                    "categories": []
+                }
+
+                for cat in team_block.get("statistics", []):
+                    col_labels = cat.get("labels", [])
+                    col_keys = cat.get("keys", [])
+
+                    # Determine category type from keys
+                    is_batting = "atBats" in col_keys or "plateAppearances" in col_keys or "AB" in col_labels
+                    is_pitching = "inningsPitched" in col_keys or "fullInnings.partInnings" in col_keys or "IP" in col_labels
+
+                    cat_name = "batting" if is_batting else ("pitching" if is_pitching else "other")
+
+                    category_data = {
+                        "name": cat_name,
+                        "labels": col_labels,
+                        "players": []
+                    }
+
+                    for athlete_stat in cat.get("athletes", []):
+                        athlete = athlete_stat.get("athlete", {})
+                        stats_values = athlete_stat.get("stats", [])
+
+                        player_data = {
+                            "id": athlete.get("id", ""),
+                            "name": athlete.get("displayName", "Unknown"),
+                            "position": athlete.get("position", {}).get("abbreviation", "") if isinstance(athlete.get("position"), dict) else "",
+                            "jersey": athlete.get("jersey", ""),
+                            "starter": athlete_stat.get("starter", False),
+                            "stats": stats_values
+                        }
+                        category_data["players"].append(player_data)
+
+                    if category_data["players"]:
+                        team_data["categories"].append(category_data)
+
+                result["teams"].append(team_data)
+            return result
+
+        # Handle NFL and NBA
         box = raw_data.get("boxscore", {})
         players_by_team = box.get("players", [])
 
@@ -191,17 +304,16 @@ def get_boxscore(sport: str, event_id: str):
                 "team_abbrev": team_info.get("abbreviation", ""),
                 "logo": team_info.get("logo", ""),
                 "players": [],
-                "categories": []  # NFL has multiple stat categories (passing, rushing, receiving, etc.)
+                "categories": []
             }
 
-            # Get player stats from statistics block
             for cat in team_block.get("statistics", []):
-                cat_name = cat.get("name", "")  # e.g., 'passing', 'rushing', 'receiving'
-                col_names = cat.get("names", [])  # Column headers
-                col_labels = cat.get("labels", [])  # Display labels (e.g., 'C/ATT', 'YDS', 'TD')
+                cat_name = cat.get("name", "")
+                col_names = cat.get("names", [])
+                col_labels = cat.get("labels", [])
 
                 # For NFL, track categories with their players
-                if sport == 'nfl' and cat_name:
+                if sport_type == 'nfl' and cat_name:
                     category_data = {
                         "name": cat_name,
                         "labels": col_labels if col_labels else col_names,
@@ -218,7 +330,7 @@ def get_boxscore(sport: str, event_id: str):
                             "position": athlete.get("position", {}).get("abbreviation", "") if isinstance(athlete.get("position"), dict) else "",
                             "jersey": athlete.get("jersey", ""),
                             "starter": athlete_stat.get("starter", False),
-                            "stats": stats_values  # For NFL, keep as array to match labels
+                            "stats": stats_values
                         }
                         category_data["players"].append(player_data)
 
@@ -239,7 +351,6 @@ def get_boxscore(sport: str, event_id: str):
                             "stats": {}
                         }
 
-                        # Map stat values to column names
                         for i, col in enumerate(col_names):
                             if i < len(stats_values):
                                 player_data["stats"][col] = stats_values[i]
