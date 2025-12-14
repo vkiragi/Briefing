@@ -204,7 +204,7 @@ def get_boxscore(sport: str, event_id: str):
                          'greek', 'russian', 'turkish', 'austrian', 'soccer']
         tennis_types = ['tennis', 'tennis-atp-singles', 'tennis-atp-doubles',
                        'tennis-wta-singles', 'tennis-wta-doubles']
-        supported_sports = ['nba', 'nfl', 'mlb'] + soccer_leagues + tennis_types
+        supported_sports = ['nba', 'nfl', 'mlb', 'ncaab', 'ncaaf'] + soccer_leagues + tennis_types
 
         if sport not in supported_sports:
             raise HTTPException(status_code=400, detail=f"Box score not supported for {sport}")
@@ -220,8 +220,14 @@ def get_boxscore(sport: str, event_id: str):
         # Fetch raw data based on sport type
         if sport == 'nba':
             raw_data = sports_fetcher.fetch_nba_game_player_stats(event_id)
+        elif sport == 'ncaab':
+            # NCAA Basketball uses same format as NBA
+            raw_data = sports_fetcher._fetch_game_summary('ncaab', event_id)
         elif sport == 'nfl':
             raw_data = sports_fetcher.fetch_nfl_game_player_stats(event_id)
+        elif sport == 'ncaaf':
+            # NCAA Football uses same format as NFL
+            raw_data = sports_fetcher._fetch_game_summary('ncaaf', event_id)
         elif sport == 'mlb':
             raw_data = sports_fetcher.fetch_mlb_game_player_stats(event_id)
         elif sport in soccer_leagues:
@@ -230,7 +236,15 @@ def get_boxscore(sport: str, event_id: str):
             raise HTTPException(status_code=400, detail=f"Box score not supported for {sport}")
 
         # Determine sport type for frontend rendering
-        sport_type = 'soccer' if sport in soccer_leagues else sport
+        # Map NCAA sports to their pro counterpart format for consistent rendering
+        if sport in soccer_leagues:
+            sport_type = 'soccer'
+        elif sport == 'ncaab':
+            sport_type = 'ncaab'  # Frontend will render like NBA
+        elif sport == 'ncaaf':
+            sport_type = 'ncaaf'  # Frontend will render like NFL
+        else:
+            sport_type = sport
 
         # Transform raw ESPN data into frontend-friendly format
         result = {

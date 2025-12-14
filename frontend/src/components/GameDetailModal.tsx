@@ -482,7 +482,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   // Main render function that switches based on sport
   const renderTeamStats = (team: BoxScoreTeam) => {
     if (boxScore && !isTennisMatch(boxScore)) {
-      if (boxScore.sport === 'nfl') {
+      if (boxScore.sport === 'nfl' || boxScore.sport === 'ncaaf') {
         return renderNFLTeamStats(team);
       }
       if (boxScore.sport === 'mlb') {
@@ -490,6 +490,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
       }
       if (boxScore.sport === 'soccer') {
         return renderSoccerTeamStats(team);
+      }
+      if (boxScore.sport === 'nba' || boxScore.sport === 'ncaab') {
+        return renderNBATeamStats(team);
       }
     }
     return renderNBATeamStats(team);
@@ -757,6 +760,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                 label = i === 0 ? '1H' : '2H';
                               } else if (teamBoxScore.sport === 'mlb') {
                                 label = `${i + 1}`;
+                              } else if (teamBoxScore.sport === 'nba' || teamBoxScore.sport === 'ncaab' ||
+                                         teamBoxScore.sport === 'nfl' || teamBoxScore.sport === 'ncaaf') {
+                                label = `Q${i + 1}`;
                               } else {
                                 label = `Q${i + 1}`;
                               }

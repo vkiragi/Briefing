@@ -128,7 +128,7 @@ export interface BoxScoreData {
   game_status: string;
   linescores: LineScores;
   teams: BoxScoreTeam[];
-  sport?: string;  // 'nba', 'nfl', 'mlb', 'soccer', or 'tennis'
+  sport?: string;  // 'nba', 'nfl', 'mlb', 'soccer', 'tennis', 'ncaab', or 'ncaaf'
 }
 
 // Tennis Match Types
