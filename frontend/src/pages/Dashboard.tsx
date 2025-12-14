@@ -902,10 +902,10 @@ export const Dashboard = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="px-2 md:px-4 py-2 md:py-4 max-w-[2400px] mx-auto space-y-6"
+      className="px-2 md:px-4 pt-6 md:pt-8 pb-2 md:pb-4 max-w-[2400px] mx-auto space-y-6"
     >
       {/* Header with inline stats */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-2 md:p-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-white">
           Your <span className="text-accent">Briefing</span>
         </h1>
@@ -932,22 +932,20 @@ export const Dashboard = () => {
       {/* Pending Bets Section - Now Primary */}
       {pendingBets.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold tracking-tight">Pending Bets</h2>
-              <button
-                onClick={refreshPropsData}
-                className="text-sm text-accent hover:underline"
-              >
-                Refresh
-              </button>
-              {lastUpdated && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Clock size={12} />
-                  <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-lg font-semibold tracking-tight">Pending Bets</h2>
+            <button
+              onClick={refreshPropsData}
+              className="text-sm text-accent hover:underline"
+            >
+              Refresh
+            </button>
+            {lastUpdated && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Clock size={12} />
+                <span>Updated {lastUpdated.toLocaleTimeString()}</span>
+              </div>
+            )}
             <button
               onClick={() => clearPendingBets(enrichedPendingBets)}
               disabled={!canResolveAll}
@@ -963,7 +961,7 @@ export const Dashboard = () => {
               <span>Resolve All</span>
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={cn("grid gap-4", pendingBets.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}>
             <AnimatePresence mode="popLayout">
                 {pendingBets.map(bet => {
                   // For parlays, apply updated legs data from parlay refresh

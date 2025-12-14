@@ -188,7 +188,7 @@ const GameGroup: React.FC<GameGroupProps> = ({ legs, matchup }) => {
   const lastPlay = firstLeg.last_play;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* Shared Live Situation for the game */}
       <AnimatePresence>
         {isLive && (lastPlay || liveSituation) && (
@@ -198,8 +198,8 @@ const GameGroup: React.FC<GameGroupProps> = ({ legs, matchup }) => {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="bg-gradient-to-r from-gray-800/80 to-gray-900/50 rounded-lg p-3 mb-2">
-              <div className="flex items-start gap-3">
+            <div className="bg-gradient-to-r from-gray-800/80 to-gray-900/50 rounded-lg px-3 py-3">
+              <div className="flex items-center gap-3">
                 {/* Away team logo */}
                 {liveSituation?.away_logo && (
                   <img
@@ -211,20 +211,18 @@ const GameGroup: React.FC<GameGroupProps> = ({ legs, matchup }) => {
 
                 <div className="flex-1 min-w-0">
                   {/* Matchup */}
-                  <div className="text-xs text-gray-400 mb-1">{matchup}</div>
+                  <div className="text-xs text-gray-400 leading-tight">{matchup}</div>
 
                   {/* Clock and period */}
                   {liveSituation?.display_clock && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-gray-300 font-medium">
-                        {liveSituation.display_clock} - {
-                          liveSituation.period === 1 ? '1st' :
-                          liveSituation.period === 2 ? '2nd' :
-                          liveSituation.period === 3 ? '3rd' :
-                          liveSituation.period === 4 ? '4th' :
-                          `${liveSituation.period}th`
-                        } Quarter
-                      </span>
+                    <div className="text-xs text-gray-300 font-medium leading-tight">
+                      {liveSituation.display_clock} - {
+                        liveSituation.period === 1 ? '1st' :
+                        liveSituation.period === 2 ? '2nd' :
+                        liveSituation.period === 3 ? '3rd' :
+                        liveSituation.period === 4 ? '4th' :
+                        `${liveSituation.period}th`
+                      } Quarter
                     </div>
                   )}
 
@@ -235,7 +233,7 @@ const GameGroup: React.FC<GameGroupProps> = ({ legs, matchup }) => {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="text-sm text-white leading-relaxed"
+                      className="text-sm text-white mt-1 leading-tight"
                     >
                       {lastPlay}
                     </motion.p>
@@ -491,7 +489,7 @@ export const ParlayTracker: React.FC<ParlayTrackerProps> = ({ bet }) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-4">
+            <div className="px-4 pb-4 space-y-3">
               {(() => {
                 // Group legs by event_id
                 const groupedLegs = legs.reduce((groups, leg, index) => {
