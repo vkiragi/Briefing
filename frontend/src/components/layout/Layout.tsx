@@ -114,19 +114,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               )}
             >
               {item.isPrimary ? (
-                <div className="flex flex-col items-center justify-center transition-all duration-300 mt-2">
-                  <div className={cn(
-                    "bg-blue-500/10 p-2.5 rounded-full transition-all duration-300 mb-1",
-                    location.pathname === item.path
-                      ? "shadow-[0_2px_6px_rgba(59,130,246,0.25)]"
-                      : ""
-                  )}>
-                    <item.icon size={24} className="text-blue-500" />
-                  </div>
-                  <span className={cn(
-                    "text-[10px] font-medium",
-                    location.pathname === item.path ? "text-accent" : "text-gray-400"
-                  )}>{item.label}</span>
+                <div className={cn(
+                  "flex flex-col items-center justify-center transition-all duration-300",
+                  location.pathname === item.path
+                    ? "shadow-[0_2px_8px_rgba(59,130,246,0.2)]"
+                    : ""
+                )}>
+                  <item.icon size={22} className="mb-1 text-blue-500" />
+                  <span className="text-[10px] font-medium">{item.label}</span>
                 </div>
               ) : (
                 <div className={cn(
