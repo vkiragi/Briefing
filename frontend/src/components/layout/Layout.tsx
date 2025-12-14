@@ -20,7 +20,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-white pb-20 md:pb-0">
+    <div className="min-h-screen bg-background text-white">
       {/* Desktop Sidebar */}
       <nav className="hidden md:flex fixed left-0 top-0 bottom-0 w-24 flex-col items-center py-8 bg-card border-r border-border z-50">
         <div className="mb-8 font-bold text-accent text-xl">BSB</div>
@@ -95,7 +95,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </nav>
 
       {/* Main Content */}
-      <main className="w-full min-h-screen md:pl-36 md:pr-12 relative">
+      <main className="w-full min-h-screen pb-32 md:pb-0 md:pl-36 md:pr-12 relative">
         {children}
       </main>
 
@@ -114,14 +114,20 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               )}
             >
               {item.isPrimary ? (
-                 <div className={cn(
-                   "bg-blue-500/10 p-3 rounded-full -mt-6 border-4 border-background transition-all duration-300",
-                   location.pathname === item.path
-                     ? "shadow-[0_12px_36px_rgba(59,130,246,0.45),0_6px_18px_rgba(0,0,0,0.65),0_0_48px_rgba(59,130,246,0.35)] scale-110"
-                     : "shadow-[0_8px_24px_rgba(59,130,246,0.35),0_4px_12px_rgba(0,0,0,0.55),0_0_36px_rgba(59,130,246,0.25)] hover:shadow-[0_10px_32px_rgba(59,130,246,0.4),0_5px_16px_rgba(0,0,0,0.6),0_0_44px_rgba(59,130,246,0.3)] hover:scale-105"
-                 )}>
-                    <item.icon size={28} className="text-blue-500" />
-                 </div>
+                <div className="flex flex-col items-center justify-center transition-all duration-300 mt-2">
+                  <div className={cn(
+                    "bg-blue-500/10 p-2.5 rounded-full transition-all duration-300 mb-1",
+                    location.pathname === item.path
+                      ? "shadow-[0_2px_6px_rgba(59,130,246,0.25)]"
+                      : ""
+                  )}>
+                    <item.icon size={24} className="text-blue-500" />
+                  </div>
+                  <span className={cn(
+                    "text-[10px] font-medium",
+                    location.pathname === item.path ? "text-accent" : "text-gray-400"
+                  )}>{item.label}</span>
+                </div>
               ) : (
                 <div className={cn(
                   "flex flex-col items-center justify-center transition-all duration-300",
