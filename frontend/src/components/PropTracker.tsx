@@ -430,6 +430,93 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
         </div>
       )}
 
+      {/* Live Situation - ESPN-style display for live games */}
+      <AnimatePresence>
+        {isLive && (bet.last_play || bet.live_situation) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3 pt-3 border-t border-border/30"
+          >
+            <div className="bg-gradient-to-r from-gray-800/80 to-gray-900/50 rounded-lg p-3 -mx-1">
+              {/* Top row: Logo, Clock/Period, Play text */}
+              <div className="flex items-start gap-3">
+                {/* Away team logo */}
+                {bet.live_situation?.away_logo && (
+                  <img
+                    src={bet.live_situation.away_logo}
+                    alt={bet.live_situation.away_abbrev || 'Away'}
+                    className="w-8 h-8 object-contain shrink-0"
+                  />
+                )}
+
+                <div className="flex-1 min-w-0">
+                  {/* Clock and period */}
+                  {bet.live_situation?.display_clock && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-gray-400 font-medium">
+                        {bet.live_situation.display_clock} - {
+                          bet.live_situation.period === 1 ? '1st' :
+                          bet.live_situation.period === 2 ? '2nd' :
+                          bet.live_situation.period === 3 ? '3rd' :
+                          bet.live_situation.period === 4 ? '4th' :
+                          `${bet.live_situation.period}th`
+                        } Quarter
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Play description */}
+                  {bet.last_play && (
+                    <motion.p
+                      key={bet.last_play}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-sm text-white leading-relaxed"
+                    >
+                      {bet.last_play}
+                    </motion.p>
+                  )}
+                </div>
+
+                {/* Right side: Win % and Score */}
+                <div className="shrink-0 text-right">
+                  {/* Win probability */}
+                  {bet.live_situation?.home_win_pct !== undefined && (
+                    <div className="flex items-center gap-1.5 justify-end mb-1">
+                      <span className="text-[10px] text-gray-500 uppercase">Win %</span>
+                      {bet.live_situation.home_logo && (
+                        <img
+                          src={bet.live_situation.home_win_pct >= 50 ? bet.live_situation.home_logo : bet.live_situation.away_logo}
+                          alt="Leading"
+                          className="w-4 h-4 object-contain"
+                        />
+                      )}
+                      <span className="text-sm font-bold text-white">
+                        {bet.live_situation.home_win_pct >= 50
+                          ? bet.live_situation.home_win_pct.toFixed(1)
+                          : (100 - bet.live_situation.home_win_pct).toFixed(1)
+                        }
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Score */}
+                  {bet.live_situation?.away_score && bet.live_situation?.home_score && (
+                    <div className="text-lg font-bold font-mono text-white">
+                      {bet.live_situation.away_score}-{bet.live_situation.home_score}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

@@ -10,30 +10,48 @@ interface ParlayTrackerProps {
   bet: Bet;
 }
 
-// Mini leg tracker component
-const LegTracker: React.FC<{ leg: ParlayLeg; index: number }> = ({ leg, index }) => {
+// Mini leg tracker component (without live situation - shown at group level)
+const LegTracker: React.FC<{ leg: ParlayLeg; index: number; showMatchup?: boolean }> = ({ leg, index, showMatchup = true }) => {
   const isLive = leg.game_state === 'in';
   const isPostGame = leg.game_state === 'post';
   const hasCurrentValue = leg.current_value !== undefined && leg.current_value !== null;
   const hasLine = leg.line !== undefined && leg.line !== null && leg.line > 0;
   const isOver = leg.side?.toLowerCase() === 'over';
 
+  // Determine if currently winning/losing based on actual values (more reliable than prop_status)
+  const currentValue = leg.current_value ?? 0;
+  const line = leg.line ?? 0;
+  const isCurrentlyHit = isOver ? currentValue >= line : currentValue <= line;
+
   const getStatusColor = () => {
-    if (!leg.prop_status) return 'text-gray-400';
+    // Final states
     if (leg.prop_status === 'won') return 'text-accent';
+    if (leg.prop_status === 'lost') return 'text-red-500';
+    if (leg.prop_status === 'push') return 'text-yellow-500';
+
+    // Live states - use actual value comparison for consistency
+    if (isLive && hasLine) {
+      return isCurrentlyHit ? 'text-accent' : 'text-orange-400';
+    }
+
+    // Fallback to prop_status
     if (leg.prop_status === 'live_hit') return 'text-accent';
-    if (leg.prop_status === 'lost') return 'text-red-500'; // Only final loss is red
-    if (leg.prop_status === 'live_miss') return 'text-orange-400'; // Live behind is orange, not red
-    if (leg.prop_status === 'push' || leg.prop_status === 'live_push') return 'text-yellow-500';
+    if (leg.prop_status === 'live_miss') return 'text-orange-400';
+
     return 'text-gray-400';
   };
 
   const getStatusText = () => {
+    // Final states
     if (leg.prop_status === 'won') return 'HIT';
     if (leg.prop_status === 'lost') return 'MISS';
-    if (leg.prop_status === 'live_hit') return 'WINNING';
-    if (leg.prop_status === 'live_miss') return 'LOSING';
     if (leg.prop_status === 'push') return 'PUSH';
+
+    // Live states - use actual value comparison for consistency
+    if (isLive && hasLine) {
+      return isCurrentlyHit ? 'WINNING' : 'LOSING';
+    }
+
     if (isLive) return 'LIVE';
     return 'PENDING';
   };
@@ -42,19 +60,29 @@ const LegTracker: React.FC<{ leg: ParlayLeg; index: number }> = ({ leg, index })
     ? Math.min((leg.current_value! / leg.line) * 100, 100)
     : 0;
 
+  // Determine card background based on status
+  const getCardStyle = () => {
+    // Final states
+    if (leg.prop_status === 'won') return "bg-accent/10 border-accent/30";
+    if (leg.prop_status === 'lost') return "bg-red-500/10 border-red-500/30";
+    if (leg.prop_status === 'push') return "bg-yellow-500/10 border-yellow-500/30";
+
+    // Live states - use actual value comparison for consistency
+    if (isLive && hasLine) {
+      return isCurrentlyHit
+        ? "bg-accent/10 border-accent/30"
+        : "bg-orange-500/10 border-orange-500/30";
+    }
+
+    // Pre-game
+    return "bg-background/50 border-border/50";
+  };
+
   return (
     <div
       className={cn(
         "p-3 rounded-lg border transition-all",
-        leg.prop_status === 'won' || leg.prop_status === 'live_hit'
-          ? "bg-accent/10 border-accent/30"
-          : leg.prop_status === 'lost' // Only final loss shows red
-          ? "bg-red-500/10 border-red-500/30"
-          : leg.prop_status === 'live_miss' // Live behind shows orange
-          ? "bg-orange-500/10 border-orange-500/30"
-          : isLive
-          ? "bg-blue-500/10 border-blue-500/30"
-          : "bg-background/50 border-border/50"
+        getCardStyle()
       )}
     >
       {/* Leg header */}
@@ -82,17 +110,21 @@ const LegTracker: React.FC<{ leg: ParlayLeg; index: number }> = ({ leg, index })
           <div className="font-medium text-white text-sm truncate">
             {leg.player_name || leg.selection}
           </div>
-          <div className="text-xs text-gray-500 truncate">{leg.matchup}</div>
+          {/* Bet type - e.g., "Over 32.5 points" */}
+          {leg.side && leg.line && leg.market_type && (
+            <div className="text-xs text-gray-400 capitalize">
+              {leg.side} {leg.line} {leg.market_type.replace(/_/g, ' ')}
+            </div>
+          )}
+          {showMatchup && <div className="text-xs text-gray-500 truncate">{leg.matchup}</div>}
         </div>
         <div className="text-right ml-2 flex items-center gap-3">
-          {/* Current value */}
           <div className="text-center">
             <div className={cn("text-lg font-bold font-mono", getStatusColor())}>
               {hasCurrentValue ? (leg.current_value_str || leg.current_value?.toFixed(0)) : (isLive || isPostGame ? '0' : '-')}
             </div>
             <div className="text-xs text-gray-600">CURR</div>
           </div>
-          {/* Line */}
           {hasLine && (
             <div className="text-center">
               <div className="text-lg font-bold font-mono text-white">
@@ -106,22 +138,17 @@ const LegTracker: React.FC<{ leg: ParlayLeg; index: number }> = ({ leg, index })
         </div>
       </div>
 
-      {/* Progress section - show when we have a line (for live/post games or when we have current value) */}
+      {/* Progress section */}
       {hasLine && (isLive || isPostGame || hasCurrentValue) && (
         <div className="mt-2 pt-2 border-t border-border/30">
-          {/* Progress Bar */}
           <div className="relative h-1.5 bg-gray-800 rounded-full overflow-hidden">
             <div
               className={cn(
                 "h-full transition-all duration-500",
-                leg.prop_status === 'won' || leg.prop_status === 'live_hit'
-                  ? "bg-accent"
-                  : leg.prop_status === 'lost' // Only final loss is red
-                  ? "bg-red-500"
-                  : leg.prop_status === 'live_miss' // Live behind is orange
-                  ? "bg-orange-500"
-                  : isLive
-                  ? "bg-blue-500"
+                leg.prop_status === 'won' ? "bg-accent"
+                  : leg.prop_status === 'lost' ? "bg-red-500"
+                  : leg.prop_status === 'push' ? "bg-yellow-500"
+                  : isLive && hasLine ? (isCurrentlyHit ? "bg-accent" : "bg-orange-500")
                   : "bg-gray-600"
               )}
               style={{ width: `${progressPercent}%` }}
@@ -132,11 +159,7 @@ const LegTracker: React.FC<{ leg: ParlayLeg; index: number }> = ({ leg, index })
             <div className="flex justify-end mt-1">
               <span className={cn(
                 "text-xs font-medium",
-                (isOver && leg.current_value! >= leg.line) || (!isOver && leg.current_value! <= leg.line)
-                  ? "text-accent"
-                  : isLive
-                  ? "text-blue-400"
-                  : "text-gray-500"
+                isCurrentlyHit ? "text-accent" : "text-orange-400"
               )}>
                 {isOver
                   ? (leg.current_value! >= leg.line ? '✓ Hit!' : `${(leg.line - leg.current_value!).toFixed(1)} to go`)
@@ -147,6 +170,120 @@ const LegTracker: React.FC<{ leg: ParlayLeg; index: number }> = ({ leg, index })
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+// Game group component - groups legs from the same game with shared live situation
+interface GameGroupProps {
+  legs: { leg: ParlayLeg; originalIndex: number }[];
+  matchup: string;
+}
+
+const GameGroup: React.FC<GameGroupProps> = ({ legs, matchup }) => {
+  // Use the first leg's live data (all legs from same game share the same data)
+  const firstLeg = legs[0].leg;
+  const isLive = firstLeg.game_state === 'in';
+  const liveSituation = firstLeg.live_situation;
+  const lastPlay = firstLeg.last_play;
+
+  return (
+    <div className="space-y-2">
+      {/* Shared Live Situation for the game */}
+      <AnimatePresence>
+        {isLive && (lastPlay || liveSituation) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="bg-gradient-to-r from-gray-800/80 to-gray-900/50 rounded-lg p-3 mb-2">
+              <div className="flex items-start gap-3">
+                {/* Away team logo */}
+                {liveSituation?.away_logo && (
+                  <img
+                    src={liveSituation.away_logo}
+                    alt={liveSituation.away_abbrev || 'Away'}
+                    className="w-8 h-8 object-contain shrink-0"
+                  />
+                )}
+
+                <div className="flex-1 min-w-0">
+                  {/* Matchup */}
+                  <div className="text-xs text-gray-400 mb-1">{matchup}</div>
+
+                  {/* Clock and period */}
+                  {liveSituation?.display_clock && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-gray-300 font-medium">
+                        {liveSituation.display_clock} - {
+                          liveSituation.period === 1 ? '1st' :
+                          liveSituation.period === 2 ? '2nd' :
+                          liveSituation.period === 3 ? '3rd' :
+                          liveSituation.period === 4 ? '4th' :
+                          `${liveSituation.period}th`
+                        } Quarter
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Play description */}
+                  {lastPlay && (
+                    <motion.p
+                      key={lastPlay}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-sm text-white leading-relaxed"
+                    >
+                      {lastPlay}
+                    </motion.p>
+                  )}
+                </div>
+
+                {/* Right side: Win % and Score */}
+                <div className="shrink-0 text-right">
+                  {liveSituation?.home_win_pct !== undefined && (
+                    <div className="flex items-center gap-1.5 justify-end mb-1">
+                      <span className="text-[10px] text-gray-500 uppercase">Win %</span>
+                      {liveSituation.home_logo && (
+                        <img
+                          src={liveSituation.home_win_pct >= 50 ? liveSituation.home_logo : liveSituation.away_logo}
+                          alt="Leading"
+                          className="w-4 h-4 object-contain"
+                        />
+                      )}
+                      <span className="text-sm font-bold text-white">
+                        {liveSituation.home_win_pct >= 50
+                          ? liveSituation.home_win_pct.toFixed(1)
+                          : (100 - liveSituation.home_win_pct).toFixed(1)
+                        }
+                      </span>
+                    </div>
+                  )}
+
+                  {liveSituation?.away_score && liveSituation?.home_score && (
+                    <div className="text-lg font-bold font-mono text-white">
+                      {liveSituation.away_score}-{liveSituation.home_score}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Legs for this game */}
+      {legs.map(({ leg, originalIndex }) => (
+        <LegTracker
+          key={originalIndex}
+          leg={leg}
+          index={originalIndex}
+          showMatchup={!isLive} // Hide matchup when live (shown in game group header)
+        />
+      ))}
     </div>
   );
 };
@@ -344,7 +481,7 @@ export const ParlayTracker: React.FC<ParlayTrackerProps> = ({ bet }) => {
         </button>
       </div>
 
-      {/* Legs list */}
+      {/* Legs list - grouped by game */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
@@ -354,10 +491,29 @@ export const ParlayTracker: React.FC<ParlayTrackerProps> = ({ bet }) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-2">
-              {legs.map((leg, index) => (
-                <LegTracker key={index} leg={leg} index={index} />
-              ))}
+            <div className="px-4 pb-4 space-y-4">
+              {(() => {
+                // Group legs by event_id
+                const groupedLegs = legs.reduce((groups, leg, index) => {
+                  const eventId = leg.event_id || `no-event-${index}`;
+                  if (!groups[eventId]) {
+                    groups[eventId] = {
+                      matchup: leg.matchup,
+                      legs: []
+                    };
+                  }
+                  groups[eventId].legs.push({ leg, originalIndex: index });
+                  return groups;
+                }, {} as Record<string, { matchup: string; legs: { leg: ParlayLeg; originalIndex: number }[] }>);
+
+                return Object.entries(groupedLegs).map(([eventId, group]) => (
+                  <GameGroup
+                    key={eventId}
+                    legs={group.legs}
+                    matchup={group.matchup}
+                  />
+                ));
+              })()}
             </div>
           </motion.div>
         )}

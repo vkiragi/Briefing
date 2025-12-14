@@ -572,6 +572,8 @@ def refresh_props(bet_ids: List[str] = Body(...), user_id: str = Depends(get_cur
                         'game_state': prop.game_state,
                         'game_status_text': prop.game_status_text,
                         'prop_status': prop.prop_status,
+                        'last_play': prop.last_play,  # Last play description for live games
+                        'live_situation': prop.live_situation,  # Rich live game data
                     }
                     updated_bets.append(bet_data)
 
@@ -680,6 +682,8 @@ def refresh_parlay_legs(bet_ids: List[str] = Body(...), user_id: str = Depends(g
                             'game_state': prop.game_state,
                             'game_status_text': prop.game_status_text,
                             'prop_status': prop.prop_status,
+                            'last_play': prop.last_play,  # Last play description for live games
+                            'live_situation': prop.live_situation,  # Rich live game data
                         }
                         updated_legs.append((idx, updated_leg))
                         prop_idx += 1

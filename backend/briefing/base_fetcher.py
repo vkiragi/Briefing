@@ -804,7 +804,80 @@ class BaseSportsFetcher:
                     }
             except Exception:
                 pass
-            
+
+            # Extract last play text and live situation data for live games
+            try:
+                play_text = None
+                live_situation = {}
+
+                # NBA/NCAAB: plays at top level
+                plays = data.get("plays", [])
+                if plays:
+                    # Find the last meaningful play (skip "End of Game" etc.)
+                    for play in reversed(plays):
+                        text = play.get("text", "")
+                        if text and text.lower() not in ["end of game", "end of period", "end of quarter", "end of half"]:
+                            play_text = text
+                            break
+
+                # NFL/NCAAF: plays nested under drives
+                if not play_text:
+                    drives = data.get("drives", {})
+                    previous_drives = drives.get("previous", [])
+                    if previous_drives:
+                        # Get the last drive's last play
+                        last_drive = previous_drives[-1] if previous_drives else None
+                        if last_drive:
+                            drive_plays = last_drive.get("plays", [])
+                            if drive_plays:
+                                last_play_obj = drive_plays[-1]
+                                play_text = last_play_obj.get("text", "")
+
+                if play_text and state == "in":
+                    data["_last_play"] = play_text
+
+                # Extract rich live situation data for live games
+                if state == "in":
+                    comps = header.get("competitions", [])
+                    if comps:
+                        comp = comps[0]
+                        competitors = comp.get("competitors", [])
+                        status_obj = comp.get("status", {})
+
+                        # Clock and period
+                        live_situation["display_clock"] = status_obj.get("displayClock", "")
+                        live_situation["period"] = status_obj.get("period", 1)
+
+                        # Team info with logos and scores
+                        for c in competitors:
+                            ha = c.get("homeAway", "")
+                            team_data = c.get("team", {})
+                            logos = team_data.get("logos", [])
+                            logo_url = logos[0].get("href", "") if logos else ""
+                            score = c.get("score", "0")
+                            team_abbrev = team_data.get("abbreviation", "")
+
+                            if ha == "home":
+                                live_situation["home_logo"] = logo_url
+                                live_situation["home_score"] = score
+                                live_situation["home_abbrev"] = team_abbrev
+                            else:
+                                live_situation["away_logo"] = logo_url
+                                live_situation["away_score"] = score
+                                live_situation["away_abbrev"] = team_abbrev
+
+                        # Win probability (last entry is most recent)
+                        win_prob = data.get("winprobability", [])
+                        if win_prob:
+                            latest_prob = win_prob[-1]
+                            home_win_pct = latest_prob.get("homeWinPercentage", 0.5)
+                            live_situation["home_win_pct"] = round(home_win_pct * 100, 1)
+
+                        if live_situation:
+                            data["_live_situation"] = live_situation
+            except Exception:
+                pass
+
             return data
         except requests.exceptions.RequestException as e:
             raise Exception(f"Error fetching {sport} summary for event {event_id}: {str(e)}")

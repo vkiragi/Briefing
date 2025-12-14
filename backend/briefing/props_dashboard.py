@@ -39,6 +39,8 @@ class PlayerProp:
     game_state: str = "pre"  # pre / in / post / unknown
     game_status_text: str = ""  # Detailed status for display e.g. "5:09 - 2nd"
     prop_status: str = "pending"  # pending/live_above/live_below/won/lost/push/unavailable
+    last_play: Optional[str] = None  # Last play description for live games
+    live_situation: Optional[Dict] = None  # Rich live game data (logos, scores, win%, clock)
 
 
 class PropsDashboard:
@@ -115,6 +117,8 @@ class PropsDashboard:
             # Determine game state from stats payload when possible
             game_state = stats.get("_game_state", "unknown")
             game_status_detail = stats.get("_game_status_detail", "")
+            last_play_text = stats.get("_last_play", None)  # Last play for live games
+            live_situation = stats.get("_live_situation", None)  # Rich live game data
 
             # Extract team scores for Moneyline/Spread/Total
             home_score = 0
@@ -273,6 +277,8 @@ class PropsDashboard:
 
                 p.game_state = game_state
                 p.game_status_text = game_status_detail
+                p.last_play = last_play_text  # Set last play for live games
+                p.live_situation = live_situation  # Set rich live game data
                 p.prop_status = _compute_prop_status(
                     prop=p,
                     current_value=value,

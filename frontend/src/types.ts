@@ -51,6 +51,21 @@ export interface ParlayLeg {
   game_state?: string;
   game_status_text?: string;
   prop_status?: string; // 'pending', 'live_hit', 'live_miss', 'won', 'lost'
+  last_play?: string;  // Last play description for live games
+  live_situation?: LiveSituation;  // Rich live game data
+}
+
+// Rich live game situation data
+export interface LiveSituation {
+  display_clock?: string;
+  period?: number;
+  home_logo?: string;
+  away_logo?: string;
+  home_score?: string;
+  away_score?: string;
+  home_abbrev?: string;
+  away_abbrev?: string;
+  home_win_pct?: number;
 }
 
 export interface Bet {
@@ -79,6 +94,8 @@ export interface Bet {
   game_state?: string;
   game_status_text?: string;
   prop_status?: string;
+  last_play?: string;  // Last play description for live games
+  live_situation?: LiveSituation;  // Rich live game data
 }
 
 export interface BankrollTransaction {
