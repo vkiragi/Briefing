@@ -1,10 +1,9 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { TrendingUp, Activity, Clock, Trash2 } from "lucide-react";
+import { Clock, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { useBets } from "../context/BetContext";
 import { useSettings } from "../context/SettingsContext";
-import { Card } from "../components/ui/Card";
 import { PropTracker } from "../components/PropTracker";
 import { ParlayTracker } from "../components/ParlayTracker";
 import { GameDetailModal } from "../components/GameDetailModal";
@@ -905,72 +904,37 @@ export const Dashboard = () => {
       transition={{ duration: 0.5 }}
       className="px-2 md:px-4 py-2 md:py-4 max-w-[2400px] mx-auto space-y-6"
     >
-      {/* Header Bar */}
-      <div className="text-center p-2 md:p-4 mb-4">
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">
+      {/* Header with inline stats */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-2 md:p-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-white">
           Your <span className="text-accent">Briefing</span>
         </h1>
-        <p className="text-sm text-gray-500 font-medium tracking-wide">
-          Sports betting dashboard
-        </p>
+        {/* Compact Stats Strip */}
+        <div className="flex items-center gap-4 md:gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Record</span>
+            <span className="font-medium text-white">{stats.wins}W-{stats.losses}L</span>
+            <span className="text-gray-600">({stats.winRate.toFixed(0)}%)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">ROI</span>
+            <span className={cn("font-medium", stats.roi >= 0 ? "text-accent" : "text-red-500")}>
+              {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Active</span>
+            <span className="font-medium text-white">{stats.pending}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Win Rate Card */}
-        <Card>
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="text-gray-400 text-sm font-medium">Win Rate</h3>
-            <div className="p-2 bg-blue-500/10 rounded-full">
-              <Activity size={16} className="text-blue-500" />
-            </div>
-          </div>
-          <div className="text-3xl font-semibold tracking-tight text-white mb-1">
-            {stats.winRate.toFixed(1)}%
-          </div>
-          <div className="text-xs text-gray-500">
-            {stats.wins}W - {stats.losses}L
-          </div>
-        </Card>
-
-        {/* ROI Card */}
-        <Card>
-           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-gray-400 text-sm font-medium">ROI</h3>
-            <div className="p-2 bg-purple-500/10 rounded-full">
-              <TrendingUp size={16} className="text-purple-500" />
-            </div>
-          </div>
-          <div className={cn("text-3xl font-semibold tracking-tight mb-1", stats.roi >= 0 ? "text-accent" : "text-red-500")}>
-            {stats.roi.toFixed(1)}%
-          </div>
-          <div className="text-xs text-gray-500">
-            Return on investment
-          </div>
-        </Card>
-        
-         {/* Pending Card */}
-         <Card>
-           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-gray-400 text-sm font-medium">Pending Bets</h3>
-            <div className="p-2 bg-yellow-500/10 rounded-full">
-              <Activity size={16} className="text-yellow-500" />
-            </div>
-          </div>
-          <div className="text-3xl font-semibold tracking-tight text-white mb-1">
-            {stats.pending}
-          </div>
-          <div className="text-xs text-gray-500">
-            Active wagers
-          </div>
-        </Card>
-      </div>
-
-      {/* Pending Bets Section */}
+      {/* Pending Bets Section - Now Primary */}
       {pendingBets.length > 0 && (
-        <div className="mt-6">
+        <div>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold tracking-tight">Pending Bets</h2>
+              <h2 className="text-lg font-semibold tracking-tight">Pending Bets</h2>
               <button
                 onClick={refreshPropsData}
                 className="text-sm text-accent hover:underline"
