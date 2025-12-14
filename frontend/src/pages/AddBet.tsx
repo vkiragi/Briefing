@@ -663,7 +663,7 @@ export const AddBet = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
+      className="min-h-screen overflow-y-auto md:h-screen md:overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
       {/* Header with Step Indicator */}
       <div className="flex-shrink-0 mb-6">
@@ -740,7 +740,7 @@ export const AddBet = () => {
       </div>
 
       {/* Step Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto md:overflow-hidden">
         <AnimatePresence mode="wait">
           {/* Step 0: Mode Selection (Single vs Parlay) */}
           {currentStep === 'mode' && (
