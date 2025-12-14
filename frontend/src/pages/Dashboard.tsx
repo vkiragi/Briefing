@@ -61,7 +61,6 @@ export const Dashboard = () => {
 
   const [propsData, setPropsData] = useState<Map<string, any>>(new Map());
   const [parlayLegsData, setParlayLegsData] = useState<Map<string, any[]>>(new Map());
-  const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Box score modal state
@@ -307,7 +306,6 @@ export const Dashboard = () => {
 
     if (!hasPropsToRefresh && !hasParlaysToRefresh) return;
 
-    setRefreshing(true);
     try {
       // Refresh both regular props and parlay legs in parallel
       const [propsResult, parlaysResult] = await Promise.all([
@@ -350,8 +348,6 @@ export const Dashboard = () => {
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to refresh props:', error);
-    } finally {
-      setRefreshing(false);
     }
   }, [allPropsToTrack, parlaysToTrack]);
 
@@ -643,7 +639,7 @@ export const Dashboard = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <h2 className={cn("font-bold text-white", isCompact ? "text-lg" : "text-xl")}>{title}</h2>
+              <h2 className={cn("font-semibold tracking-tight text-white", isCompact ? "text-lg" : "text-xl")}>{title}</h2>
 
               {hasLiveGames && (
                 <>
@@ -911,11 +907,11 @@ export const Dashboard = () => {
     >
       {/* Header Bar */}
       <div className="text-center p-2 md:p-4 mb-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-          Briefing Sports Tracking
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-white mb-1.5">
+          Your <span className="text-accent">Briefing</span>
         </h1>
-        <p className="text-sm md:text-base text-gray-400">
-          Your comprehensive sports betting dashboard
+        <p className="text-sm text-gray-500 font-medium tracking-wide">
+          Sports betting dashboard
         </p>
       </div>
 
@@ -928,7 +924,7 @@ export const Dashboard = () => {
               <Activity size={16} className="text-blue-500" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">
+          <div className="text-3xl font-semibold tracking-tight text-white mb-1">
             {stats.winRate.toFixed(1)}%
           </div>
           <div className="text-xs text-gray-500">
@@ -944,7 +940,7 @@ export const Dashboard = () => {
               <TrendingUp size={16} className="text-purple-500" />
             </div>
           </div>
-          <div className={cn("text-3xl font-bold mb-1", stats.roi >= 0 ? "text-accent" : "text-red-500")}>
+          <div className={cn("text-3xl font-semibold tracking-tight mb-1", stats.roi >= 0 ? "text-accent" : "text-red-500")}>
             {stats.roi.toFixed(1)}%
           </div>
           <div className="text-xs text-gray-500">
@@ -960,7 +956,7 @@ export const Dashboard = () => {
               <Activity size={16} className="text-yellow-500" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">
+          <div className="text-3xl font-semibold tracking-tight text-white mb-1">
             {stats.pending}
           </div>
           <div className="text-xs text-gray-500">
@@ -974,13 +970,12 @@ export const Dashboard = () => {
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold">Pending Bets</h2>
+              <h2 className="text-xl font-semibold tracking-tight">Pending Bets</h2>
               <button
                 onClick={refreshPropsData}
-                disabled={refreshing}
-                className="text-sm text-accent hover:underline disabled:opacity-50"
+                className="text-sm text-accent hover:underline"
               >
-                {refreshing ? 'Refreshing...' : 'Refresh Now'}
+                Refresh
               </button>
               {lastUpdated && (
                 <div className="flex items-center gap-1 text-xs text-gray-500">

@@ -35,7 +35,7 @@ export const Bankroll = () => {
       transition={{ duration: 0.5 }}
       className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
-       <h1 className="text-3xl font-bold mb-6 flex-shrink-0">Bankroll Management</h1>
+       <h1 className="text-3xl font-semibold tracking-tight mb-6 flex-shrink-0">Bankroll Management</h1>
 
        <div className="flex-1 overflow-y-auto">
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -44,7 +44,7 @@ export const Bankroll = () => {
          <div className="lg:col-span-2 space-y-6">
             <Card className="bg-gradient-to-r from-card to-card/50 border-accent/20 flex flex-col items-center justify-center py-10">
                 <div className="text-gray-400 mb-2 font-medium">Current Balance</div>
-                <div className="text-5xl font-bold text-white mb-6">${bankroll.toFixed(2)}</div>
+                <div className="text-5xl font-semibold tracking-tight text-white mb-6">${bankroll.toFixed(2)}</div>
                 <div className="flex gap-4">
                     <button 
                         onClick={() => { setType('deposit'); document.getElementById('trans-form')?.focus(); }}

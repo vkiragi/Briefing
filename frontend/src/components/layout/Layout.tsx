@@ -23,7 +23,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="min-h-screen bg-background text-white">
       {/* Desktop Sidebar */}
       <nav className="hidden md:flex fixed left-0 top-0 bottom-0 w-24 flex-col items-center py-8 bg-card border-r border-border z-50">
-        <div className="mb-8 font-bold text-accent text-xl">BSB</div>
+        <div className="mb-8 flex flex-col items-center">
+          <span className="text-2xl font-semibold tracking-tight text-white">
+            <span className="text-accent">B</span>S<span className="text-accent">B</span>
+          </span>
+          <span className="text-[9px] font-medium tracking-[0.2em] text-gray-500 uppercase mt-0.5">Briefing</span>
+        </div>
         <div className="flex flex-col gap-5 w-full px-3 flex-1">
           {navItems.map((item) => (
             <div key={item.path} className="flex flex-col items-center group">

@@ -677,7 +677,7 @@ export const AddBet = () => {
                 <ChevronLeft size={24} />
               </button>
             )}
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-3xl font-semibold tracking-tight">
               {betMode === 'parlay' ? 'New Parlay' : 'New Wager'}
             </h1>
             {betMode === 'parlay' && parlayLegs.length > 0 && (

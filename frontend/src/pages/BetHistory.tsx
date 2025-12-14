@@ -69,7 +69,7 @@ export const BetHistory = () => {
       className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 flex-shrink-0 mb-6">
-        <h1 className="text-3xl font-bold">Bet History</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Bet History</h1>
         
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
           {/* Search */}

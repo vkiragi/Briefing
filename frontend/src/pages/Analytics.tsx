@@ -254,7 +254,7 @@ export const Analytics = () => {
   if (finishedBets.length === 0) {
     return (
       <div className="p-8 text-center text-gray-500">
-        <h2 className="text-2xl font-bold text-white mb-2">Analytics</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-white mb-2">Analytics</h2>
         <p>Place and settle some bets to see analytics data.</p>
       </div>
     );
@@ -267,7 +267,7 @@ export const Analytics = () => {
       transition={{ duration: 0.5 }}
       className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
-      <h1 className="text-3xl font-bold mb-6 flex-shrink-0">Analytics</h1>
+      <h1 className="text-3xl font-semibold tracking-tight mb-6 flex-shrink-0">Analytics</h1>
 
       <div className="flex-1 overflow-y-auto space-y-6">
         {/* Summary Stats Cards */}

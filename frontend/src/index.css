@@ -7,12 +7,14 @@
   --color-accent: #00FF85;
   --color-accent-red: #FF4757;
   --color-accent-neutral: #8B8B8B;
-  
-  --font-sans: Inter, system-ui, sans-serif;
+
+  --font-sans: 'Inter Variable', Inter, system-ui, sans-serif;
 }
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-optical-sizing: auto;
 }
 
 body {
