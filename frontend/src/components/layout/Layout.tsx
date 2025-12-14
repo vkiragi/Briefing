@@ -117,11 +117,17 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 <div className={cn(
                   "flex flex-col items-center justify-center transition-all duration-300",
                   location.pathname === item.path
-                    ? "shadow-[0_2px_8px_rgba(59,130,246,0.2)]"
+                    ? "shadow-[0_2px_8px_rgba(0,255,133,0.2)]"
                     : ""
                 )}>
-                  <item.icon size={22} className="mb-1 text-blue-500" />
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <item.icon size={22} className={cn(
+                    "mb-1 transition-colors duration-300",
+                    location.pathname === item.path ? "text-green-500" : "text-blue-500"
+                  )} />
+                  <span className={cn(
+                    "text-[10px] font-medium transition-colors duration-300",
+                    location.pathname === item.path ? "text-green-500" : "text-blue-500"
+                  )}>{item.label}</span>
                 </div>
               ) : (
                 <div className={cn(
