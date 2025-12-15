@@ -584,22 +584,48 @@ export const Dashboard = () => {
       }
       return game.status || 'Live';
     }
-    
-    // Check for halftime
+
+    // Soccer handling - show minute directly from display_clock
+    const soccerLeagues = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa',
+      'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian'];
+    const isSoccer = soccerLeagues.includes(sport);
+
+    if (isSoccer && game.state === 'in') {
+      // For soccer, display_clock shows the minute (e.g., "80'")
+      if (game.display_clock) {
+        // Extract minute number to check if past halftime
+        const minuteMatch = game.display_clock.match(/(\d+)/);
+        const minute = minuteMatch ? parseInt(minuteMatch[1], 10) : 0;
+
+        // Only show halftime if we're actually at halftime (around minute 45 with period 1)
+        if (game.period === 1 && minute >= 45 && minute <= 46) {
+          const statusLower = (game.status || '').toLowerCase();
+          if (statusLower.includes('half')) {
+            return 'Halftime';
+          }
+        }
+
+        return game.display_clock;
+      }
+      // Fallback to status for soccer
+      return game.status || 'Live';
+    }
+
+    // Check for halftime (non-soccer sports)
     const statusLower = (game.status || '').toLowerCase();
-    const isHalftime = 
-      statusLower.includes('half') || 
+    const isHalftime =
+      statusLower.includes('half') ||
       statusLower.includes('halftime') ||
       (game.period === 2 && game.clock_seconds === 0 && game.state === 'in');
-    
+
     if (isHalftime) {
       return 'Halftime';
     }
-    
+
     // Live game - show period/quarter and time
     if (game.state === 'in' && game.period) {
       const period = sport === 'mlb' ? `Inning ${game.period}` : `Q${game.period}`;
-      
+
       // If we have clock_seconds, format as MM:SS
       if (game.clock_seconds !== undefined && game.clock_seconds > 0) {
         const minutes = Math.floor(game.clock_seconds / 60);
@@ -607,15 +633,15 @@ export const Dashboard = () => {
         const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         return `${period} ${formattedTime}`;
       }
-      
+
       // Fallback to display_clock if available
       if (game.display_clock) {
         return `${period} ${game.display_clock}`;
       }
-      
+
       return period;
     }
-    
+
     return game.display_clock || game.status || 'Live';
   };
 
