@@ -99,8 +99,31 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </nav>
 
+      {/* Mobile Header with Profile Button */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card/80 backdrop-blur-md border-b border-border z-50 flex items-center justify-between px-4">
+        <div className="flex items-center">
+          <span className="text-lg font-semibold tracking-tight text-white">
+            <span className="text-accent">B</span>S<span className="text-accent">B</span>
+          </span>
+        </div>
+        <button
+          onClick={() => setProfileOpen(true)}
+          className="flex items-center justify-center p-2 rounded-full transition-all duration-300 hover:bg-white/[0.05] text-gray-400 hover:text-white"
+        >
+          {user?.user_metadata?.avatar_url ? (
+            <img
+              src={user.user_metadata.avatar_url}
+              alt="Profile"
+              className="w-8 h-8 rounded-full border border-accent/50"
+            />
+          ) : (
+            <User size={24} />
+          )}
+        </button>
+      </header>
+
       {/* Main Content */}
-      <main className="w-full min-h-screen pb-32 md:pb-0 md:pl-36 md:pr-12 relative">
+      <main className="w-full min-h-screen pt-14 pb-32 md:pt-0 md:pb-0 md:pl-36 md:pr-12 relative">
         {children}
       </main>
 
