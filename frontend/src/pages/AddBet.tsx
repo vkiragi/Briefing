@@ -41,6 +41,43 @@ const NBA_BET_TYPES = [
   { id: 'team_total', label: 'Team Total' },
 ];
 
+// NFL-specific bet types
+const NFL_BET_TYPES = [
+  { id: 'player_prop', label: 'Player Prop' },
+  { id: 'moneyline', label: 'Moneyline' },
+  { id: 'spread', label: 'Point Spread' },
+  { id: 'total', label: 'Total Score' },
+  { id: '1h_bets', label: '1st Half' },
+  { id: '1q_bets', label: '1st Quarter' },
+  { id: 'team_total', label: 'Team Total' },
+];
+
+// NFL market types for player props
+const NFL_MARKET_TYPES = [
+  { id: 'passing_yards', label: 'Passing Yards', category: 'Passing' },
+  { id: 'passing_touchdowns', label: 'Passing TDs', category: 'Passing' },
+  { id: 'passing_completions', label: 'Completions', category: 'Passing' },
+  { id: 'passing_attempts', label: 'Pass Attempts', category: 'Passing' },
+  { id: 'passing_interceptions', label: 'Interceptions', category: 'Passing' },
+  { id: 'rushing_yards', label: 'Rushing Yards', category: 'Rushing' },
+  { id: 'rushing_attempts', label: 'Rush Attempts', category: 'Rushing' },
+  { id: 'rushing_touchdowns', label: 'Rushing TDs', category: 'Rushing' },
+  { id: 'receiving_yards', label: 'Receiving Yards', category: 'Receiving' },
+  { id: 'receptions', label: 'Receptions', category: 'Receiving' },
+  { id: 'receiving_touchdowns', label: 'Receiving TDs', category: 'Receiving' },
+  { id: 'anytime_touchdown', label: 'Anytime TD Scorer', category: 'Scoring' },
+];
+
+// NBA market types for player props
+const NBA_MARKET_TYPES = [
+  { id: 'points', label: 'Points' },
+  { id: 'rebounds', label: 'Rebounds' },
+  { id: 'assists', label: 'Assists' },
+  { id: 'three_pointers_made', label: '3-Pointers Made' },
+  { id: 'blocks', label: 'Blocks' },
+  { id: 'steals', label: 'Steals' },
+];
+
 // Generic bet types for other sports (Parlay is now a separate mode)
 const GENERIC_BET_TYPES = ['Moneyline', 'Spread', 'Total', 'Prop'];
 
@@ -98,7 +135,27 @@ export const AddBet = () => {
     if (formData.sport === 'nba' || formData.sport === 'ncaab') {
       return NBA_BET_TYPES;
     }
+    // NFL and NCAA Football share the same bet types
+    if (formData.sport === 'nfl' || formData.sport === 'ncaaf') {
+      return NFL_BET_TYPES;
+    }
     return GENERIC_BET_TYPES.map(t => ({ id: t.toLowerCase(), label: t }));
+  };
+
+  // Get market types for player props based on sport
+  const getMarketTypes = () => {
+    if (formData.sport === 'nba' || formData.sport === 'ncaab') {
+      return NBA_MARKET_TYPES;
+    }
+    if (formData.sport === 'nfl' || formData.sport === 'ncaaf') {
+      return NFL_MARKET_TYPES;
+    }
+    return [];
+  };
+
+  // Check if sport supports player props
+  const supportsPlayerProps = () => {
+    return ['nba', 'ncaab', 'nfl', 'ncaaf'].includes(formData.sport);
   };
 
   const betTypes = getBetTypes();
@@ -451,7 +508,7 @@ export const AddBet = () => {
     let validatedPlayerName = formData.playerName;
     let validatedTeamName = '';
 
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'player_prop' && formData.playerName.trim()) {
+    if (supportsPlayerProps() && formData.type === 'player_prop' && formData.playerName.trim()) {
       if (!selectedGame) {
         setPlayerValidation({ status: 'invalid', message: 'Please select a game first' });
         return;
@@ -488,7 +545,7 @@ export const AddBet = () => {
     }
 
     let betType = formData.type;
-    if (formData.sport === 'nba' || formData.sport === 'ncaab') {
+    if (supportsPlayerProps()) {
       if (formData.type === 'player_prop') betType = 'Prop';
       else if (formData.type === 'moneyline') betType = 'Moneyline';
       else if (formData.type === 'spread') betType = 'Spread';
@@ -516,7 +573,7 @@ export const AddBet = () => {
     };
 
     // Add prop tracking data for player props
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'player_prop' && selectedGame) {
+    if (supportsPlayerProps() && formData.type === 'player_prop' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = validatedPlayerName;
       betData.team_name = validatedTeamName;
@@ -526,7 +583,7 @@ export const AddBet = () => {
     }
 
     // Add tracking data for other bet types...
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === '1h_bets' && selectedGame && formData.periodBetType) {
+    if (supportsPlayerProps() && formData.type === '1h_bets' && selectedGame && formData.periodBetType) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.team_name = formData.selectedTeam;
       if (formData.periodBetType === 'moneyline') {
@@ -547,7 +604,7 @@ export const AddBet = () => {
       }
     }
 
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === '1q_bets' && selectedGame && formData.periodBetType) {
+    if (supportsPlayerProps() && formData.type === '1q_bets' && selectedGame && formData.periodBetType) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.team_name = formData.selectedTeam;
       if (formData.periodBetType === 'moneyline') {
@@ -568,7 +625,7 @@ export const AddBet = () => {
       }
     }
 
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'team_total' && selectedGame) {
+    if (supportsPlayerProps() && formData.type === 'team_total' && selectedGame) {
       const isHome = formData.selectedTeam === selectedGame.home_team;
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = `${formData.selectedTeam} Total Points`;
@@ -578,7 +635,7 @@ export const AddBet = () => {
       betData.side = formData.side.toLowerCase();
     }
 
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'moneyline' && selectedGame) {
+    if (supportsPlayerProps() && formData.type === 'moneyline' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = 'Moneyline';
       betData.team_name = formData.selectedTeam;
@@ -587,7 +644,7 @@ export const AddBet = () => {
       betData.side = formData.selectedTeam.toLowerCase();
     }
 
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'spread' && selectedGame) {
+    if (supportsPlayerProps() && formData.type === 'spread' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = 'Spread';
       betData.team_name = formData.selectedTeam;
@@ -596,7 +653,7 @@ export const AddBet = () => {
       betData.side = formData.selectedTeam.toLowerCase();
     }
 
-    if ((formData.sport === 'nba' || formData.sport === 'ncaab') && formData.type === 'total' && selectedGame) {
+    if (supportsPlayerProps() && formData.type === 'total' && selectedGame) {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = 'Total Score';
       betData.team_name = `${selectedGame.away_team} / ${selectedGame.home_team}`;
@@ -611,7 +668,7 @@ export const AddBet = () => {
 
   // Auto-build selection string based on inputs
   useEffect(() => {
-    if (formData.sport === 'nba' || formData.sport === 'ncaab') {
+    if (supportsPlayerProps()) {
       if (formData.type === 'player_prop' && formData.playerName && formData.marketType && formData.line && formData.side) {
         const marketLabel = formData.marketType.replace(/_/g, ' ');
         setFormData(prev => ({ ...prev, selection: `${formData.playerName} ${formData.side} ${formData.line} ${marketLabel}` }));
@@ -1019,8 +1076,8 @@ export const AddBet = () => {
 
                   {/* Dynamic Bet Form Fields */}
                   <div className="space-y-4 bg-background/50 p-4 rounded-xl border border-border/50">
-                    {/* Basketball Player Prop (NBA & NCAA) */}
-                    {formData.type === 'player_prop' && (formData.sport === 'nba' || formData.sport === 'ncaab') && (
+                    {/* Player Prop (NBA, NCAA, NFL) */}
+                    {formData.type === 'player_prop' && supportsPlayerProps() && (
                       <>
                         <div className="space-y-2">
                           <label className="text-xs font-medium text-gray-400 uppercase">Player Name</label>
@@ -1059,12 +1116,9 @@ export const AddBet = () => {
                             required
                           >
                             <option value="">Select Market</option>
-                            <option value="points">Points</option>
-                            <option value="rebounds">Rebounds</option>
-                            <option value="assists">Assists</option>
-                            <option value="three_pointers_made">3-Pointers Made</option>
-                            <option value="blocks">Blocks</option>
-                            <option value="steals">Steals</option>
+                            {getMarketTypes().map(market => (
+                              <option key={market.id} value={market.id}>{market.label}</option>
+                            ))}
                           </select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
