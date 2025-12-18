@@ -1,16 +1,187 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ComposedChart
 } from 'recharts';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useBets } from '../context/BetContext';
 import { Card } from '../components/ui/Card';
 import { cn } from '../lib/utils';
-import { TrendingUp, TrendingDown, Target, DollarSign, Trophy, Flame, BarChart3, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, DollarSign, Trophy, Flame, BarChart3, Calendar, X, CheckCircle, XCircle } from 'lucide-react';
+import { Bet } from '../types';
+
+// Day detail modal component
+interface DayDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  date: Date | null;
+  bets: Bet[];
+}
+
+const DayDetailModal: React.FC<DayDetailModalProps> = ({ isOpen, onClose, date, bets }) => {
+  if (!isOpen || !date) return null;
+
+  const dayBets = bets.filter(bet => {
+    const betDate = new Date(bet.date);
+    return betDate.getDate() === date.getDate() &&
+           betDate.getMonth() === date.getMonth() &&
+           betDate.getFullYear() === date.getFullYear();
+  });
+
+  const wins = dayBets.filter(b => b.status === 'Won');
+  const losses = dayBets.filter(b => b.status === 'Lost');
+  const pushes = dayBets.filter(b => b.status === 'Pushed');
+
+  const totalProfit = dayBets.reduce((sum, bet) => {
+    if (bet.status === 'Won') return sum + bet.potentialPayout;
+    if (bet.status === 'Lost') return sum - bet.stake;
+    return sum;
+  }, 0);
+
+  const totalStaked = dayBets.reduce((sum, bet) => sum + bet.stake, 0);
+
+  const dateStr = date.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+          />
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-x-4 top-[10%] md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-card border border-border rounded-xl shadow-2xl z-50 max-h-[80vh] overflow-hidden flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div>
+                <h3 className="text-lg font-semibold text-white">{dateStr}</h3>
+                <p className="text-sm text-gray-400">{dayBets.length} bet{dayBets.length !== 1 ? 's' : ''} placed</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Summary Stats */}
+            <div className="grid grid-cols-3 gap-3 p-4 border-b border-border">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-500">{wins.length}</p>
+                <p className="text-xs text-gray-400">Wins</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-500">{losses.length}</p>
+                <p className="text-xs text-gray-400">Losses</p>
+              </div>
+              <div className="text-center">
+                <p className={cn(
+                  "text-2xl font-bold",
+                  totalProfit >= 0 ? "text-green-500" : "text-red-500"
+                )}>
+                  {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-400">Profit</p>
+              </div>
+            </div>
+
+            {/* Bet List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {dayBets.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No bets on this day</p>
+              ) : (
+                dayBets.map(bet => (
+                  <div
+                    key={bet.id}
+                    className={cn(
+                      "p-3 rounded-lg border",
+                      bet.status === 'Won' ? "bg-green-500/10 border-green-500/30" :
+                      bet.status === 'Lost' ? "bg-red-500/10 border-red-500/30" :
+                      "bg-yellow-500/10 border-yellow-500/30"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {bet.status === 'Won' ? (
+                            <CheckCircle size={16} className="text-green-500 shrink-0" />
+                          ) : bet.status === 'Lost' ? (
+                            <XCircle size={16} className="text-red-500 shrink-0" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full bg-yellow-500 shrink-0" />
+                          )}
+                          <span className="text-xs font-medium text-gray-400 uppercase">{bet.sport}</span>
+                          <span className="text-xs text-gray-600">•</span>
+                          <span className="text-xs text-gray-400">{bet.type}</span>
+                        </div>
+                        <p className="text-sm font-medium text-white truncate">{bet.matchup}</p>
+                        <p className="text-xs text-gray-400 truncate">{bet.selection}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={cn(
+                          "text-sm font-bold",
+                          bet.status === 'Won' ? "text-green-500" :
+                          bet.status === 'Lost' ? "text-red-500" :
+                          "text-yellow-500"
+                        )}>
+                          {bet.status === 'Won' ? `+$${bet.potentialPayout.toFixed(2)}` :
+                           bet.status === 'Lost' ? `-$${bet.stake.toFixed(2)}` :
+                           'Push'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {bet.odds > 0 ? `+${bet.odds}` : bet.odds}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            {dayBets.length > 0 && (
+              <div className="p-4 border-t border-border bg-background/50">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Total Staked</span>
+                  <span className="text-white font-medium">${totalStaked.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-gray-400">ROI for Day</span>
+                  <span className={cn(
+                    "font-medium",
+                    totalProfit >= 0 ? "text-green-500" : "text-red-500"
+                  )}>
+                    {totalStaked > 0 ? ((totalProfit / totalStaked) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
 
 export const Analytics = () => {
   const { bets, stats } = useBets();
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   const finishedBets = useMemo(() => bets.filter(b => b.status === 'Won' || b.status === 'Lost' || b.status === 'Pushed'), [bets]);
 
@@ -240,9 +411,18 @@ export const Analytics = () => {
 
     return {
       monthName: now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-      weeks
+      weeks,
+      year,
+      month
     };
   }, [finishedBets]);
+
+  // Handle day click - create a Date object for the selected day
+  const handleDayClick = (day: number | null) => {
+    if (day === null) return;
+    const clickedDate = new Date(calendarData.year, calendarData.month, day);
+    setSelectedDay(clickedDate);
+  };
 
   const COLORS = ['#00FF85', '#00C2FF', '#FF4757', '#FFD166', '#8B5CF6', '#F472B6'];
 
@@ -484,15 +664,17 @@ export const Analytics = () => {
                 {calendarData.weeks.map((week, weekIdx) => (
                   <div key={weekIdx} className="grid grid-cols-7 gap-1">
                     {week.map((dayData, dayIdx) => (
-                      <div
+                      <button
                         key={dayIdx}
+                        onClick={() => handleDayClick(dayData.day)}
+                        disabled={dayData.day === null}
                         className={cn(
-                          "aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative",
-                          dayData.day === null ? "bg-transparent" :
-                          dayData.wins > dayData.losses ? "bg-green-500/30 border border-green-500/50" :
-                          dayData.losses > dayData.wins ? "bg-red-500/30 border border-red-500/50" :
-                          (dayData.wins > 0 && dayData.wins === dayData.losses) ? "bg-gray-500/30 border border-gray-500/50" :
-                          "bg-white/5",
+                          "aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative transition-all",
+                          dayData.day === null ? "bg-transparent cursor-default" :
+                          dayData.wins > dayData.losses ? "bg-green-500/30 border border-green-500/50 hover:bg-green-500/40 cursor-pointer" :
+                          dayData.losses > dayData.wins ? "bg-red-500/30 border border-red-500/50 hover:bg-red-500/40 cursor-pointer" :
+                          (dayData.wins > 0 && dayData.wins === dayData.losses) ? "bg-gray-500/30 border border-gray-500/50 hover:bg-gray-500/40 cursor-pointer" :
+                          "bg-white/5 hover:bg-white/10 cursor-pointer",
                           dayData.isToday && "ring-2 ring-accent"
                         )}
                       >
@@ -506,15 +688,15 @@ export const Analytics = () => {
                             </span>
                             {(dayData.wins > 0 || dayData.losses > 0) ? (
                               <>
-                                <span className="text-[10px] text-green-400">{dayData.wins} {dayData.wins === 1 ? 'win' : 'wins'}</span>
-                                <span className="text-[10px] text-red-400">{dayData.losses} {dayData.losses === 1 ? 'loss' : 'losses'}</span>
+                                <span className="text-[10px] text-green-400">{dayData.wins}W</span>
+                                <span className="text-[10px] text-red-400">{dayData.losses}L</span>
                               </>
                             ) : (
                               <span className="text-[9px] text-gray-600">-</span>
                             )}
                           </>
                         )}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 ))}
@@ -604,6 +786,14 @@ export const Analytics = () => {
           </Card>
         </div>
       </div>
+
+      {/* Day Detail Modal */}
+      <DayDetailModal
+        isOpen={selectedDay !== null}
+        onClose={() => setSelectedDay(null)}
+        date={selectedDay}
+        bets={finishedBets}
+      />
     </motion.div>
   );
 };
