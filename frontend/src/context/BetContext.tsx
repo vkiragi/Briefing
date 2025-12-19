@@ -50,7 +50,7 @@ export const BetProvider = ({ children }: { children: React.ReactNode }) => {
   const [stats, setStats] = useState<BetStats>(defaultStats);
   const [loading, setLoading] = useState(true);
 
-  // Fetch bets and stats from backend (single source of truth)
+  // Fetch bets and stats from backend (single API call for better performance)
   const fetchBets = useCallback(async () => {
     if (!session?.access_token) {
       setBets([]);
@@ -60,10 +60,7 @@ export const BetProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      const [remoteBets, remoteStats] = await Promise.all([
-        api.getBets(),
-        api.getStats(),
-      ]);
+      const { bets: remoteBets, stats: remoteStats } = await api.getBetsWithStats();
       setBets(remoteBets);
       setStats(remoteStats);
     } catch (e: any) {

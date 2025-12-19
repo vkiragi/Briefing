@@ -70,31 +70,24 @@ export const api = {
     return response.json() as Promise<any[]>;
   },
 
-  getBets: async () => {
+  getBetsWithStats: async () => {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/bets`, { headers });
     if (!response.ok) {
       if (response.status === 401) throw new Error('Not authenticated');
       throw new Error('Failed to fetch bets');
     }
-    return response.json() as Promise<any[]>;
-  },
-
-  getStats: async () => {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/bets/stats`, { headers });
-    if (!response.ok) {
-      if (response.status === 401) throw new Error('Not authenticated');
-      throw new Error('Failed to fetch stats');
-    }
     return response.json() as Promise<{
-      totalBets: number;
-      wins: number;
-      losses: number;
-      pending: number;
-      winRate: number;
-      roi: number;
-      profit: number;
+      bets: any[];
+      stats: {
+        totalBets: number;
+        wins: number;
+        losses: number;
+        pending: number;
+        winRate: number;
+        roi: number;
+        profit: number;
+      };
     }>;
   },
 

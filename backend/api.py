@@ -424,8 +424,10 @@ def get_boxscore(sport: str, event_id: str):
 
 @app.get("/api/bets")
 def get_bets(user_id: str = Depends(get_current_user)):
-    """Get all bets for the authenticated user"""
-    return supabase_service.get_bets(user_id)
+    """Get all bets and stats for the authenticated user"""
+    bets = supabase_service.get_bets(user_id)
+    stats = supabase_service.get_user_stats(user_id)
+    return {"bets": bets, "stats": stats}
 
 @app.get("/api/bets/stats")
 def get_bet_stats(user_id: str = Depends(get_current_user)):
