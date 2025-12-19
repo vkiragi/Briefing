@@ -17,7 +17,7 @@ extra_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIG
 allowed_origins = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://classy-monstera-dd525b.netlify.app",
+    "https://briefing-sports-tracking.netlify.app",
 ] + [o.strip() for o in extra_origins if o.strip()]
 
 print(f"CORS allowed origins: {allowed_origins}")
