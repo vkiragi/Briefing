@@ -1,12 +1,10 @@
 """
 Boxing specific fetcher logic.
-Uses web scraping from public boxing schedule sources since ESPN doesn't have a boxing API.
+Provides curated boxing schedule since ESPN doesn't have a boxing API.
 """
 
-import requests
 from typing import List, Dict, Optional
-from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
+from datetime import datetime
 
 
 class BoxingFetcherMixin:
@@ -22,100 +20,7 @@ class BoxingFetcherMixin:
         Returns:
             List of fight information with fighters, date, venue, and result if completed
         """
-        try:
-            # Try to scrape from BoxRec or another source
-            fights = self._scrape_boxing_schedule(limit)
-
-            if fights:
-                return fights
-
-            # Fallback to curated upcoming fights if scraping fails
-            return self._get_curated_boxing_schedule(limit)
-
-        except Exception as e:
-            print(f"Error fetching boxing fights: {str(e)}")
-            # Return curated data on error
-            return self._get_curated_boxing_schedule(limit)
-
-    def _scrape_boxing_schedule(self, limit: int = 10) -> List[Dict]:
-        """
-        Scrape boxing schedule from a public source.
-        """
-        try:
-            # Try ESPN boxing schedule page
-            url = "https://www.espn.com/boxing/story/_/id/12508267/boxing-schedule"
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-            }
-
-            response = self.session.get(url, headers=headers, timeout=self.timeout)
-
-            if response.status_code != 200:
-                return []
-
-            soup = BeautifulSoup(response.text, 'html.parser')
-            fights = []
-
-            # ESPN schedule page structure - look for fight entries
-            # This is a simplified parser - actual structure may vary
-            article = soup.find('article')
-            if article:
-                # Look for paragraphs with fight info
-                paragraphs = article.find_all('p')
-
-                for p in paragraphs:
-                    text = p.get_text().strip()
-                    # Parse fight info from text
-                    fight = self._parse_fight_text(text)
-                    if fight:
-                        fights.append(fight)
-                        if len(fights) >= limit:
-                            break
-
-            return fights
-
-        except Exception as e:
-            print(f"Boxing scrape error: {e}")
-            return []
-
-    def _parse_fight_text(self, text: str) -> Optional[Dict]:
-        """
-        Parse fight information from text.
-        Returns None if text doesn't contain valid fight info.
-        """
-        # Skip empty or irrelevant text
-        if not text or len(text) < 10:
-            return None
-
-        # Look for patterns like "Fighter1 vs. Fighter2" or "Fighter1 vs Fighter2"
-        vs_patterns = [' vs. ', ' vs ', ' VS. ', ' VS ']
-
-        for pattern in vs_patterns:
-            if pattern in text:
-                parts = text.split(pattern)
-                if len(parts) >= 2:
-                    fighter1 = parts[0].strip()[-50:]  # Last 50 chars before vs
-                    fighter2 = parts[1].strip()[:50]   # First 50 chars after vs
-
-                    # Clean up fighter names
-                    fighter1 = ' '.join(fighter1.split()[-3:])  # Last 3 words
-                    fighter2 = ' '.join(fighter2.split()[:3])   # First 3 words
-
-                    if fighter1 and fighter2:
-                        return {
-                            'fighter1': fighter1,
-                            'fighter2': fighter2,
-                            'title': f"{fighter1} vs {fighter2}",
-                            'date': '',
-                            'venue': '',
-                            'status': 'Scheduled',
-                            'completed': False,
-                            'winner': None,
-                            'method': None,
-                            'rounds': None,
-                        }
-
-        return None
+        return self._get_curated_boxing_schedule(limit)
 
     def _get_curated_boxing_schedule(self, limit: int = 10) -> List[Dict]:
         """
