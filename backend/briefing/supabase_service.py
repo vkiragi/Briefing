@@ -68,19 +68,27 @@ class SupabaseService:
 
     def create_bet(self, user_id: str, bet_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new bet"""
+        print(f"[SupabaseService.create_bet] Starting with bet_data: {bet_data}")
+
         # Transform from frontend format to DB format
         db_bet = self._transform_bet_to_db(bet_data, user_id)
+        print(f"[SupabaseService.create_bet] Transformed db_bet: {db_bet}")
 
         # Extract legs if parlay
         legs = db_bet.pop('legs', None)
+        print(f"[SupabaseService.create_bet] Extracted legs: {legs}")
 
         # Insert bet
+        print(f"[SupabaseService.create_bet] Inserting bet...")
         result = self.client.table('bets').insert(db_bet).execute()
         bet = result.data[0]
+        print(f"[SupabaseService.create_bet] Bet inserted: {bet['id']}")
 
         # Insert parlay legs if any
         if legs and bet['type'] == 'Parlay':
+            print(f"[SupabaseService.create_bet] Inserting {len(legs)} parlay legs...")
             for i, leg in enumerate(legs):
+                print(f"[SupabaseService.create_bet] Processing leg {i}: is_combined={leg.get('is_combined')}, combined_players={leg.get('combined_players')}")
                 leg_data = {
                     'bet_id': bet['id'],
                     'sport': leg.get('sport', bet['sport']),
@@ -100,7 +108,9 @@ class SupabaseService:
                     # Supabase handles JSONB serialization automatically
                     'combined_players': leg.get('combined_players'),
                 }
+                print(f"[SupabaseService.create_bet] Inserting leg_data: {leg_data}")
                 self.client.table('parlay_legs').insert(leg_data).execute()
+                print(f"[SupabaseService.create_bet] Leg {i} inserted successfully")
 
         # Update user stats
         self._update_user_stats(user_id)
