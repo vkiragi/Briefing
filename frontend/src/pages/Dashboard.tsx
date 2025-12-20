@@ -203,10 +203,13 @@ export const Dashboard = () => {
 
     return bets.filter(b => {
       // Basic requirements - must be a trackable type with required fields
+      // Combined props have combined_players instead of player_name
+      const hasPlayerInfo = b.player_name || (b.is_combined && b.combined_players && b.combined_players.length > 0);
+
       if (b.status !== 'Pending' ||
           !trackableTypes.includes(b.type) ||
           !b.event_id ||
-          !b.player_name ||
+          !hasPlayerInfo ||
           !b.market_type ||
           b.line === undefined) {
         return false;
