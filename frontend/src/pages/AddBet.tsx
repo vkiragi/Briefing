@@ -628,6 +628,7 @@ export const AddBet = () => {
     let betType = formData.type;
     if (supportsPlayerProps()) {
       if (formData.type === 'player_prop') betType = 'Prop';
+      else if (formData.type === 'combined_prop') betType = 'Prop';
       else if (formData.type === 'moneyline') betType = 'Moneyline';
       else if (formData.type === 'spread') betType = 'Spread';
       else if (formData.type === 'total') betType = 'Total';
@@ -658,6 +659,17 @@ export const AddBet = () => {
       betData.event_id = selectedGame.event_id || selectedGame.competition_id;
       betData.player_name = validatedPlayerName;
       betData.team_name = validatedTeamName;
+      betData.market_type = formData.marketType;
+      betData.line = parseFloat(formData.line);
+      betData.side = formData.side.toLowerCase();
+    }
+
+    // Add tracking data for combined props
+    if (supportsPlayerProps() && formData.type === 'combined_prop' && selectedGame) {
+      const validPlayers = combinedPlayers.filter(p => p.player_name.trim());
+      betData.event_id = selectedGame.event_id || selectedGame.competition_id;
+      betData.is_combined = true;
+      betData.combined_players = validPlayers;
       betData.market_type = formData.marketType;
       betData.line = parseFloat(formData.line);
       betData.side = formData.side.toLowerCase();
