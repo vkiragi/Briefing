@@ -1069,27 +1069,32 @@ export const Dashboard = () => {
       transition={{ duration: 0.5 }}
       className="px-2 md:px-4 pt-6 md:pt-8 pb-2 md:pb-4 max-w-[2400px] mx-auto space-y-6"
     >
-      {/* Header with inline stats */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
-          Your <span className="text-accent">Briefing</span>
-        </h1>
-        {/* Compact Stats Strip */}
-        <div className="flex items-center gap-4 md:gap-6 text-sm">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+            Your <span className="text-accent">Briefing</span>
+          </h1>
+          <p className="text-gray-500 text-xs md:text-sm mt-1">
+            {format(new Date(), 'EEEE, MMMM d, yyyy')}
+          </p>
+        </div>
+        {/* Stats Strip */}
+        <div className="flex items-center gap-4 md:gap-8 text-base md:text-lg">
           <div className="flex items-center gap-2">
             <span className="text-gray-500">Record</span>
-            <span className="font-medium text-white">{stats.wins}W-{stats.losses}L</span>
+            <span className="font-semibold text-white">{stats.wins}W-{stats.losses}L</span>
             <span className="text-gray-600">({stats.winRate.toFixed(0)}%)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-gray-500">ROI</span>
-            <span className={cn("font-medium", stats.roi >= 0 ? "text-accent" : "text-red-500")}>
+            <span className={cn("font-semibold", stats.roi >= 0 ? "text-accent" : "text-red-500")}>
               {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%
             </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-gray-500">Active</span>
-            <span className="font-medium text-white">{stats.pending}</span>
+            <span className="font-semibold text-white">{stats.pending}</span>
           </div>
         </div>
       </div>

@@ -20,7 +20,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-white">
+    <div className="min-h-screen text-white">
       {/* Desktop Sidebar */}
       <nav className="hidden md:flex fixed left-0 top-0 bottom-0 w-24 flex-col items-center py-8 bg-card border-r border-border z-50">
         <div className="mb-8 flex flex-col items-center">

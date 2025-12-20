@@ -18,9 +18,11 @@
 }
 
 body {
-  background-color: var(--color-background);
+  background: linear-gradient(135deg, #0A0A0B 0%, #0d1a12 50%, #0A0A0B 100%);
+  background-attachment: fixed;
   color: white;
   cursor: default;
+  min-height: 100vh;
 }
 
 /* Cursor Pointer for Clickable Elements */
