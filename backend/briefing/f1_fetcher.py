@@ -125,6 +125,7 @@ class F1FetcherMixin:
 
                 race_info = {
                     'name': race_name,
+                    'round': int(round_num) if round_num else 0,
                     'date': formatted_date,
                     'location': location_str,
                     'status': status,
@@ -140,4 +141,75 @@ class F1FetcherMixin:
             raise Exception(f"Error fetching F1 races: {str(e)}")
         except Exception as e:
             raise Exception(f"Error parsing F1 races: {str(e)}")
+
+    def fetch_f1_race_results(self, round_number: int) -> Dict:
+        """
+        Fetch detailed results for a specific F1 race.
+
+        Args:
+            round_number: The round number of the race (1-24)
+
+        Returns:
+            Dict with race info and full results (all positions)
+        """
+        try:
+            # Fetch race results for specific round
+            url = f"http://api.jolpi.ca/ergast/f1/2025/{round_number}/results.json"
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+
+            race_table = data.get('MRData', {}).get('RaceTable', {})
+            races = race_table.get('Races', [])
+
+            if not races:
+                return {
+                    'race_name': 'Unknown',
+                    'round': round_number,
+                    'date': '',
+                    'location': '',
+                    'results': [],
+                    'has_results': False
+                }
+
+            race = races[0]
+            circuit = race.get('Circuit', {})
+            location = circuit.get('Location', {})
+
+            results = []
+            for result in race.get('Results', []):
+                driver = result.get('Driver', {})
+                constructor = result.get('Constructor', {})
+                time_data = result.get('Time', {})
+                fastest_lap = result.get('FastestLap', {})
+
+                results.append({
+                    'position': result.get('position', 'N/A'),
+                    'driver': f"{driver.get('givenName', '')} {driver.get('familyName', 'Unknown')}".strip(),
+                    'driver_code': driver.get('code', ''),
+                    'team': constructor.get('name', 'Unknown'),
+                    'grid': result.get('grid', 'N/A'),
+                    'laps': result.get('laps', '0'),
+                    'status': result.get('status', 'Finished'),
+                    'time': time_data.get('time', '') if time_data else '',
+                    'points': result.get('points', '0'),
+                    'fastest_lap_time': fastest_lap.get('Time', {}).get('time', '') if fastest_lap else '',
+                    'fastest_lap_rank': fastest_lap.get('rank', '') if fastest_lap else '',
+                })
+
+            return {
+                'race_name': race.get('raceName', 'Unknown Race'),
+                'round': round_number,
+                'date': race.get('date', ''),
+                'time': race.get('time', ''),
+                'location': f"{location.get('locality', 'Unknown')}, {location.get('country', 'Unknown')}",
+                'circuit': circuit.get('circuitName', 'Unknown Circuit'),
+                'results': results,
+                'has_results': len(results) > 0
+            }
+
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Error fetching F1 race results: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Error parsing F1 race results: {str(e)}")
 

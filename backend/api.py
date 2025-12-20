@@ -166,6 +166,17 @@ def get_f1_races():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/sports/f1/race/{round_number}")
+def get_f1_race_results(round_number: int):
+    """
+    Get detailed results for a specific F1 race by round number.
+    Returns full finishing order with times, positions, and team info.
+    """
+    try:
+        return sports_fetcher.fetch_f1_race_results(round_number)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/sports/nfl/week")
 def get_nfl_week(date: Optional[str] = Query(None, description="Date in YYYYMMDD format")):
     """

@@ -227,12 +227,40 @@ export const api = {
     if (!response.ok) throw new Error('Failed to fetch F1 races');
     return response.json() as Promise<Array<{
       name: string;
+      round: number;
       date: string;
       location: string;
       status: string;
       completed: boolean;
       winner?: string;
     }>>;
+  },
+
+  getF1RaceResults: async (roundNumber: number) => {
+    const response = await fetch(`${API_BASE_URL}/sports/f1/race/${roundNumber}`);
+    if (!response.ok) throw new Error('Failed to fetch F1 race results');
+    return response.json() as Promise<{
+      race_name: string;
+      round: number;
+      date: string;
+      time: string;
+      location: string;
+      circuit: string;
+      results: Array<{
+        position: string;
+        driver: string;
+        driver_code: string;
+        team: string;
+        grid: string;
+        laps: string;
+        status: string;
+        time: string;
+        points: string;
+        fastest_lap_time: string;
+        fastest_lap_rank: string;
+      }>;
+      has_results: boolean;
+    }>;
   },
 };
 

@@ -7,6 +7,7 @@ import { useSettings } from "../context/SettingsContext";
 import { PropTracker } from "../components/PropTracker";
 import { ParlayTracker } from "../components/ParlayTracker";
 import { GameDetailModal } from "../components/GameDetailModal";
+import { F1RaceModal } from "../components/F1RaceModal";
 import { DateNavigator } from "../components/DateNavigator";
 import { api } from "../lib/api";
 import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
@@ -89,6 +90,7 @@ const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: bo
 // F1 Race type
 interface F1Race {
   name: string;
+  round: number;
   date: string;
   location: string;
   status: string;
@@ -157,6 +159,9 @@ export const Dashboard = () => {
 
   // F1 races state
   const [f1Data, setF1Data] = useState<F1State>({ races: [], loading: true, lastUpdated: null });
+
+  // F1 race detail modal state
+  const [selectedF1Race, setSelectedF1Race] = useState<F1Race | null>(null);
 
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -1257,8 +1262,9 @@ export const Dashboard = () => {
                     return (
                       <div
                         key={i}
+                        onClick={() => setSelectedF1Race(race)}
                         className={cn(
-                          "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                          "bg-card border border-border rounded-lg hover:bg-card/80 transition-all cursor-pointer hover:border-accent/50",
                           isCompact ? "p-2" : "p-4"
                         )}
                       >
@@ -1332,6 +1338,13 @@ export const Dashboard = () => {
         onClose={() => setSelectedGame(null)}
         game={selectedGame}
         sport={selectedSport}
+      />
+
+      {/* F1 Race Results Modal */}
+      <F1RaceModal
+        isOpen={!!selectedF1Race}
+        onClose={() => setSelectedF1Race(null)}
+        race={selectedF1Race}
       />
     </motion.div>
   );
