@@ -54,6 +54,13 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
+class CombinedPlayer(BaseModel):
+    player_name: str
+    team_name: Optional[str] = None
+    event_id: Optional[str] = None
+    current_value: Optional[float] = None
+    game_state: Optional[str] = None
+
 class BetLeg(BaseModel):
     sport: str
     matchup: str
@@ -66,6 +73,9 @@ class BetLeg(BaseModel):
     market_type: Optional[str] = None
     line: Optional[float] = None
     side: Optional[str] = None
+    # Combined prop fields
+    is_combined: Optional[bool] = None
+    combined_players: Optional[List[CombinedPlayer]] = None
     # Live tracking data (populated by refresh)
     current_value: Optional[float] = None
     current_value_str: Optional[str] = None
@@ -93,6 +103,9 @@ class Bet(BaseModel):
     market_type: Optional[str] = None
     line: Optional[float] = None
     side: Optional[str] = None
+    # Combined prop fields
+    is_combined: Optional[bool] = None
+    combined_players: Optional[List[CombinedPlayer]] = None
     # Live tracking data
     current_value: Optional[float] = None
     current_value_str: Optional[str] = None
