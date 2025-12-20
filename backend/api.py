@@ -177,6 +177,17 @@ def get_f1_race_results(round_number: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/sports/boxing/fights")
+def get_boxing_fights(limit: int = Query(10, ge=1, le=20)):
+    """
+    Get upcoming and recent boxing fights.
+    Returns fight cards with fighters, date, venue, and results if completed.
+    """
+    try:
+        return sports_fetcher.fetch_boxing_fights(limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/sports/nfl/week")
 def get_nfl_week(date: Optional[str] = Query(None, description="Date in YYYYMMDD format")):
     """

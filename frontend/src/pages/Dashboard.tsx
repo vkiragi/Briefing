@@ -60,7 +60,7 @@ const isCacheValid = (cached: CachedLeagueData | undefined): boolean => {
 };
 
 // League configuration for fetching
-const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: boolean; useScheduleFallback: boolean; isF1?: boolean }> = {
+const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: boolean; useScheduleFallback: boolean; isF1?: boolean; isBoxing?: boolean }> = {
   nba: { apiId: 'nba', title: 'NBA Action', isSoccer: false, useScheduleFallback: true },
   ncaab: { apiId: 'ncaab', title: 'NCAA Basketball', isSoccer: false, useScheduleFallback: true },
   nfl: { apiId: 'nfl', title: 'NFL Action', isSoccer: false, useScheduleFallback: true },
@@ -85,6 +85,7 @@ const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: bo
   austrian: { apiId: 'austrian', title: 'Austrian Bundesliga', isSoccer: true, useScheduleFallback: true },
   tennis: { apiId: 'tennis-atp-singles', title: 'Tennis Action', isSoccer: false, useScheduleFallback: true },
   f1: { apiId: 'f1', title: 'Formula 1', isSoccer: false, useScheduleFallback: false, isF1: true },
+  boxing: { apiId: 'boxing', title: 'Boxing', isSoccer: false, useScheduleFallback: false, isBoxing: true },
 };
 
 // F1 Race type
@@ -101,6 +102,28 @@ interface F1Race {
 // F1 state
 interface F1State {
   races: F1Race[];
+  loading: boolean;
+  lastUpdated: Date | null;
+}
+
+// Boxing Fight type
+interface BoxingFight {
+  fighter1: string;
+  fighter2: string;
+  title: string;
+  date: string;
+  venue: string;
+  status: string;
+  completed: boolean;
+  winner?: string | null;
+  method?: string | null;
+  rounds?: number | null;
+  belt?: string | null;
+}
+
+// Boxing state
+interface BoxingState {
+  fights: BoxingFight[];
   loading: boolean;
   lastUpdated: Date | null;
 }
@@ -162,6 +185,9 @@ export const Dashboard = () => {
 
   // F1 race detail modal state
   const [selectedF1Race, setSelectedF1Race] = useState<F1Race | null>(null);
+
+  // Boxing fights state
+  const [boxingData, setBoxingData] = useState<BoxingState>({ fights: [], loading: true, lastUpdated: null });
 
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -462,6 +488,21 @@ export const Dashboard = () => {
     }
   }, []);
 
+  // Fetch Boxing fights
+  const fetchBoxingData = useCallback(async () => {
+    try {
+      const fights = await api.getBoxingFights(10);
+      setBoxingData({
+        fights,
+        loading: false,
+        lastUpdated: new Date()
+      });
+    } catch (e) {
+      console.error('Failed to fetch boxing fights', e);
+      setBoxingData(prev => ({ ...prev, loading: false }));
+    }
+  }, []);
+
   // Generic fetch function for all leagues
   // Optimized to reduce API calls - fetches scores which includes all game states
   const fetchLeagueData = useCallback(async (leagueId: string, dateOverride?: Date) => {
@@ -471,6 +512,12 @@ export const Dashboard = () => {
     // F1 uses a different API - handle separately
     if (config.isF1) {
       await fetchF1Data();
+      return;
+    }
+
+    // Boxing uses a different API - handle separately
+    if (config.isBoxing) {
+      await fetchBoxingData();
       return;
     }
 
@@ -534,7 +581,7 @@ export const Dashboard = () => {
         [leagueId]: { ...prev[leagueId], loading: false }
       }));
     }
-  }, [leagueDates, fetchF1Data]);
+  }, [leagueDates, fetchF1Data, fetchBoxingData]);
 
   // Date navigation handlers
   const handleDateChange = useCallback((leagueId: string, newDate: Date) => {
@@ -1319,6 +1366,113 @@ export const Dashboard = () => {
                 ) : (
                   <div className="text-gray-500 text-sm text-center py-8 col-span-full">
                     No F1 races available
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        // Handle Boxing separately
+        if (config?.isBoxing) {
+          const isCompact = settings.compactMode;
+          return (
+            <div key={sectionId} className={cn("space-y-4", isCompact && "space-y-2")}>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <h2 className={cn("font-semibold tracking-tight text-white", isCompact ? "text-lg" : "text-xl")}>
+                    {config.title}
+                  </h2>
+                  {boxingData.lastUpdated && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Clock size={12} />
+                      <span>Updated {boxingData.lastUpdated.toLocaleTimeString()}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="w-full h-0.5 bg-accent/40 rounded-full" />
+              </div>
+
+              <div className={cn(
+                "grid grid-cols-1 md:grid-cols-2 gap-4",
+                isCompact ? "lg:grid-cols-4 gap-2" : "lg:grid-cols-3 gap-4"
+              )}>
+                {boxingData.loading ? (
+                  <>
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className={cn("bg-card/50 animate-pulse rounded-lg", isCompact ? "h-16" : "h-28")} />
+                    ))}
+                  </>
+                ) : boxingData.fights.length > 0 ? (
+                  boxingData.fights.map((fight, i) => {
+                    const fightDate = new Date(fight.date);
+                    const isPast = fight.completed;
+                    const isUpcoming = !isPast && fightDate > new Date();
+
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "bg-card border border-border rounded-lg hover:bg-card/80 transition-all hover:border-accent/50",
+                          isCompact ? "p-2" : "p-4"
+                        )}
+                      >
+                        {/* Fight status */}
+                        <div className={cn(
+                          "flex items-center justify-between",
+                          isCompact ? "mb-1" : "mb-2"
+                        )}>
+                          <span className={cn(
+                            "text-xs font-medium px-2 py-0.5 rounded",
+                            isPast ? "bg-gray-700 text-gray-300" :
+                            isUpcoming ? "bg-accent/20 text-accent" :
+                            "bg-red-500/20 text-red-400"
+                          )}>
+                            {fight.status}
+                          </span>
+                          <span className={cn("text-xs text-gray-500", isCompact && "text-[10px]")}>
+                            {format(fightDate, 'MMM d, yyyy')}
+                          </span>
+                        </div>
+
+                        {/* Fighters */}
+                        <h3 className={cn(
+                          "font-semibold text-white",
+                          isCompact ? "text-sm mb-1" : "text-base mb-2"
+                        )}>
+                          <span>{fight.fighter1}</span>
+                          <span className="text-gray-500 mx-2">vs</span>
+                          <span>{fight.fighter2}</span>
+                        </h3>
+
+                        {/* Belt/Title */}
+                        {fight.belt && (
+                          <p className={cn("text-yellow-500 truncate", isCompact ? "text-xs" : "text-sm")}>
+                            🏆 {fight.belt}
+                          </p>
+                        )}
+
+                        {/* Venue */}
+                        <p className={cn("text-gray-400 truncate", isCompact ? "text-xs" : "text-sm")}>
+                          📍 {fight.venue}
+                        </p>
+
+                        {/* Winner (if completed) */}
+                        {fight.winner && (
+                          <p className={cn(
+                            "text-accent font-medium mt-1 truncate",
+                            isCompact ? "text-xs" : "text-sm"
+                          )}>
+                            Winner: {fight.winner}
+                            {fight.method && ` (${fight.method})`}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-gray-500 text-sm text-center py-8 col-span-full">
+                    No boxing fights available
                   </div>
                 )}
               </div>

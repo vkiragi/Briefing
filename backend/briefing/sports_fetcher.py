@@ -9,15 +9,17 @@ from .mlb_fetcher import MLBFetcherMixin
 from .soccer_fetcher import SoccerFetcherMixin
 from .f1_fetcher import F1FetcherMixin
 from .tennis_fetcher import TennisFetcherMixin
+from .boxing_fetcher import BoxingFetcherMixin
 
 class SportsFetcher(
     TennisFetcherMixin, # Tennis mixin must come before BaseSportsFetcher to intercept calls
     BaseSportsFetcher,
-    NFLFetcherMixin, 
-    NBAFetcherMixin, 
-    MLBFetcherMixin, 
+    NFLFetcherMixin,
+    NBAFetcherMixin,
+    MLBFetcherMixin,
     SoccerFetcherMixin,
-    F1FetcherMixin
+    F1FetcherMixin,
+    BoxingFetcherMixin
 ):
     """Fetches sports scores and news from ESPN public JSON endpoints."""
     # Logic is now distributed across BaseSportsFetcher and Mixins

@@ -46,6 +46,7 @@ class BaseSportsFetcher:
         'tennis-wta-singles': 'tennis/wta',  # WTA Women's Singles
         'tennis-wta-doubles': 'tennis/wta',  # WTA Women's Doubles
         'ufc': 'mma/ufc', # UFC
+        'boxing': 'boxing/boxing', # Boxing
     }
 
     def __init__(self, timeout: int = 10):

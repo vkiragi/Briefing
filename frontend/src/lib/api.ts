@@ -262,6 +262,24 @@ export const api = {
       has_results: boolean;
     }>;
   },
+
+  getBoxingFights: async (limit = 10) => {
+    const response = await fetch(`${API_BASE_URL}/sports/boxing/fights?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch boxing fights');
+    return response.json() as Promise<Array<{
+      fighter1: string;
+      fighter2: string;
+      title: string;
+      date: string;
+      venue: string;
+      status: string;
+      completed: boolean;
+      winner?: string | null;
+      method?: string | null;
+      rounds?: number | null;
+      belt?: string | null;
+    }>>;
+  },
 };
 
 

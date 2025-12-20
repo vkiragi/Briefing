@@ -28,6 +28,7 @@ const SPORTS = [
   { id: 'tennis', label: 'Tennis', icon: '🎾', logo: 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-tennis.png&w=100&h=100' },
   { id: 'f1', label: 'F1', icon: '🏎️', logo: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/f1.png&w=100&h=100' },
   { id: 'ufc', label: 'UFC', icon: '🥊', logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png' },
+  { id: 'boxing', label: 'Boxing', icon: '🥊', logo: '' },
 ];
 
 // NBA-specific bet types matching terminal CLI
@@ -191,16 +192,37 @@ export const AddBet = () => {
 
       setLoadingGames(true);
       try {
-        const [schedule, live] = await Promise.all([
-          api.getSchedule(formData.sport, 20),
-          api.getScores(formData.sport, 10, true)
-        ]);
+        // Boxing uses a different API since ESPN doesn't support it
+        if (formData.sport === 'boxing') {
+          const fights = await api.getBoxingFights(20);
+          // Convert boxing fights to Game format for display
+          const boxingGames: Game[] = fights.map((fight, index) => ({
+            away_team: fight.fighter1,
+            home_team: fight.fighter2,
+            away_score: '',
+            home_score: '',
+            status: fight.status,
+            date: fight.date,
+            state: fight.completed ? 'post' : 'pre',
+            event_id: `boxing-${index}`,
+            competition_id: `boxing-${index}`,
+            away_logo: '',
+            home_logo: '',
+          }));
+          setGames(boxingGames);
+          setLiveGames([]);
+        } else {
+          const [schedule, live] = await Promise.all([
+            api.getSchedule(formData.sport, 20),
+            api.getScores(formData.sport, 10, true)
+          ]);
 
-        const validLive = live.filter(g => g.state !== 'no_live' && g.status !== 'No live games');
-        const validSchedule = schedule.filter(g => g.state !== 'tbd' && g.status !== 'TBD');
+          const validLive = live.filter(g => g.state !== 'no_live' && g.status !== 'No live games');
+          const validSchedule = schedule.filter(g => g.state !== 'tbd' && g.status !== 'TBD');
 
-        setGames(validSchedule);
-        setLiveGames(validLive);
+          setGames(validSchedule);
+          setLiveGames(validLive);
+        }
       } catch (e) {
         console.error("Failed to fetch games", e);
         setGames([]);
@@ -210,7 +232,7 @@ export const AddBet = () => {
       }
     };
 
-    if (['nfl', 'nba', 'ncaab', 'ncaaf', 'mlb', 'nhl', 'soccer', 'f1', 'tennis', 'ufc'].includes(formData.sport)) {
+    if (['nfl', 'nba', 'ncaab', 'ncaaf', 'mlb', 'nhl', 'soccer', 'f1', 'tennis', 'ufc', 'boxing'].includes(formData.sport)) {
       fetchGames();
     } else {
       setGames([]);
