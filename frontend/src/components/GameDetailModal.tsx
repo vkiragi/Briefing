@@ -1,10 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Trophy, MapPin } from 'lucide-react';
+import { X, Loader2, Trophy, MapPin, Check, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
 import { Game, BoxScoreData, BoxScoreTeam, BoxScorePlayer, NFLStatCategory, TennisMatchData } from '../types';
+import { BetSlipPanel } from './BetSlipPanel';
+import { useBets } from '../context/BetContext';
+
+// Mapping from stat column to market type
+const NBA_STAT_TO_MARKET: Record<string, string> = {
+  'PTS': 'points',
+  'REB': 'rebounds',
+  'AST': 'assists',
+  '3PT': 'threes',
+  'BLK': 'blocks',
+  'STL': 'steals',
+};
+
+// Bettable NBA stats (not MIN, FG%, +/-, etc.)
+const NBA_BETTABLE_STATS = ['PTS', 'REB', 'AST', '3PT', 'BLK', 'STL'];
+
+// NFL category + stat to market mapping
+const NFL_STAT_TO_MARKET: Record<string, Record<string, string>> = {
+  passing: { 'YDS': 'passing_yards', 'TD': 'passing_tds', 'CMP': 'completions' },
+  rushing: { 'YDS': 'rushing_yards', 'TD': 'rushing_tds', 'CAR': 'rushing_attempts' },
+  receiving: { 'YDS': 'receiving_yards', 'REC': 'receptions', 'TD': 'receiving_tds' },
+};
+
+// MLB category + stat to market mapping
+const MLB_STAT_TO_MARKET: Record<string, Record<string, string>> = {
+  batting: { 'H': 'hits', 'RBI': 'rbis', 'R': 'runs', 'HR': 'home_runs' },
+  pitching: { 'K': 'strikeouts', 'IP': 'innings_pitched' },
+};
 
 interface GameDetailModalProps {
   isOpen: boolean;
@@ -18,18 +46,123 @@ const isTennisMatch = (data: BoxScoreData | TennisMatchData): data is TennisMatc
   return data.sport === 'tennis';
 };
 
+// Selection for multi-select betting
+export interface BetSelection {
+  id: string; // unique key: `${playerId}-${market}`
+  player: BoxScorePlayer;
+  market: string;
+  marketLabel: string;
+  currentValue: string;
+  teamName: string;
+  // Configurable values (set in bet slip)
+  line?: number;
+  side?: 'over' | 'under';
+  odds?: number;
+}
+
 export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   isOpen,
   onClose,
   game,
   sport,
 }) => {
+  const { addParlayLeg } = useBets();
   const [boxScore, setBoxScore] = useState<BoxScoreData | TennisMatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
+  const [selectedBets, setSelectedBets] = useState<BetSelection[]>([]);
+  const [showBetSlip, setShowBetSlip] = useState(false);
 
   const isTennisTournament = sport.startsWith('tennis') && game?.match_type === 'tournament';
+
+  // Helper to handle stat click - toggles selection
+  const handleStatClick = (
+    player: BoxScorePlayer,
+    statColumn: string,
+    statValue: string | number,
+    teamName: string,
+    category?: string // For NFL/MLB category-based stats
+  ) => {
+    // Get market type based on sport
+    let market: string | undefined;
+    let marketLabel = statColumn;
+
+    if (sport === 'nba' || sport === 'ncaab') {
+      market = NBA_STAT_TO_MARKET[statColumn];
+      marketLabel = statColumn;
+    } else if (sport === 'nfl' || sport === 'ncaaf') {
+      if (category && NFL_STAT_TO_MARKET[category]) {
+        market = NFL_STAT_TO_MARKET[category][statColumn];
+      }
+      marketLabel = `${statColumn} (${category})`;
+    } else if (sport === 'mlb') {
+      if (category && MLB_STAT_TO_MARKET[category]) {
+        market = MLB_STAT_TO_MARKET[category][statColumn];
+      }
+      marketLabel = `${statColumn} (${category})`;
+    }
+
+    if (!market) return;
+
+    const selectionId = `${player.id}-${market}`;
+    const numValue = typeof statValue === 'number' ? statValue : parseFloat(String(statValue)) || 0;
+
+    setSelectedBets(prev => {
+      const existingIndex = prev.findIndex(s => s.id === selectionId);
+      if (existingIndex >= 0) {
+        // Deselect - remove from array
+        return prev.filter(s => s.id !== selectionId);
+      } else {
+        // Select - add to array with default values
+        return [...prev, {
+          id: selectionId,
+          player,
+          market,
+          marketLabel,
+          currentValue: String(statValue),
+          teamName,
+          line: numValue + 0.5,
+          side: 'over' as const,
+          odds: -110,
+        }];
+      }
+    });
+  };
+
+  // Check if a stat is selected
+  const isStatSelected = (playerId: string, market: string): boolean => {
+    return selectedBets.some(s => s.id === `${playerId}-${market}`);
+  };
+
+  // Clear all selections
+  const clearSelections = () => {
+    setSelectedBets([]);
+  };
+
+  // Remove a single selection
+  const removeSelection = (id: string) => {
+    setSelectedBets(prev => prev.filter(s => s.id !== id));
+  };
+
+  // Update a selection's configuration
+  const updateSelection = (id: string, updates: Partial<BetSelection>) => {
+    setSelectedBets(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+  };
+
+  // Check if a stat is bettable
+  const isBettableStat = (statColumn: string, category?: string): boolean => {
+    if (sport === 'nba' || sport === 'ncaab') {
+      return NBA_BETTABLE_STATS.includes(statColumn);
+    }
+    if (sport === 'nfl' || sport === 'ncaaf') {
+      return category ? !!NFL_STAT_TO_MARKET[category]?.[statColumn] : false;
+    }
+    if (sport === 'mlb') {
+      return category ? !!MLB_STAT_TO_MARKET[category]?.[statColumn] : false;
+    }
+    return false;
+  };
 
   useEffect(() => {
     // Don't fetch box score for tournament cards - we already have the data
@@ -37,6 +170,17 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
       fetchBoxScore();
     }
   }, [isOpen, game?.event_id, isTennisTournament]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
 
   const fetchBoxScore = async () => {
     if (!game?.event_id) return;
@@ -235,11 +379,32 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                         <span className="text-gray-500 text-xs">{player.position}</span>
                       </div>
                     </td>
-                    {nbaStatColumns.map(col => (
-                      <td key={col} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
-                        {!Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-'}
-                      </td>
-                    ))}
+                    {nbaStatColumns.map(col => {
+                      const isBettable = isBettableStat(col);
+                      const statValue = !Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-';
+                      const market = NBA_STAT_TO_MARKET[col];
+                      const isSelected = market && isStatSelected(player.id, market);
+                      return (
+                        <td
+                          key={col}
+                          onClick={isBettable && statValue !== '-' ? () => handleStatClick(player, col, statValue, team.team_name) : undefined}
+                          className={cn(
+                            "text-center py-2 px-2 font-mono text-xs relative",
+                            isBettable && statValue !== '-' && "cursor-pointer rounded transition-colors",
+                            isSelected
+                              ? "bg-accent text-background font-bold"
+                              : isBettable && statValue !== '-'
+                                ? "text-gray-300 hover:bg-accent/20 hover:text-accent"
+                                : "text-gray-300"
+                          )}
+                        >
+                          {isSelected && (
+                            <Check size={10} className="absolute top-0.5 right-0.5" />
+                          )}
+                          {statValue}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </>
@@ -262,11 +427,32 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                         <span className="text-gray-500 text-xs">{player.position}</span>
                       </div>
                     </td>
-                    {nbaStatColumns.map(col => (
-                      <td key={col} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
-                        {!Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-'}
-                      </td>
-                    ))}
+                    {nbaStatColumns.map(col => {
+                      const isBettable = isBettableStat(col);
+                      const statValue = !Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-';
+                      const market = NBA_STAT_TO_MARKET[col];
+                      const isSelected = market && isStatSelected(player.id, market);
+                      return (
+                        <td
+                          key={col}
+                          onClick={isBettable && statValue !== '-' ? () => handleStatClick(player, col, statValue, team.team_name) : undefined}
+                          className={cn(
+                            "text-center py-2 px-2 font-mono text-xs relative",
+                            isBettable && statValue !== '-' && "cursor-pointer rounded transition-colors",
+                            isSelected
+                              ? "bg-accent text-background font-bold"
+                              : isBettable && statValue !== '-'
+                                ? "text-gray-300 hover:bg-accent/20 hover:text-accent"
+                                : "text-gray-300"
+                          )}
+                        >
+                          {isSelected && (
+                            <Check size={10} className="absolute top-0.5 right-0.5" />
+                          )}
+                          {statValue}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </>
@@ -845,6 +1031,70 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
             </Card>
           </motion.div>
         </motion.div>
+      )}
+
+      {/* Floating Selection Bar */}
+      <AnimatePresence>
+        {selectedBets.length > 0 && !showBetSlip && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-20 left-4 right-4 z-[80] md:left-auto md:right-8 md:max-w-md"
+          >
+            <div className="bg-card border border-accent/50 rounded-xl p-4 shadow-lg shadow-accent/10">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-accent text-background w-8 h-8 rounded-full flex items-center justify-center font-bold">
+                    {selectedBets.length}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white text-sm">
+                      {selectedBets.length} selection{selectedBets.length !== 1 ? 's' : ''}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Tap stats to add more
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={clearSelections}
+                    className="px-3 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={() => setShowBetSlip(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-accent text-background font-semibold rounded-lg hover:bg-accent/90 transition-colors"
+                  >
+                    <Ticket size={16} />
+                    Review Bets
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bet Slip Panel */}
+      {game && (
+        <BetSlipPanel
+          isOpen={showBetSlip}
+          onClose={() => setShowBetSlip(false)}
+          selections={selectedBets}
+          onUpdateSelection={updateSelection}
+          onRemoveSelection={removeSelection}
+          onClearAll={clearSelections}
+          eventId={game.event_id}
+          sport={sport}
+          matchup={`${game.away_team} @ ${game.home_team}`}
+          onComplete={() => {
+            setSelectedBets([]);
+            setShowBetSlip(false);
+          }}
+        />
       )}
     </AnimatePresence>
   );

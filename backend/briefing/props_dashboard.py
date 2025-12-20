@@ -193,15 +193,17 @@ class PropsDashboard:
 
                     if "total_score" in p.market_type:
                         value = h_s + a_s
-                        p.current_value_str = f"{int(value)} ({int(a_s)}-{int(h_s)}) [{period_label}]"
-                    
+                        # Show total with score breakdown: "112 (55-57)"
+                        p.current_value_str = f"{int(value)} ({int(a_s)}-{int(h_s)})"
+
                     elif "spread" in p.market_type:
                         # Value is the score difference from perspective of the picked team
                         if p.side.lower() in away_team_name.lower():
                             value = a_s - h_s
                         else:
                             value = h_s - a_s
-                        p.current_value_str = f"{int(value):+d} ({int(a_s)}-{int(h_s)}) [{period_label}]"
+                        # Show spread with score: "+5 (55-57)"
+                        p.current_value_str = f"{int(value):+d} ({int(a_s)}-{int(h_s)})"
                         
                     elif "moneyline" in p.market_type:
                         # Value is just the margin
@@ -209,8 +211,8 @@ class PropsDashboard:
                             value = a_s - h_s
                         else:
                             value = h_s - a_s
-                        # Just show total score as requested
-                        p.current_value_str = f"Score: {int(a_s)}-{int(h_s)} [{period_label}]"
+                        # Simple score display: "55-57"
+                        p.current_value_str = f"{int(a_s)}-{int(h_s)}"
                         
                     elif p.market_type == "home_team_points":
                         value = home_score

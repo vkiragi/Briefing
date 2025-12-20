@@ -84,6 +84,17 @@ export const F1RaceModal = ({ isOpen, onClose, race }: F1RaceModalProps) => {
     }
   }, [isOpen, race?.round, race?.completed]);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
   const getTeamColor = (team: string) => {
     return TEAM_COLORS[team] || 'bg-gray-600';
   };

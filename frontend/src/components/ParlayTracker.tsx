@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Trash2, ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bet, ParlayLeg } from '../types';
 import { cn } from '../lib/utils';
@@ -16,6 +16,9 @@ const LegTracker: React.FC<{ leg: ParlayLeg; index: number; showMatchup?: boolea
   const isPostGame = leg.game_state === 'post';
   const hasCurrentValue = leg.current_value !== undefined && leg.current_value !== null;
   const hasLine = leg.line !== undefined && leg.line !== null && leg.line > 0;
+
+  // Check if this is a player prop (has line) vs a team bet (Moneyline, no line)
+  const isPlayerProp = hasLine && leg.market_type;
   const isOver = leg.side?.toLowerCase() === 'over';
 
   // Determine if currently winning/losing based on actual values (more reliable than prop_status)
@@ -107,36 +110,127 @@ const LegTracker: React.FC<{ leg: ParlayLeg; index: number; showMatchup?: boolea
       {/* Selection and line with current value */}
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-white text-sm truncate">
-            {leg.player_name || leg.selection}
-          </div>
-          {/* Bet type - e.g., "Over 32.5 points" */}
-          {leg.side && leg.line && leg.market_type && (
-            <div className="text-xs text-gray-400 capitalize">
-              {leg.side} {leg.line} {leg.market_type.replace(/_/g, ' ')}
-            </div>
+          {leg.is_combined && leg.combined_players ? (
+            <>
+              {/* Combined prop - show all players */}
+              <div className="flex items-center gap-1 mb-1">
+                <Users size={12} className="text-accent" />
+                <span className="text-xs text-accent font-medium">Combined Prop</span>
+              </div>
+              <div className="font-medium text-white text-sm">
+                {leg.combined_players.map(p => p.player_name).join(' + ')}
+              </div>
+              {leg.side && leg.line && leg.market_type && (
+                <div className="text-xs text-gray-400 capitalize">
+                  {leg.side} {leg.line} {leg.market_type.replace(/_/g, ' ')}
+                </div>
+              )}
+            </>
+          ) : isPlayerProp ? (
+            <>
+              <div className="font-medium text-white text-sm truncate">
+                {leg.player_name || leg.selection}
+              </div>
+              {/* Bet type - e.g., "Over 32.5 points" */}
+              {leg.side && leg.line && leg.market_type && (
+                <div className="text-xs text-gray-400 capitalize">
+                  {leg.side} {leg.line} {leg.market_type.replace(/_/g, ' ')}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Team bet - show selection (team name), fallback to team_name if selection is invalid */}
+              <div className="font-medium text-white text-sm truncate">
+                {leg.selection && leg.selection !== '0' ? leg.selection : leg.team_name || 'Team Bet'}
+              </div>
+              <div className="text-xs text-gray-400">
+                Moneyline
+              </div>
+            </>
           )}
           {showMatchup && <div className="text-xs text-gray-500 truncate">{leg.matchup}</div>}
         </div>
         <div className="text-right ml-2 flex items-center gap-3">
-          <div className="text-center">
-            <div className={cn("text-lg font-bold font-mono", getStatusColor())}>
-              {hasCurrentValue ? (leg.current_value_str || leg.current_value?.toFixed(0)) : (isLive || isPostGame ? '0' : '-')}
-            </div>
-            <div className="text-xs text-gray-600">CURR</div>
-          </div>
-          {hasLine && (
-            <div className="text-center">
-              <div className="text-lg font-bold font-mono text-white">
-                {leg.line}
+          {leg.is_combined && leg.combined_players ? (
+            <>
+              {/* Combined prop: show combined total / line */}
+              <div className="text-center">
+                <div className={cn("text-lg font-bold font-mono", getStatusColor())}>
+                  {hasCurrentValue ? leg.current_value?.toFixed(0) : '-'}
+                </div>
+                <div className="text-xs text-gray-600">TOTAL</div>
               </div>
-              <div className="text-xs text-gray-500 uppercase">
-                {leg.market_type?.replace(/_/g, ' ') || 'LINE'}
+              {hasLine && (
+                <div className="text-center">
+                  <div className="text-lg font-bold font-mono text-white">
+                    {leg.line}
+                  </div>
+                  <div className="text-xs text-gray-500">LINE</div>
+                </div>
+              )}
+            </>
+          ) : isPlayerProp ? (
+            <>
+              {/* Player prop: show current value / line */}
+              <div className="text-center">
+                <div className={cn("text-lg font-bold font-mono", getStatusColor())}>
+                  {hasCurrentValue ? (leg.current_value_str || leg.current_value?.toFixed(0)) : (isLive || isPostGame ? '0' : '-')}
+                </div>
+                <div className="text-xs text-gray-600">CURR</div>
               </div>
-            </div>
+              {hasLine && (
+                <div className="text-center">
+                  <div className="text-lg font-bold font-mono text-white">
+                    {leg.line}
+                  </div>
+                  <div className="text-xs text-gray-500 uppercase">
+                    {leg.market_type?.replace(/_/g, ' ') || 'LINE'}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Team bet: show score and odds */}
+              {(isLive || isPostGame) && leg.current_value_str && (
+                <div className="text-center">
+                  <div className={cn("text-lg font-bold font-mono", getStatusColor())}>
+                    {leg.current_value_str}
+                  </div>
+                  <div className="text-xs text-gray-500">Score</div>
+                </div>
+              )}
+              <div className="text-center">
+                <div className={cn(
+                  "text-lg font-bold font-mono",
+                  leg.odds > 0 ? "text-green-400" : "text-white"
+                )}>
+                  {leg.odds > 0 ? `+${leg.odds}` : leg.odds}
+                </div>
+                <div className="text-xs text-gray-500">Odds</div>
+              </div>
+            </>
           )}
         </div>
       </div>
+
+      {/* Combined prop: show individual player breakdown */}
+      {leg.is_combined && leg.combined_players && leg.combined_players.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border/30">
+          <div className="text-xs text-gray-500 mb-1">Individual Stats</div>
+          <div className="grid grid-cols-3 gap-1">
+            {leg.combined_players.map((player, i) => (
+              <div key={i} className="bg-background/50 rounded px-2 py-1 text-center">
+                <div className="text-xs text-gray-400 truncate">{player.player_name.split(' ').pop()}</div>
+                <div className="text-sm font-bold text-white">
+                  {player.current_value !== undefined ? player.current_value : '-'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Progress section */}
       {hasLine && (isLive || isPostGame || hasCurrentValue) && (

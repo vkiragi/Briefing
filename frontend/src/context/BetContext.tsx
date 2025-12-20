@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Bet } from '../types';
+import { Bet, ParlayLeg } from '../types';
 import { api } from '../lib/api';
 import { useAuth } from './AuthContext';
 
@@ -13,6 +13,11 @@ interface BetStats {
   profit: number;
 }
 
+interface ParlayBuilder {
+  legs: ParlayLeg[];
+  isActive: boolean;
+}
+
 interface BetContextType {
   bets: Bet[];
   addBet: (bet: Omit<Bet, 'id' | 'status'>) => Promise<void>;
@@ -22,6 +27,11 @@ interface BetContextType {
   stats: BetStats;
   loading: boolean;
   refreshBets: () => Promise<void>;
+  // Parlay builder
+  parlayBuilder: ParlayBuilder;
+  addParlayLeg: (leg: ParlayLeg) => void;
+  removeParlayLeg: (index: number) => void;
+  clearParlayBuilder: () => void;
 }
 
 const defaultStats: BetStats = {
@@ -44,11 +54,17 @@ export const useBets = () => {
   return context;
 };
 
+const defaultParlayBuilder: ParlayBuilder = {
+  legs: [],
+  isActive: false,
+};
+
 export const BetProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, session } = useAuth();
   const [bets, setBets] = useState<Bet[]>([]);
   const [stats, setStats] = useState<BetStats>(defaultStats);
   const [loading, setLoading] = useState(true);
+  const [parlayBuilder, setParlayBuilder] = useState<ParlayBuilder>(defaultParlayBuilder);
 
   // Fetch bets and stats from backend (single API call for better performance)
   const fetchBets = useCallback(async () => {
@@ -188,8 +204,43 @@ export const BetProvider = ({ children }: { children: React.ReactNode }) => {
     await fetchBets();
   };
 
+  // Parlay builder methods
+  const addParlayLeg = (leg: ParlayLeg) => {
+    setParlayBuilder(prev => ({
+      legs: [...prev.legs, leg],
+      isActive: true,
+    }));
+  };
+
+  const removeParlayLeg = (index: number) => {
+    setParlayBuilder(prev => {
+      const newLegs = prev.legs.filter((_, i) => i !== index);
+      return {
+        legs: newLegs,
+        isActive: newLegs.length > 0,
+      };
+    });
+  };
+
+  const clearParlayBuilderState = () => {
+    setParlayBuilder(defaultParlayBuilder);
+  };
+
   return (
-    <BetContext.Provider value={{ bets, addBet, updateBetStatus, deleteBet, clearPendingBets, stats, loading, refreshBets: fetchBets }}>
+    <BetContext.Provider value={{
+      bets,
+      addBet,
+      updateBetStatus,
+      deleteBet,
+      clearPendingBets,
+      stats,
+      loading,
+      refreshBets: fetchBets,
+      parlayBuilder,
+      addParlayLeg,
+      removeParlayLeg,
+      clearParlayBuilder: clearParlayBuilderState,
+    }}>
       {children}
     </BetContext.Provider>
   );

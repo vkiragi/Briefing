@@ -32,6 +32,15 @@ export interface NewsItem {
   published: string;
 }
 
+// Individual player in a combined prop
+export interface CombinedPropPlayer {
+  player_name: string;
+  team_name?: string;
+  event_id?: string;
+  current_value?: number;
+  game_state?: string;
+}
+
 // Parlay leg with tracking support
 export interface ParlayLeg {
   sport: string;
@@ -45,6 +54,9 @@ export interface ParlayLeg {
   market_type?: string;
   line?: number;
   side?: string;
+  // Combined prop support (e.g., "Smith + Brown + Barkley 4+ TDs")
+  is_combined?: boolean;
+  combined_players?: CombinedPropPlayer[];
   // Live tracking data (populated by refresh)
   current_value?: number;
   current_value_str?: string;
@@ -71,7 +83,7 @@ export interface LiveSituation {
 export interface Bet {
   id: string;
   sport: string;
-  type: 'Moneyline' | 'Spread' | 'Total' | 'Parlay' | 'Prop' | '1st Half' | '1st Quarter' | 'Team Total';
+  type: 'Moneyline' | 'Spread' | 'Total' | 'Parlay' | 'Prop' | '1st Half' | '1st Quarter' | 'Team Total' | 'Combined Prop';
   matchup: string;
   selection: string;
   odds: number; // American odds
@@ -88,6 +100,9 @@ export interface Bet {
   market_type?: string;
   line?: number;
   side?: string;
+  // Combined prop support
+  is_combined?: boolean;
+  combined_players?: CombinedPropPlayer[];
   // Live tracking data
   current_value?: number;
   current_value_str?: string;

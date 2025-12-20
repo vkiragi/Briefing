@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Plus, Calendar, AlertCircle, Loader2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { CheckCircle, Plus, Calendar, AlertCircle, Loader2, ChevronLeft, ChevronRight, X, Eye, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBets } from '../context/BetContext';
 import { Card } from '../components/ui/Card';
 import { Autocomplete } from '../components/ui/Autocomplete';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
-import { Game, ParlayLeg as ParlayLegType } from '../types';
+import { Game, ParlayLeg as ParlayLegType, CombinedPropPlayer } from '../types';
 
 type BetMode = 'single' | 'parlay';
 
@@ -34,6 +34,7 @@ const SPORTS = [
 // NBA-specific bet types matching terminal CLI
 const NBA_BET_TYPES = [
   { id: 'player_prop', label: 'Player Prop' },
+  { id: 'combined_prop', label: 'Combined Prop' },
   { id: 'moneyline', label: 'Moneyline' },
   { id: 'spread', label: 'Point Spread' },
   { id: 'total', label: 'Total Score' },
@@ -45,6 +46,7 @@ const NBA_BET_TYPES = [
 // NFL-specific bet types
 const NFL_BET_TYPES = [
   { id: 'player_prop', label: 'Player Prop' },
+  { id: 'combined_prop', label: 'Combined Prop' },
   { id: 'moneyline', label: 'Moneyline' },
   { id: 'spread', label: 'Point Spread' },
   { id: 'total', label: 'Total Score' },
@@ -67,6 +69,7 @@ const NFL_MARKET_TYPES = [
   { id: 'receptions', label: 'Receptions', category: 'Receiving' },
   { id: 'receiving_touchdowns', label: 'Receiving TDs', category: 'Receiving' },
   { id: 'anytime_touchdown', label: 'Anytime TD Scorer', category: 'Scoring' },
+  { id: 'touchdowns', label: 'Touchdowns', category: 'Combined' },
 ];
 
 // NBA market types for player props
@@ -86,13 +89,17 @@ type Step = 'mode' | 'league' | 'game' | 'bet';
 
 export const AddBet = () => {
   const navigate = useNavigate();
-  const { addBet } = useBets();
+  const location = useLocation();
+  const { addBet, parlayBuilder, clearParlayBuilder } = useBets();
+
+  // Check if coming from parlay builder FAB
+  const fromParlayBuilder = (location.state as any)?.fromParlayBuilder;
 
   // Bet mode (single vs parlay)
-  const [betMode, setBetMode] = useState<BetMode>('single');
+  const [betMode, setBetMode] = useState<BetMode>(fromParlayBuilder ? 'parlay' : 'single');
 
   // Step management
-  const [currentStep, setCurrentStep] = useState<Step>('mode');
+  const [currentStep, setCurrentStep] = useState<Step>(fromParlayBuilder ? 'league' : 'mode');
 
   const [formData, setFormData] = useState({
     sport: '',
@@ -129,6 +136,28 @@ export const AddBet = () => {
   const [playerSuggestions, setPlayerSuggestions] = useState<Array<{ displayName: string; teamName: string }>>([]);
   const [searchingPlayers, setSearchingPlayers] = useState(false);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Combined prop state
+  const [combinedPlayers, setCombinedPlayers] = useState<CombinedPropPlayer[]>([
+    { player_name: '' },
+    { player_name: '' },
+  ]);
+  const [activePlayerIndex, setActivePlayerIndex] = useState<number | null>(null);
+
+  // Load legs from parlay builder context when coming from FAB
+  useEffect(() => {
+    if (fromParlayBuilder && parlayBuilder.legs.length > 0) {
+      // Convert ParlayLeg to ParlayLegUI with sport labels
+      const convertedLegs: ParlayLegUI[] = parlayBuilder.legs.map(leg => {
+        const sportInfo = SPORTS.find(s => s.id === leg.sport);
+        return {
+          ...leg,
+          sportLabel: sportInfo?.label || leg.sport.toUpperCase(),
+        };
+      });
+      setParlayLegs(convertedLegs);
+    }
+  }, [fromParlayBuilder, parlayBuilder.legs]);
 
   // Get bet types based on sport
   const getBetTypes = () => {
@@ -265,16 +294,28 @@ export const AddBet = () => {
     }
   }, [selectedGame, formData.sport]);
 
-  // Debounced player search
+  // Debounced player search - works for both player prop and combined prop
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (formData.playerName.trim().length >= 1 && selectedGame) {
+    // For regular player props
+    if (formData.type === 'player_prop' && formData.playerName.trim().length >= 1 && selectedGame) {
       searchTimeoutRef.current = setTimeout(() => {
         searchPlayers(formData.playerName);
       }, 300);
+    }
+    // For combined props - search based on active player input
+    else if (formData.type === 'combined_prop' && activePlayerIndex !== null && selectedGame) {
+      const activePlayer = combinedPlayers[activePlayerIndex];
+      if (activePlayer && activePlayer.player_name.trim().length >= 1) {
+        searchTimeoutRef.current = setTimeout(() => {
+          searchPlayers(activePlayer.player_name);
+        }, 300);
+      } else {
+        setPlayerSuggestions([]);
+      }
     } else {
       setPlayerSuggestions([]);
     }
@@ -284,7 +325,7 @@ export const AddBet = () => {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [formData.playerName, selectedGame, searchPlayers]);
+  }, [formData.playerName, formData.type, selectedGame, searchPlayers, activePlayerIndex, combinedPlayers]);
 
   const calculatePayout = (stake: number, odds: number) => {
     if (!stake || !odds) return 0;
@@ -442,6 +483,15 @@ export const AddBet = () => {
       trackingData.line = parseFloat(formData.line) || 0;
       trackingData.side = formData.side.toLowerCase();
     }
+    // Combined Prop
+    else if (formData.type === 'combined_prop') {
+      const validPlayers = combinedPlayers.filter(p => p.player_name.trim());
+      trackingData.is_combined = true;
+      trackingData.combined_players = validPlayers;
+      trackingData.market_type = formData.marketType;
+      trackingData.line = parseFloat(formData.line) || 0;
+      trackingData.side = formData.side.toLowerCase();
+    }
 
     const leg: ParlayLegUI = {
       sport: formData.sport,
@@ -472,6 +522,9 @@ export const AddBet = () => {
       periodBetType: '',
       odds: -110
     }));
+    // Reset combined players
+    setCombinedPlayers([{ player_name: '' }, { player_name: '' }]);
+    setActivePlayerIndex(null);
     setSelectedGame(null);
     setCurrentStep('league');
   };
@@ -513,8 +566,14 @@ export const AddBet = () => {
         market_type: l.market_type,
         line: l.line,
         side: l.side,
+        // Combined prop data
+        is_combined: l.is_combined,
+        combined_players: l.combined_players,
       }))
     });
+    // Clear parlay builder context after submitting
+    // Always clear since combined props also use the context
+    clearParlayBuilder();
     navigate('/');
   };
 
@@ -694,6 +753,13 @@ export const AddBet = () => {
       if (formData.type === 'player_prop' && formData.playerName && formData.marketType && formData.line && formData.side) {
         const marketLabel = formData.marketType.replace(/_/g, ' ');
         setFormData(prev => ({ ...prev, selection: `${formData.playerName} ${formData.side} ${formData.line} ${marketLabel}` }));
+      } else if (formData.type === 'combined_prop') {
+        const validPlayers = combinedPlayers.filter(p => p.player_name.trim());
+        if (validPlayers.length >= 2 && formData.marketType && formData.line && formData.side) {
+          const playerNames = validPlayers.map(p => p.player_name).join(' + ');
+          const marketLabel = getMarketTypes().find(m => m.id === formData.marketType)?.label || formData.marketType;
+          setFormData(prev => ({ ...prev, selection: `${playerNames} ${formData.side} ${formData.line} ${marketLabel} Combined` }));
+        }
       } else if (formData.type === 'moneyline' && formData.selectedTeam) {
         setFormData(prev => ({ ...prev, selection: formData.selectedTeam }));
       } else if (formData.type === 'spread' && formData.selectedTeam && formData.spreadValue) {
@@ -731,7 +797,7 @@ export const AddBet = () => {
   }, [
     formData.sport, formData.type, formData.selectedTeam, formData.spreadValue,
     formData.totalLine, formData.overUnder, formData.playerName, formData.marketType,
-    formData.line, formData.side, formData.periodBetType, selectedGame
+    formData.line, formData.side, formData.periodBetType, selectedGame, combinedPlayers
   ]);
 
   // Get current sport info
@@ -833,7 +899,7 @@ export const AddBet = () => {
               <Card className="p-6">
                 <h2 className="text-xl font-bold mb-2">What type of bet?</h2>
                 <p className="text-gray-400 mb-6">Choose between a single bet or combine multiple selections into a parlay</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     onClick={() => handleModeSelect('single')}
                     className="flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-border bg-card hover:border-accent hover:bg-accent/5 transition-all group"
@@ -856,6 +922,18 @@ export const AddBet = () => {
                     <div className="text-center">
                       <h3 className="text-xl font-bold mb-1">Parlay</h3>
                       <p className="text-sm text-gray-400">Combine multiple selections for bigger payouts</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-border bg-card hover:border-blue-500 hover:bg-blue-500/5 transition-all group"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                      <Eye size={32} className="text-blue-500" />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold mb-1">Browse & Bet</h3>
+                      <p className="text-sm text-gray-400">View stats and click to bet on player props</p>
                     </div>
                   </button>
                 </div>
@@ -1167,6 +1245,117 @@ export const AddBet = () => {
                       </>
                     )}
 
+                    {/* Combined Prop (multiple players) */}
+                    {formData.type === 'combined_prop' && supportsPlayerProps() && (
+                      <>
+                        {/* Players List */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-400 uppercase">
+                            Players ({combinedPlayers.filter(p => p.player_name.trim()).length} selected)
+                          </label>
+                          <div className="space-y-2">
+                            {combinedPlayers.map((player, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <Autocomplete
+                                  value={player.player_name}
+                                  onChange={(value) => {
+                                    const newPlayers = [...combinedPlayers];
+                                    newPlayers[index] = { ...newPlayers[index], player_name: value };
+                                    setCombinedPlayers(newPlayers);
+                                    setActivePlayerIndex(index);
+                                  }}
+                                  onSelect={(option) => {
+                                    const newPlayers = [...combinedPlayers];
+                                    newPlayers[index] = { ...newPlayers[index], player_name: option.value };
+                                    setCombinedPlayers(newPlayers);
+                                    setActivePlayerIndex(null);
+                                  }}
+                                  options={activePlayerIndex === index ? playerSuggestions.map(p => ({
+                                    value: p.displayName,
+                                    label: p.displayName,
+                                    description: p.teamName,
+                                  })) : []}
+                                  loading={activePlayerIndex === index && searchingPlayers}
+                                  placeholder={`Player ${index + 1}`}
+                                  emptyMessage="No players found"
+                                />
+                                {combinedPlayers.length > 2 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCombinedPlayers(combinedPlayers.filter((_, i) => i !== index))}
+                                    className="p-2 hover:bg-red-500/20 rounded-lg transition-colors flex-shrink-0"
+                                  >
+                                    <X size={16} className="text-red-400" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCombinedPlayers([...combinedPlayers, { player_name: '' }])}
+                            className="flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors"
+                          >
+                            <Plus size={14} />
+                            Add Player
+                          </button>
+                        </div>
+
+                        {/* Market Type */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-gray-400 uppercase">Stat Type</label>
+                          <select
+                            className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-accent"
+                            value={formData.marketType}
+                            onChange={(e) => setFormData({...formData, marketType: e.target.value})}
+                            required
+                          >
+                            <option value="">Select Stat</option>
+                            {getMarketTypes().map(market => (
+                              <option key={market.id} value={market.id}>{market.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Line & Side */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-400 uppercase">Combined Line</label>
+                            <input
+                              type="number"
+                              step="0.5"
+                              placeholder="e.g. 3.5"
+                              className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-accent"
+                              value={formData.line}
+                              onChange={(e) => setFormData({...formData, line: e.target.value})}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-400 uppercase">Side</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button type="button" onClick={() => setFormData({...formData, side: 'Over'})} className={cn("p-3 rounded-lg border-2 transition-all font-semibold", formData.side === 'Over' ? "border-green-500 bg-green-500/10 text-green-400" : "border-border hover:border-accent/50 text-white")}>Over</button>
+                              <button type="button" onClick={() => setFormData({...formData, side: 'Under'})} className={cn("p-3 rounded-lg border-2 transition-all font-semibold", formData.side === 'Under' ? "border-red-500 bg-red-500/10 text-red-400" : "border-border hover:border-accent/50 text-white")}>Under</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Preview */}
+                        {combinedPlayers.filter(p => p.player_name.trim()).length >= 2 && formData.line && formData.marketType && (
+                          <div className="bg-accent/10 rounded-lg p-3">
+                            <div className="text-xs text-gray-500 mb-1">Preview</div>
+                            <div className="text-sm text-white">
+                              {combinedPlayers.filter(p => p.player_name.trim()).map(p => p.player_name).join(' + ')}{' '}
+                              <span className={formData.side === 'Over' ? 'text-green-400' : 'text-red-400'}>
+                                {formData.side} {formData.line}
+                              </span>{' '}
+                              {getMarketTypes().find(m => m.id === formData.marketType)?.label || formData.marketType} Combined
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     {/* Moneyline */}
                     {formData.type === 'moneyline' && (
                       <div className="space-y-2">
@@ -1442,6 +1631,12 @@ export const AddBet = () => {
                         <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded">
                           {leg.sportLabel}
                         </span>
+                        {leg.is_combined && (
+                          <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded flex items-center gap-1">
+                            <Users size={10} />
+                            Combined
+                          </span>
+                        )}
                         <span className="text-xs text-gray-500 truncate">
                           {leg.matchup}
                         </span>
@@ -1520,6 +1715,7 @@ export const AddBet = () => {
           </div>
         </motion.div>
       )}
+
     </motion.div>
   );
 };

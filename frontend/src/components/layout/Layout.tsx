@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 import { SettingsModal } from "../SettingsModal";
 import { ProfileModal } from "../ProfileModal";
+import { ParlayBuilderFAB } from "../ParlayBuilderFAB";
 
 const navItems = [
   { path: "/", label: "Home", icon: Home },
@@ -192,6 +193,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         isOpen={profileOpen}
         onClose={() => setProfileOpen(false)}
       />
+
+      {/* Parlay Builder FAB */}
+      <ParlayBuilderFAB />
     </div>
   );
 };
