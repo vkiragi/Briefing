@@ -12,6 +12,52 @@ import { api } from "../lib/api";
 import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
 import { cn } from "../lib/utils";
 
+// Cache configuration
+const CACHE_KEY = 'briefing_league_cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+interface CachedLeagueData {
+  games: Game[];
+  timestamp: number;
+}
+
+interface LeagueCache {
+  [leagueId: string]: CachedLeagueData;
+}
+
+// Helper to get cached data
+const getCachedData = (): LeagueCache => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {
+    console.warn('Failed to read cache:', e);
+  }
+  return {};
+};
+
+// Helper to set cached data for a league
+const setCachedData = (leagueId: string, games: Game[]) => {
+  try {
+    const cache = getCachedData();
+    cache[leagueId] = {
+      games,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.warn('Failed to write cache:', e);
+  }
+};
+
+// Check if cached data is still valid
+const isCacheValid = (cached: CachedLeagueData | undefined): boolean => {
+  if (!cached) return false;
+  return Date.now() - cached.timestamp < CACHE_TTL;
+};
+
 // League configuration for fetching
 const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: boolean; useScheduleFallback: boolean }> = {
   nba: { apiId: 'nba', title: 'NBA Action', isSoccer: false, useScheduleFallback: true },
@@ -49,11 +95,23 @@ export const Dashboard = () => {
   const { stats, bets, clearPendingBets } = useBets();
   const { settings, isSectionEnabled } = useSettings();
 
-  // Dynamic state for all leagues
+  // Dynamic state for all leagues - initialize from cache if available
   const [leagueData, setLeagueData] = useState<Record<string, LeagueState>>(() => {
     const initial: Record<string, LeagueState> = {};
+    const cache = getCachedData();
+
     Object.keys(LEAGUE_CONFIG).forEach(id => {
-      initial[id] = { games: [], loading: true, lastUpdated: null };
+      const cached = cache[id];
+      if (cached && cached.games.length > 0) {
+        // Use cached data immediately, but still mark as loading for fresh data
+        initial[id] = {
+          games: cached.games,
+          loading: !isCacheValid(cached), // Only show loading if cache is stale
+          lastUpdated: new Date(cached.timestamp)
+        };
+      } else {
+        initial[id] = { games: [], loading: true, lastUpdated: null };
+      }
     });
     return initial;
   });
@@ -364,6 +422,7 @@ export const Dashboard = () => {
   }, [allPropsToTrack.length, parlaysToTrack.length, refreshPropsData, refreshInterval]); // Re-run when props/parlays to track change or interval changes
 
   // Generic fetch function for all leagues
+  // Optimized to reduce API calls - fetches scores which includes all game states
   const fetchLeagueData = useCallback(async (leagueId: string, dateOverride?: Date) => {
     const config = LEAGUE_CONFIG[leagueId];
     if (!config) return;
@@ -376,35 +435,26 @@ export const Dashboard = () => {
     const dateParam = isToday ? undefined : format(targetDate, 'yyyyMMdd');
 
     try {
-      // Fetch both live/recent scores and scheduled games
-      const [liveGamesData, recentScores, scheduled] = await Promise.all([
-        // Only fetch live games if looking at today
-        isToday ? api.getScores(config.apiId, 6, true) : Promise.resolve([]),
-        api.getScores(config.apiId, 10, false, dateParam),
-        api.getSchedule(config.apiId, 6, dateParam)
+      // Simplified: Just fetch scores (includes live + recent) and schedule in a single parallel call
+      // Reduced from 3 calls to 2 calls per league
+      const [scoresData, scheduled] = await Promise.all([
+        api.getScores(config.apiId, 12, false, dateParam),
+        api.getSchedule(config.apiId, 8, dateParam)
       ]);
 
-      // Combine live, recent, and scheduled games, deduplicating by event_id
+      // Combine scores and scheduled games, deduplicating by event_id
       const seenIds = new Set<string>();
       const combinedGames: Game[] = [];
 
-      // Add live games first
-      for (const game of liveGamesData) {
+      // Add scores first (includes both live and completed games)
+      for (const game of scoresData) {
         if (game.event_id && !seenIds.has(game.event_id) && game.status !== 'No live games') {
           seenIds.add(game.event_id);
           combinedGames.push(game);
         }
       }
 
-      // Add recent/completed games
-      for (const game of recentScores) {
-        if (game.event_id && !seenIds.has(game.event_id)) {
-          seenIds.add(game.event_id);
-          combinedGames.push(game);
-        }
-      }
-
-      // Add scheduled games
+      // Add scheduled games that aren't already in scores
       for (const game of scheduled) {
         if (game.event_id && !seenIds.has(game.event_id) && game.state !== 'tbd') {
           seenIds.add(game.event_id);
@@ -414,14 +464,22 @@ export const Dashboard = () => {
         }
       }
 
+      const finalGames = combinedGames.length > 0 ? combinedGames.slice(0, 10) : [];
+
+      // Update state
       setLeagueData(prev => ({
         ...prev,
         [leagueId]: {
-          games: combinedGames.length > 0 ? combinedGames.slice(0, 10) : [],
+          games: finalGames,
           loading: false,
           lastUpdated: new Date()
         }
       }));
+
+      // Save to cache (only for today's data)
+      if (isToday && finalGames.length > 0) {
+        setCachedData(leagueId, finalGames);
+      }
     } catch (e) {
       console.error(`Failed to fetch ${config.title} games`, e);
       setLeagueData(prev => ({
@@ -508,27 +566,61 @@ export const Dashboard = () => {
     return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`;
   }, [leagueDates, nflWeekInfo]);
 
-  // Fetch all leagues on mount and set up refresh intervals
+  // Fetch leagues in batches to avoid overwhelming the browser
+  // Only fetch leagues that are enabled in settings
   useEffect(() => {
-    // Initial fetch for all leagues
-    Object.keys(LEAGUE_CONFIG).forEach(leagueId => {
-      fetchLeagueData(leagueId);
-    });
+    const enabledLeagues = settings.homeScreen.sectionOrder.filter(id =>
+      isSectionEnabled(id) && LEAGUE_CONFIG[id]
+    );
+
+    // Batch size - fetch this many leagues at a time
+    const BATCH_SIZE = 3;
+    const BATCH_DELAY = 300; // ms between batches
+
+    let cancelled = false;
+    const cache = getCachedData();
+
+    const fetchBatches = async (forceRefresh = false) => {
+      // Filter to only leagues that need fetching
+      const leaguesToFetch = forceRefresh
+        ? enabledLeagues
+        : enabledLeagues.filter(id => !isCacheValid(cache[id]));
+
+      if (leaguesToFetch.length === 0) return;
+
+      for (let i = 0; i < leaguesToFetch.length; i += BATCH_SIZE) {
+        if (cancelled) break;
+
+        const batch = leaguesToFetch.slice(i, i + BATCH_SIZE);
+
+        // Fetch this batch in parallel
+        await Promise.all(batch.map(leagueId => fetchLeagueData(leagueId)));
+
+        // Wait before next batch (unless it's the last batch)
+        if (i + BATCH_SIZE < leaguesToFetch.length && !cancelled) {
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+        }
+      }
+    };
+
+    // Initial fetch - only fetch stale/missing data
+    fetchBatches(false);
 
     // Fetch NFL week info on mount
     api.getNFLWeekInfo()
       .then(info => setNflWeekInfo(info))
       .catch(console.error);
 
-    // Set up refresh interval
+    // Set up refresh interval - force refresh all enabled leagues
     const interval = setInterval(() => {
-      Object.keys(LEAGUE_CONFIG).forEach(leagueId => {
-        fetchLeagueData(leagueId);
-      });
+      fetchBatches(true);
     }, refreshInterval);
 
-    return () => clearInterval(interval);
-  }, [fetchLeagueData, refreshInterval]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [fetchLeagueData, refreshInterval, settings.homeScreen.sectionOrder, isSectionEnabled]);
 
   // Helper function to format game time based on sport
   const formatGameTime = (game: Game, sport: string) => {
