@@ -59,7 +59,7 @@ const isCacheValid = (cached: CachedLeagueData | undefined): boolean => {
 };
 
 // League configuration for fetching
-const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: boolean; useScheduleFallback: boolean }> = {
+const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: boolean; useScheduleFallback: boolean; isF1?: boolean }> = {
   nba: { apiId: 'nba', title: 'NBA Action', isSoccer: false, useScheduleFallback: true },
   ncaab: { apiId: 'ncaab', title: 'NCAA Basketball', isSoccer: false, useScheduleFallback: true },
   nfl: { apiId: 'nfl', title: 'NFL Action', isSoccer: false, useScheduleFallback: true },
@@ -83,7 +83,25 @@ const LEAGUE_CONFIG: Record<string, { apiId: string; title: string; isSoccer: bo
   turkish: { apiId: 'turkish', title: 'Turkish Süper Lig', isSoccer: true, useScheduleFallback: true },
   austrian: { apiId: 'austrian', title: 'Austrian Bundesliga', isSoccer: true, useScheduleFallback: true },
   tennis: { apiId: 'tennis-atp-singles', title: 'Tennis Action', isSoccer: false, useScheduleFallback: true },
+  f1: { apiId: 'f1', title: 'Formula 1', isSoccer: false, useScheduleFallback: false, isF1: true },
 };
+
+// F1 Race type
+interface F1Race {
+  name: string;
+  date: string;
+  location: string;
+  status: string;
+  completed: boolean;
+  winner?: string;
+}
+
+// F1 state
+interface F1State {
+  races: F1Race[];
+  loading: boolean;
+  lastUpdated: Date | null;
+}
 
 interface LeagueState {
   games: Game[];
@@ -136,6 +154,9 @@ export const Dashboard = () => {
 
   // NFL week info cache
   const [nflWeekInfo, setNflWeekInfo] = useState<NFLWeekInfo | null>(null);
+
+  // F1 races state
+  const [f1Data, setF1Data] = useState<F1State>({ races: [], loading: true, lastUpdated: null });
 
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -421,11 +442,32 @@ export const Dashboard = () => {
     }
   }, [allPropsToTrack.length, parlaysToTrack.length, refreshPropsData, refreshInterval]); // Re-run when props/parlays to track change or interval changes
 
+  // Fetch F1 races
+  const fetchF1Data = useCallback(async () => {
+    try {
+      const races = await api.getF1Races(10);
+      setF1Data({
+        races,
+        loading: false,
+        lastUpdated: new Date()
+      });
+    } catch (e) {
+      console.error('Failed to fetch F1 races', e);
+      setF1Data(prev => ({ ...prev, loading: false }));
+    }
+  }, []);
+
   // Generic fetch function for all leagues
   // Optimized to reduce API calls - fetches scores which includes all game states
   const fetchLeagueData = useCallback(async (leagueId: string, dateOverride?: Date) => {
     const config = LEAGUE_CONFIG[leagueId];
     if (!config) return;
+
+    // F1 uses a different API - handle separately
+    if (config.isF1) {
+      await fetchF1Data();
+      return;
+    }
 
     // Use provided date or the stored date for this league
     const targetDate = dateOverride || leagueDates[leagueId] || new Date();
@@ -487,7 +529,7 @@ export const Dashboard = () => {
         [leagueId]: { ...prev[leagueId], loading: false }
       }));
     }
-  }, [leagueDates]);
+  }, [leagueDates, fetchF1Data]);
 
   // Date navigation handlers
   const handleDateChange = useCallback((leagueId: string, newDate: Date) => {
@@ -1175,6 +1217,104 @@ export const Dashboard = () => {
         if (!isSectionEnabled(sectionId)) return null;
 
         const config = LEAGUE_CONFIG[sectionId];
+
+        // Handle F1 separately
+        if (config?.isF1) {
+          const isCompact = settings.compactMode;
+          return (
+            <div key={sectionId} className={cn("space-y-4", isCompact && "space-y-2")}>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <h2 className={cn("font-semibold tracking-tight text-white", isCompact ? "text-lg" : "text-xl")}>
+                    {config.title}
+                  </h2>
+                  {f1Data.lastUpdated && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Clock size={12} />
+                      <span>Updated {f1Data.lastUpdated.toLocaleTimeString()}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="w-full h-0.5 bg-accent/40 rounded-full" />
+              </div>
+
+              <div className={cn(
+                "grid grid-cols-1 md:grid-cols-2 gap-4",
+                isCompact ? "lg:grid-cols-4 gap-2" : "lg:grid-cols-3 gap-4"
+              )}>
+                {f1Data.loading ? (
+                  <>
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className={cn("bg-card/50 animate-pulse rounded-lg", isCompact ? "h-16" : "h-24")} />
+                    ))}
+                  </>
+                ) : f1Data.races.length > 0 ? (
+                  f1Data.races.map((race, i) => {
+                    const raceDate = new Date(race.date);
+                    const isPast = race.completed;
+                    const isUpcoming = !isPast && raceDate > new Date();
+
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                          isCompact ? "p-2" : "p-4"
+                        )}
+                      >
+                        {/* Race status */}
+                        <div className={cn(
+                          "flex items-center justify-between",
+                          isCompact ? "mb-1" : "mb-2"
+                        )}>
+                          <span className={cn(
+                            "text-xs font-medium px-2 py-0.5 rounded",
+                            isPast ? "bg-gray-700 text-gray-300" :
+                            isUpcoming ? "bg-accent/20 text-accent" :
+                            "bg-red-500/20 text-red-400"
+                          )}>
+                            {race.status}
+                          </span>
+                          <span className={cn("text-xs text-gray-500", isCompact && "text-[10px]")}>
+                            {format(raceDate, 'MMM d, yyyy')}
+                          </span>
+                        </div>
+
+                        {/* Race name */}
+                        <h3 className={cn(
+                          "font-semibold text-white truncate",
+                          isCompact ? "text-sm mb-1" : "text-base mb-2"
+                        )}>
+                          {race.name}
+                        </h3>
+
+                        {/* Location */}
+                        <p className={cn("text-gray-400 truncate", isCompact ? "text-xs" : "text-sm")}>
+                          📍 {race.location}
+                        </p>
+
+                        {/* Winner (if completed) */}
+                        {race.winner && (
+                          <p className={cn(
+                            "text-accent font-medium mt-1 truncate",
+                            isCompact ? "text-xs" : "text-sm"
+                          )}>
+                            🏆 {race.winner}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-gray-500 text-sm text-center py-8 col-span-full">
+                    No F1 races available
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         const data = leagueData[sectionId];
 
         if (!config || !data) return null;

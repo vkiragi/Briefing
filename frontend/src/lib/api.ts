@@ -221,6 +221,19 @@ export const api = {
     if (!response.ok) throw new Error(`Failed to fetch box score for ${sport}`);
     return response.json() as Promise<BoxScoreData>;
   },
+
+  getF1Races: async (limit = 10) => {
+    const response = await fetch(`${API_BASE_URL}/sports/f1/races?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch F1 races');
+    return response.json() as Promise<Array<{
+      name: string;
+      date: string;
+      location: string;
+      status: string;
+      completed: boolean;
+      winner?: string;
+    }>>;
+  },
 };
 
 

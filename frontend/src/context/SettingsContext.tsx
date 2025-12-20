@@ -25,6 +25,7 @@ export const AVAILABLE_SECTIONS = [
   { id: 'turkish', label: 'Turkish Süper Lig', icon: '⚽' },
   { id: 'austrian', label: 'Austrian Bundesliga', icon: '⚽' },
   { id: 'tennis', label: 'Tennis', icon: '🎾' },
+  { id: 'f1', label: 'Formula 1', icon: '🏎️' },
 ] as const;
 
 export type SectionId = typeof AVAILABLE_SECTIONS[number]['id'];
@@ -56,8 +57,8 @@ const defaultSettings: AppSettings = {
   refreshInterval: 5000,
   homeScreen: {
     // Only enable major leagues by default - users can enable others in settings
-    enabledSections: ['nba', 'ncaab', 'nfl', 'ncaaf', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'tennis'],
-    sectionOrder: ['nba', 'ncaab', 'nfl', 'ncaaf', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian', 'tennis'],
+    enabledSections: ['nba', 'ncaab', 'nfl', 'ncaaf', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'tennis', 'f1'],
+    sectionOrder: ['nba', 'ncaab', 'nfl', 'ncaaf', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'ligaportugal', 'saudi', 'mls', 'brasileirao', 'ligamx', 'scottish', 'greek', 'russian', 'turkish', 'austrian', 'tennis', 'f1'],
   },
   showPropTracker: true,
   compactMode: false,
