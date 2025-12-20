@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Clock, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Trash2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bet } from '../types';
 import { cn } from '../lib/utils';
@@ -283,20 +283,66 @@ export const PropTracker: React.FC<PropTrackerProps> = ({ bet }) => {
       {/* Player Prop display - show player name, line, and current value */}
       {isProp && (
         <div className="mb-3">
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold text-white">
-              {bet.player_name || bet.selection}
-            </span>
-            <span className="text-2xl font-mono font-bold text-white">
-              {bet.line}
-            </span>
-          </div>
-          <div className="flex justify-between items-center mt-1">
-            <span className="text-sm text-gray-400">{bet.matchup}</span>
-            <span className="text-xs text-gray-500 uppercase">
-              {bet.market_type?.replace(/_/g, ' ') || 'POINTS'}
-            </span>
-          </div>
+          {bet.is_combined && bet.combined_players ? (
+            <>
+              {/* Combined Prop Header */}
+              <div className="flex items-center gap-2 mb-2">
+                <Users size={14} className="text-accent" />
+                <span className="text-xs text-accent font-medium">Combined Prop</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-white">
+                  {bet.combined_players.map(p => p.player_name).join(' + ')}
+                </span>
+                <span className="text-2xl font-mono font-bold text-white">
+                  {bet.line}
+                </span>
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-sm text-gray-400">{bet.matchup}</span>
+                <span className="text-xs text-gray-500 uppercase">
+                  {bet.side} {bet.market_type?.replace(/_/g, ' ') || 'TDS'}
+                </span>
+              </div>
+              {/* Per-player breakdown */}
+              <div className="mt-3 pt-2 border-t border-border/30">
+                <div className="text-xs text-gray-500 mb-2">Individual Stats</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {bet.combined_players.map((player, i) => (
+                    <div key={i} className="bg-background/50 rounded-lg px-2 py-1.5 text-center">
+                      <div className="text-xs text-gray-400 truncate">
+                        {player.player_name.split(' ').pop()}
+                      </div>
+                      <div className={cn(
+                        "text-lg font-bold font-mono",
+                        (player.current_value ?? 0) > 0 ? "text-accent" : "text-white"
+                      )}>
+                        {player.current_value !== undefined ? player.current_value : '-'}
+                      </div>
+                      <div className="text-xs text-gray-600">TDs</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-white">
+                  {bet.player_name || bet.selection}
+                </span>
+                <span className="text-2xl font-mono font-bold text-white">
+                  {bet.line}
+                </span>
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-sm text-gray-400">{bet.matchup}</span>
+                <span className="text-xs text-gray-500 uppercase">
+                  {bet.market_type?.replace(/_/g, ' ') || 'POINTS'}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       )}
 
