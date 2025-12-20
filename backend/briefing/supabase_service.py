@@ -81,13 +81,6 @@ class SupabaseService:
         # Insert parlay legs if any
         if legs and bet['type'] == 'Parlay':
             for i, leg in enumerate(legs):
-                # Convert combined_players to JSON string for storage
-                combined_players = leg.get('combined_players')
-                combined_players_json = None
-                if combined_players:
-                    import json
-                    combined_players_json = json.dumps(combined_players)
-
                 leg_data = {
                     'bet_id': bet['id'],
                     'sport': leg.get('sport', bet['sport']),
@@ -104,7 +97,8 @@ class SupabaseService:
                     'side': leg.get('side'),
                     # Combined prop fields
                     'is_combined': leg.get('is_combined'),
-                    'combined_players': combined_players_json,
+                    # Supabase handles JSONB serialization automatically
+                    'combined_players': leg.get('combined_players'),
                 }
                 self.client.table('parlay_legs').insert(leg_data).execute()
 
@@ -286,17 +280,8 @@ class SupabaseService:
 
         # Add parlay legs if present
         if 'parlay_legs' in db_bet and db_bet['parlay_legs']:
-            import json
             processed_legs = []
             for leg in sorted(db_bet['parlay_legs'], key=lambda x: x['leg_order']):
-                # Parse combined_players JSON if present
-                combined_players = None
-                if leg.get('combined_players'):
-                    try:
-                        combined_players = json.loads(leg['combined_players']) if isinstance(leg['combined_players'], str) else leg['combined_players']
-                    except (json.JSONDecodeError, TypeError):
-                        combined_players = None
-
                 processed_legs.append({
                     'sport': leg['sport'],
                     'matchup': leg['matchup'],
@@ -309,9 +294,9 @@ class SupabaseService:
                     'market_type': leg.get('market_type'),
                     'line': float(leg['line']) if leg.get('line') is not None else None,
                     'side': leg.get('side'),
-                    # Combined prop fields
+                    # Combined prop fields - Supabase returns JSONB as Python objects
                     'is_combined': leg.get('is_combined'),
-                    'combined_players': combined_players,
+                    'combined_players': leg.get('combined_players'),
                 })
             bet['legs'] = processed_legs
 
