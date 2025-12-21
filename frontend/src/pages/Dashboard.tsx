@@ -1115,34 +1115,62 @@ export const Dashboard = () => {
                       )}
                     </div>
                   </div>
-                  <div className={cn("flex justify-between items-center", isCompact ? "mb-1" : "mb-2")}>
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {game.home_logo && (
-                        <img
-                          src={game.home_logo}
-                          alt={game.home_team}
-                          className={cn("object-contain flex-shrink-0", isCompact ? "w-5 h-5" : "w-6 h-6")}
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      )}
-                      <span className={cn("font-semibold text-white truncate", isCompact ? "text-sm" : "text-base")}>{game.home_team}</span>
-                    </div>
-                    <span className={cn("font-mono font-semibold text-white ml-2", isCompact ? "text-base" : "text-xl")}>{game.home_score}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {game.away_logo && (
-                        <img
-                          src={game.away_logo}
-                          alt={game.away_team}
-                          className={cn("object-contain flex-shrink-0", isCompact ? "w-5 h-5" : "w-6 h-6")}
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      )}
-                      <span className={cn("font-semibold text-white truncate", isCompact ? "text-sm" : "text-base")}>{game.away_team}</span>
-                    </div>
-                    <span className={cn("font-mono font-semibold text-white ml-2", isCompact ? "text-base" : "text-xl")}>{game.away_score}</span>
-                  </div>
+                  {(() => {
+                    const homeScore = typeof game.home_score === 'string' ? parseInt(game.home_score) : game.home_score;
+                    const awayScore = typeof game.away_score === 'string' ? parseInt(game.away_score) : game.away_score;
+                    const homeWinning = homeScore > awayScore;
+                    const awayWinning = awayScore > homeScore;
+                    const hasScores = !isNaN(homeScore) && !isNaN(awayScore);
+
+                    return (
+                      <>
+                        <div className={cn("flex justify-between items-center", isCompact ? "mb-1" : "mb-2")}>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {game.home_logo && (
+                              <img
+                                src={game.home_logo}
+                                alt={game.home_team}
+                                className={cn("object-contain flex-shrink-0", isCompact ? "w-5 h-5" : "w-6 h-6")}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            )}
+                            <span className={cn(
+                              "font-semibold truncate",
+                              isCompact ? "text-sm" : "text-base",
+                              hasScores && homeWinning ? "text-white" : "text-gray-400"
+                            )}>{game.home_team}</span>
+                          </div>
+                          <span className={cn(
+                            "font-mono font-semibold ml-2",
+                            isCompact ? "text-base" : "text-xl",
+                            hasScores && homeWinning ? "text-white" : "text-gray-500"
+                          )}>{game.home_score}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {game.away_logo && (
+                              <img
+                                src={game.away_logo}
+                                alt={game.away_team}
+                                className={cn("object-contain flex-shrink-0", isCompact ? "w-5 h-5" : "w-6 h-6")}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            )}
+                            <span className={cn(
+                              "font-semibold truncate",
+                              isCompact ? "text-sm" : "text-base",
+                              hasScores && awayWinning ? "text-white" : "text-gray-400"
+                            )}>{game.away_team}</span>
+                          </div>
+                          <span className={cn(
+                            "font-mono font-semibold ml-2",
+                            isCompact ? "text-base" : "text-xl",
+                            hasScores && awayWinning ? "text-white" : "text-gray-500"
+                          )}>{game.away_score}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               );
             })
