@@ -8,13 +8,14 @@ interface GameLiveData {
   event_id: string;
   home_team: string;
   away_team: string;
-  home_score?: number;
-  away_score?: number;
+  home_score?: number | string;
+  away_score?: number | string;
   status: string;
   display_clock?: string;
   period?: number;
   is_live: boolean;
   is_final: boolean;
+  last_play?: string | null;
 }
 
 export const PinnedGamesSection: React.FC = () => {
@@ -27,53 +28,92 @@ export const PinnedGamesSection: React.FC = () => {
 
     setRefreshing(true);
     try {
-      // Group games by sport
-      const gamesBySport = pinnedGames.reduce((acc, game) => {
-        if (!acc[game.sport]) acc[game.sport] = [];
-        acc[game.sport].push(game);
-        return acc;
-      }, {} as Record<string, PinnedGame[]>);
+      // Prepare games for the new endpoint
+      const gamesToFetch = pinnedGames.map(game => ({
+        event_id: game.event_id,
+        sport: game.sport,
+      }));
+
+      // Fetch live data with play-by-play for all games
+      const liveResults = await api.getPinnedGamesLive(gamesToFetch);
 
       const newLiveData = new Map<string, GameLiveData>();
 
-      // Fetch scores for each sport
-      for (const [sport, games] of Object.entries(gamesBySport)) {
-        try {
-          const scores = await api.getScores(sport, 50, false);
+      for (const result of liveResults) {
+        const isLive = result.game_state === 'in';
+        const isFinal = result.game_state === 'post';
 
-          for (const game of games) {
-            const matchingScore = scores.find((s: any) =>
-              s.event_id === game.event_id ||
-              s.competition_id === game.event_id
-            );
-
-            if (matchingScore) {
-              newLiveData.set(game.event_id, {
-                event_id: game.event_id,
-                home_team: matchingScore.home_team,
-                away_team: matchingScore.away_team,
-                home_score: matchingScore.home_score,
-                away_score: matchingScore.away_score,
-                status: matchingScore.status,
-                display_clock: matchingScore.display_clock,
-                period: matchingScore.period,
-                is_live: matchingScore.status === 'in' || matchingScore.status === 'In Progress',
-                is_final: matchingScore.status === 'post' || matchingScore.status === 'Final',
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Failed to fetch scores for ${sport}:`, error);
-        }
+        newLiveData.set(result.event_id, {
+          event_id: result.event_id,
+          home_team: result.home_team || '',
+          away_team: result.away_team || '',
+          home_score: result.home_score ?? undefined,
+          away_score: result.away_score ?? undefined,
+          status: result.game_status || result.game_state,
+          display_clock: result.display_clock || undefined,
+          period: result.period || undefined,
+          is_live: isLive,
+          is_final: isFinal,
+          last_play: result.last_play,
+        });
       }
 
       setLiveData(newLiveData);
     } catch (error) {
       console.error('Failed to fetch live data:', error);
+      // Fallback to the old method if the new endpoint fails
+      try {
+        await fetchLiveDataFallback();
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+      }
     } finally {
       setRefreshing(false);
     }
   }, [pinnedGames]);
+
+  // Fallback to the old method of fetching scores by sport
+  const fetchLiveDataFallback = async () => {
+    const gamesBySport = pinnedGames.reduce((acc, game) => {
+      if (!acc[game.sport]) acc[game.sport] = [];
+      acc[game.sport].push(game);
+      return acc;
+    }, {} as Record<string, PinnedGame[]>);
+
+    const newLiveData = new Map<string, GameLiveData>();
+
+    for (const [sport, games] of Object.entries(gamesBySport)) {
+      try {
+        const scores = await api.getScores(sport, 50, false);
+
+        for (const game of games) {
+          const matchingScore = scores.find((s: any) =>
+            s.event_id === game.event_id ||
+            s.competition_id === game.event_id
+          );
+
+          if (matchingScore) {
+            newLiveData.set(game.event_id, {
+              event_id: game.event_id,
+              home_team: matchingScore.home_team,
+              away_team: matchingScore.away_team,
+              home_score: matchingScore.home_score,
+              away_score: matchingScore.away_score,
+              status: matchingScore.status,
+              display_clock: matchingScore.display_clock,
+              period: matchingScore.period,
+              is_live: matchingScore.status === 'in' || matchingScore.status === 'In Progress',
+              is_final: matchingScore.status === 'post' || matchingScore.status === 'Final',
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to fetch scores for ${sport}:`, error);
+      }
+    }
+
+    setLiveData(newLiveData);
+  };
 
   // Fetch live data on mount and when pinned games change
   useEffect(() => {
@@ -157,6 +197,10 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
     return liveData.status || 'Scheduled';
   };
 
+  // Parse scores as numbers for comparison
+  const homeScore = liveData?.home_score !== undefined ? Number(liveData.home_score) : undefined;
+  const awayScore = liveData?.away_score !== undefined ? Number(liveData.away_score) : undefined;
+
   return (
     <div className={cn(
       "relative bg-card border rounded-lg p-3 transition-all",
@@ -196,8 +240,8 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
           </span>
           <span className={cn(
             "text-lg font-mono font-bold",
-            liveData?.away_score !== undefined && liveData?.home_score !== undefined
-              ? liveData.away_score > liveData.home_score ? "text-white" : "text-gray-500"
+            awayScore !== undefined && homeScore !== undefined
+              ? awayScore > homeScore ? "text-white" : "text-gray-500"
               : "text-gray-500"
           )}>
             {liveData?.away_score ?? '-'}
@@ -211,8 +255,8 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
           </span>
           <span className={cn(
             "text-lg font-mono font-bold",
-            liveData?.away_score !== undefined && liveData?.home_score !== undefined
-              ? liveData.home_score > liveData.away_score ? "text-white" : "text-gray-500"
+            awayScore !== undefined && homeScore !== undefined
+              ? homeScore > awayScore ? "text-white" : "text-gray-500"
               : "text-gray-500"
           )}>
             {liveData?.home_score ?? '-'}
@@ -229,6 +273,15 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
           {getStatusText()}
         </span>
       </div>
+
+      {/* Play-by-play text for live games */}
+      {isLive && liveData?.last_play && (
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">
+            {liveData.last_play}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -47,6 +47,28 @@ export const api = {
     return response.json() as Promise<any[]>;
   },
 
+  getPinnedGamesLive: async (games: Array<{ event_id: string; sport: string }>) => {
+    const response = await fetch(`${API_BASE_URL}/sports/pinned-games-live`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(games),
+    });
+    if (!response.ok) throw new Error('Failed to fetch pinned games live data');
+    return response.json() as Promise<Array<{
+      event_id: string;
+      sport: string;
+      last_play: string | null;
+      game_state: string;
+      game_status: string;
+      home_score: string | number | null;
+      away_score: string | number | null;
+      home_team: string | null;
+      away_team: string | null;
+      display_clock: string | null;
+      period: number | null;
+    }>>;
+  },
+
   getNFLWeekInfo: async (date?: string) => {
     let url = `${API_BASE_URL}/sports/nfl/week`;
     if (date) {

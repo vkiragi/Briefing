@@ -457,6 +457,85 @@ def get_boxscore(sport: str, event_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/sports/pinned-games-live")
+def get_pinned_games_live(games: List[Dict] = Body(...)):
+    """
+    Get live data including play-by-play for multiple pinned games.
+    Accepts a list of {event_id, sport} objects and returns enriched data.
+    """
+    try:
+        results = []
+
+        for game in games:
+            event_id = game.get("event_id")
+            sport = game.get("sport", "").lower()
+
+            if not event_id or not sport:
+                continue
+
+            result = {
+                "event_id": event_id,
+                "sport": sport,
+                "last_play": None,
+                "game_state": "unknown",
+                "game_status": "",
+                "home_score": None,
+                "away_score": None,
+                "home_team": None,
+                "away_team": None,
+                "display_clock": None,
+                "period": None,
+            }
+
+            try:
+                # Sports that support play-by-play via game summary
+                supported_sports = ['nba', 'nfl', 'ncaab', 'ncaaf']
+
+                if sport in supported_sports:
+                    # Fetch game summary which includes last_play
+                    summary = sports_fetcher._fetch_game_summary(sport, event_id)
+
+                    result["game_state"] = summary.get("_game_state", "unknown")
+                    result["game_status"] = summary.get("_game_status_detail", "")
+                    result["last_play"] = summary.get("_last_play")
+
+                    # Extract live situation data
+                    live_situation = summary.get("_live_situation", {})
+                    if live_situation:
+                        result["display_clock"] = live_situation.get("display_clock")
+                        result["period"] = live_situation.get("period")
+                        result["home_score"] = live_situation.get("home_score")
+                        result["away_score"] = live_situation.get("away_score")
+                        result["home_team"] = live_situation.get("home_abbrev")
+                        result["away_team"] = live_situation.get("away_abbrev")
+                else:
+                    # For other sports, just get basic scores
+                    scores = sports_fetcher.fetch_scores(sport, 50, date=None)
+                    matching_score = None
+                    for s in scores:
+                        if s.get("event_id") == event_id or s.get("competition_id") == event_id:
+                            matching_score = s
+                            break
+
+                    if matching_score:
+                        result["game_state"] = matching_score.get("state", "unknown")
+                        result["game_status"] = matching_score.get("status", "")
+                        result["home_score"] = matching_score.get("home_score")
+                        result["away_score"] = matching_score.get("away_score")
+                        result["home_team"] = matching_score.get("home_team")
+                        result["away_team"] = matching_score.get("away_team")
+                        result["display_clock"] = matching_score.get("display_clock")
+                        result["period"] = matching_score.get("period")
+
+            except Exception as e:
+                print(f"Error fetching live data for {sport}/{event_id}: {e}")
+
+            results.append(result)
+
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/bets")
 def get_bets(user_id: str = Depends(get_current_user)):
     """Get all bets and stats for the authenticated user"""
