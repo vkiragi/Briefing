@@ -265,11 +265,6 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
             )}>
               {liveData?.away_team || game.away_team || 'Away'}
             </span>
-            {isLive && leadingTeam === 'away' && leadingWinPct !== null && (
-              <span className="text-xs text-accent font-bold shrink-0">
-                {leadingWinPct.toFixed(0)}%
-              </span>
-            )}
           </div>
           <span className={cn(
             "text-2xl font-mono font-bold shrink-0 ml-2",
@@ -297,11 +292,6 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
             )}>
               {liveData?.home_team || game.home_team || 'Home'}
             </span>
-            {isLive && leadingTeam === 'home' && leadingWinPct !== null && (
-              <span className="text-xs text-accent font-bold shrink-0">
-                {leadingWinPct.toFixed(0)}%
-              </span>
-            )}
           </div>
           <span className={cn(
             "text-2xl font-mono font-bold shrink-0 ml-2",
@@ -314,14 +304,35 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
         </div>
       </div>
 
-      {/* Sport tag */}
+      {/* Sport tag and Win % */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-accent/80 bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-wide">
           {game.sport}
         </span>
-        {isFinal && (
+        {isLive && homeWinPct !== undefined && homeWinPct !== null ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-gray-500 uppercase">Win %</span>
+            {leadingTeam === 'home' && liveData?.home_logo && (
+              <img
+                src={liveData.home_logo}
+                alt=""
+                className="w-4 h-4 object-contain"
+              />
+            )}
+            {leadingTeam === 'away' && liveData?.away_logo && (
+              <img
+                src={liveData.away_logo}
+                alt=""
+                className="w-4 h-4 object-contain"
+              />
+            )}
+            <span className="text-sm font-bold text-white">
+              {leadingWinPct !== null ? leadingWinPct.toFixed(1) : '-'}
+            </span>
+          </div>
+        ) : isFinal ? (
           <span className="text-xs text-gray-500 uppercase">Final</span>
-        )}
+        ) : null}
       </div>
 
       {/* Play-by-play for live games - styled like PropTracker */}
