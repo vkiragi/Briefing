@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query, Body, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 import json
 import os
