@@ -483,8 +483,11 @@ def get_pinned_games_live(games: List[Dict] = Body(...)):
                 "away_score": None,
                 "home_team": None,
                 "away_team": None,
+                "home_logo": None,
+                "away_logo": None,
                 "display_clock": None,
                 "period": None,
+                "home_win_pct": None,
             }
 
             try:
@@ -508,6 +511,9 @@ def get_pinned_games_live(games: List[Dict] = Body(...)):
                         result["away_score"] = live_situation.get("away_score")
                         result["home_team"] = live_situation.get("home_abbrev")
                         result["away_team"] = live_situation.get("away_abbrev")
+                        result["home_logo"] = live_situation.get("home_logo")
+                        result["away_logo"] = live_situation.get("away_logo")
+                        result["home_win_pct"] = live_situation.get("home_win_pct")
                 else:
                     # For other sports, just get basic scores
                     scores = sports_fetcher.fetch_scores(sport, 50, date=None)
@@ -524,6 +530,8 @@ def get_pinned_games_live(games: List[Dict] = Body(...)):
                         result["away_score"] = matching_score.get("away_score")
                         result["home_team"] = matching_score.get("home_team")
                         result["away_team"] = matching_score.get("away_team")
+                        result["home_logo"] = matching_score.get("home_logo")
+                        result["away_logo"] = matching_score.get("away_logo")
                         result["display_clock"] = matching_score.get("display_clock")
                         result["period"] = matching_score.get("period")
 

@@ -64,8 +64,11 @@ export const api = {
       away_score: string | number | null;
       home_team: string | null;
       away_team: string | null;
+      home_logo: string | null;
+      away_logo: string | null;
       display_clock: string | null;
       period: number | null;
+      home_win_pct: number | null;
     }>>;
   },
 

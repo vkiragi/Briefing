@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Pin, X, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { usePinnedGames, PinnedGame } from '../context/PinnedGamesContext';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -16,6 +17,9 @@ interface GameLiveData {
   is_live: boolean;
   is_final: boolean;
   last_play?: string | null;
+  home_win_pct?: number | null;
+  home_logo?: string | null;
+  away_logo?: string | null;
 }
 
 export const PinnedGamesSection: React.FC = () => {
@@ -55,6 +59,9 @@ export const PinnedGamesSection: React.FC = () => {
           is_live: isLive,
           is_final: isFinal,
           last_play: result.last_play,
+          home_win_pct: result.home_win_pct,
+          home_logo: result.home_logo,
+          away_logo: result.away_logo,
         });
       }
 
@@ -182,64 +189,90 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
   const isLive = liveData?.is_live;
   const isFinal = liveData?.is_final;
 
-  const getStatusText = () => {
-    if (!liveData) {
-      // No live data found - show as scheduled with stored team names
-      return 'Scheduled';
-    }
-    if (isLive) {
-      if (liveData.display_clock && liveData.period) {
-        return `${liveData.display_clock} - Q${liveData.period}`;
-      }
-      return 'LIVE';
-    }
-    if (isFinal) return 'Final';
-    return liveData.status || 'Scheduled';
+  const formatPeriod = (period?: number) => {
+    if (!period) return '';
+    if (period === 1) return '1st';
+    if (period === 2) return '2nd';
+    if (period === 3) return '3rd';
+    if (period === 4) return '4th';
+    return `${period}th`;
   };
 
   // Parse scores as numbers for comparison
   const homeScore = liveData?.home_score !== undefined ? Number(liveData.home_score) : undefined;
   const awayScore = liveData?.away_score !== undefined ? Number(liveData.away_score) : undefined;
 
+  // Determine leading team for win percentage display
+  const homeWinPct = liveData?.home_win_pct;
+  const awayWinPct = homeWinPct !== undefined && homeWinPct !== null ? 100 - homeWinPct : null;
+  const leadingWinPct = homeWinPct !== null && homeWinPct !== undefined
+    ? (homeWinPct >= 50 ? homeWinPct : awayWinPct)
+    : null;
+  const leadingTeam = homeWinPct !== null && homeWinPct !== undefined
+    ? (homeWinPct >= 50 ? 'home' : 'away')
+    : null;
+
   return (
     <div className={cn(
-      "relative bg-card border rounded-lg p-3 transition-all",
-      isLive ? "border-red-500/50 bg-red-500/5" : "border-border"
+      "relative bg-gradient-to-br from-gray-900/90 to-gray-800/50 border rounded-xl p-4 transition-all shadow-lg",
+      isLive ? "border-red-500/40" : isFinal ? "border-gray-600/50" : "border-gray-700/50"
     )}>
-      {/* Unpin button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onUnpin();
-        }}
-        className="absolute top-2 right-2 p-1 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-        title="Unpin game"
-      >
-        <X size={14} />
-      </button>
-
-      {/* Sport badge */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-medium text-accent bg-accent/20 px-1.5 py-0.5 rounded uppercase">
-          {game.sport}
-        </span>
-        {isLive && (
-          <span className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs font-bold text-red-500">LIVE</span>
+      {/* Header: Sport badge, status, and unpin button */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {isLive && (
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          )}
+          {isLive && (
+            <span className="text-xs uppercase font-bold text-red-500">LIVE</span>
+          )}
+          <span className={cn(
+            "text-sm font-mono font-semibold",
+            isLive ? "text-red-400" : "text-gray-400"
+          )}>
+            {isLive && liveData?.display_clock
+              ? `${liveData.display_clock} - ${formatPeriod(liveData.period)}`
+              : isFinal ? 'Final' : 'Scheduled'}
           </span>
-        )}
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onUnpin();
+          }}
+          className="p-1 hover:bg-red-500/20 text-gray-600 hover:text-red-500 rounded transition-colors"
+          title="Unpin game"
+        >
+          <X size={14} />
+        </button>
       </div>
 
-      {/* Teams and scores */}
-      <div className="space-y-1.5">
-        {/* Away team */}
+      {/* Teams and Scores - ESPN style */}
+      <div className="space-y-2 mb-3">
+        {/* Away Team */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-300 truncate max-w-[140px]">
-            {liveData?.away_team || game.away_team || 'Away'}
-          </span>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {liveData?.away_logo && (
+              <img
+                src={liveData.away_logo}
+                alt=""
+                className="w-6 h-6 object-contain shrink-0"
+              />
+            )}
+            <span className={cn(
+              "text-base font-semibold truncate",
+              leadingTeam === 'away' ? "text-white" : "text-gray-300"
+            )}>
+              {liveData?.away_team || game.away_team || 'Away'}
+            </span>
+            {isLive && leadingTeam === 'away' && leadingWinPct !== null && (
+              <span className="text-xs text-accent font-bold shrink-0">
+                {leadingWinPct.toFixed(0)}%
+              </span>
+            )}
+          </div>
           <span className={cn(
-            "text-lg font-mono font-bold",
+            "text-2xl font-mono font-bold shrink-0 ml-2",
             awayScore !== undefined && homeScore !== undefined
               ? awayScore > homeScore ? "text-white" : "text-gray-500"
               : "text-gray-500"
@@ -248,13 +281,30 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
           </span>
         </div>
 
-        {/* Home team */}
+        {/* Home Team */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-300 truncate max-w-[140px]">
-            {liveData?.home_team || game.home_team || 'Home'}
-          </span>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {liveData?.home_logo && (
+              <img
+                src={liveData.home_logo}
+                alt=""
+                className="w-6 h-6 object-contain shrink-0"
+              />
+            )}
+            <span className={cn(
+              "text-base font-semibold truncate",
+              leadingTeam === 'home' ? "text-white" : "text-gray-300"
+            )}>
+              {liveData?.home_team || game.home_team || 'Home'}
+            </span>
+            {isLive && leadingTeam === 'home' && leadingWinPct !== null && (
+              <span className="text-xs text-accent font-bold shrink-0">
+                {leadingWinPct.toFixed(0)}%
+              </span>
+            )}
+          </div>
           <span className={cn(
-            "text-lg font-mono font-bold",
+            "text-2xl font-mono font-bold shrink-0 ml-2",
             awayScore !== undefined && homeScore !== undefined
               ? homeScore > awayScore ? "text-white" : "text-gray-500"
               : "text-gray-500"
@@ -264,24 +314,40 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
         </div>
       </div>
 
-      {/* Status */}
-      <div className="mt-2 pt-2 border-t border-border/50">
-        <span className={cn(
-          "text-xs font-medium",
-          isLive ? "text-red-400" : isFinal ? "text-gray-400" : "text-gray-500"
-        )}>
-          {getStatusText()}
+      {/* Sport tag */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-accent/80 bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-wide">
+          {game.sport}
         </span>
+        {isFinal && (
+          <span className="text-xs text-gray-500 uppercase">Final</span>
+        )}
       </div>
 
-      {/* Play-by-play text for live games */}
-      {isLive && liveData?.last_play && (
-        <div className="mt-2 pt-2 border-t border-border/50">
-          <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">
-            {liveData.last_play}
-          </p>
-        </div>
-      )}
+      {/* Play-by-play for live games - styled like PropTracker */}
+      <AnimatePresence>
+        {isLive && liveData?.last_play && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3 pt-3 border-t border-border/30"
+          >
+            <div className="bg-gradient-to-r from-gray-800/80 to-gray-900/50 rounded-lg p-3 -mx-1">
+              <motion.p
+                key={liveData.last_play}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-sm text-white leading-relaxed line-clamp-2"
+              >
+                {liveData.last_play}
+              </motion.p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
