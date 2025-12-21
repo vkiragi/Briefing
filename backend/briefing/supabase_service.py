@@ -316,6 +316,53 @@ class SupabaseService:
         """Transform a list of database bets to frontend format"""
         return [self._transform_bet_from_db(b) for b in db_bets]
 
+    # ==================== Pinned Games Methods ====================
+
+    def get_pinned_games(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get all pinned games for a user"""
+        result = self.client.table('pinned_games').select('*').eq('user_id', user_id).order('pinned_at', desc=True).execute()
+        return result.data
+
+    def pin_game(self, user_id: str, game_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Pin a game for a user"""
+        pin_data = {
+            'user_id': user_id,
+            'event_id': game_data['event_id'],
+            'sport': game_data['sport'],
+            'matchup': game_data.get('matchup'),
+            'home_team': game_data.get('home_team'),
+            'away_team': game_data.get('away_team'),
+        }
+
+        # Use upsert to handle duplicate pins gracefully
+        result = self.client.table('pinned_games').upsert(pin_data, on_conflict='user_id,event_id').execute()
+        return result.data[0] if result.data else pin_data
+
+    def unpin_game(self, user_id: str, event_id: str) -> bool:
+        """Unpin a game for a user"""
+        result = self.client.table('pinned_games').delete().eq('user_id', user_id).eq('event_id', event_id).execute()
+        return len(result.data) > 0 if result.data else False
+
+    def is_game_pinned(self, user_id: str, event_id: str) -> bool:
+        """Check if a game is pinned by a user"""
+        result = self.client.table('pinned_games').select('id').eq('user_id', user_id).eq('event_id', event_id).execute()
+        return len(result.data) > 0
+
+    def update_game_end_time(self, event_id: str, end_time: str):
+        """Update the game end time for auto-cleanup"""
+        self.client.table('pinned_games').update({'game_end_time': end_time}).eq('event_id', event_id).execute()
+
+    def cleanup_ended_games(self, user_id: str) -> int:
+        """Remove pinned games that ended more than 60 minutes ago"""
+        from datetime import datetime, timedelta
+
+        cutoff_time = datetime.utcnow() - timedelta(minutes=60)
+        cutoff_str = cutoff_time.isoformat()
+
+        # Delete games where game_end_time is set and is older than 60 minutes
+        result = self.client.table('pinned_games').delete().eq('user_id', user_id).lt('game_end_time', cutoff_str).execute()
+        return len(result.data) if result.data else 0
+
 
 # Singleton instance
 supabase_service = SupabaseService()

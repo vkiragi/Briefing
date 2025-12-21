@@ -7,6 +7,7 @@ import { Analytics } from './pages/Analytics';
 import { BetProvider } from './context/BetContext';
 import { AuthProvider } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { PinnedGamesProvider } from './context/PinnedGamesContext';
 import { AuthGate } from './components/auth/AuthGate';
 import { ToastProvider } from './components/ui/Toast';
 
@@ -16,18 +17,20 @@ function App() {
       <AuthProvider>
         <SettingsProvider>
           <BetProvider>
-            <Router>
-              <AuthGate>
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/add" element={<AddBet />} />
-                    <Route path="/history" element={<BetHistory />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                  </Routes>
-                </Layout>
-              </AuthGate>
-            </Router>
+            <PinnedGamesProvider>
+              <Router>
+                <AuthGate>
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/add" element={<AddBet />} />
+                      <Route path="/history" element={<BetHistory />} />
+                      <Route path="/analytics" element={<Analytics />} />
+                    </Routes>
+                  </Layout>
+                </AuthGate>
+              </Router>
+            </PinnedGamesProvider>
           </BetProvider>
         </SettingsProvider>
       </AuthProvider>

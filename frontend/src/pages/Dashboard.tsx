@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Clock, Trash2 } from "lucide-react";
+import { PinButton } from "../components/PinButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { useBets } from "../context/BetContext";
@@ -9,6 +10,7 @@ import { ParlayTracker } from "../components/ParlayTracker";
 import { GameDetailModal } from "../components/GameDetailModal";
 import { F1RaceModal } from "../components/F1RaceModal";
 import { DateNavigator } from "../components/DateNavigator";
+import { PinnedGamesSection } from "../components/PinnedGamesSection";
 import { api } from "../lib/api";
 import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
 import { cn } from "../lib/utils";
@@ -918,11 +920,25 @@ export const Dashboard = () => {
                       }
                     }}
                     className={cn(
-                      "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                      "bg-card border border-border rounded-lg hover:bg-card/80 transition-all relative",
                       isCompact ? "p-2" : "p-4",
                       tournamentClickable && "cursor-pointer hover:border-accent/50"
                     )}
                   >
+                    {/* Pin button - hide for completed games */}
+                    {game.event_id && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <PinButton
+                          eventId={game.event_id}
+                          sport={sport}
+                          matchup={game.tournament || game.home_team}
+                          homeTeam={game.home_team}
+                          awayTeam={game.away_team}
+                          size="sm"
+                          disabled={game.state === 'post' || game.completed === true}
+                        />
+                      </div>
+                    )}
                     <div className="text-center">
                       <div className={cn("font-mono text-gray-400", isCompact ? "text-xs mb-1" : "text-sm mb-2")}>
                         {formatGameTime(game, sport)}
@@ -953,11 +969,25 @@ export const Dashboard = () => {
                       }
                     }}
                     className={cn(
-                      "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                      "bg-card border border-border rounded-lg hover:bg-card/80 transition-all relative",
                       isCompact ? "p-2" : "p-4",
                       tennisClickable && "cursor-pointer hover:border-accent/50"
                     )}
                   >
+                    {/* Pin button - hide for completed games */}
+                    {game.event_id && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <PinButton
+                          eventId={game.event_id}
+                          sport={sport}
+                          matchup={`${game.away_team} vs ${game.home_team}`}
+                          homeTeam={game.home_team}
+                          awayTeam={game.away_team}
+                          size="sm"
+                          disabled={game.state === 'post' || game.completed === true}
+                        />
+                      </div>
+                    )}
                     {/* Tournament name */}
                     {showTournament && (
                       <div className="text-xs text-gray-400 font-medium mb-2 truncate">
@@ -1047,11 +1077,25 @@ export const Dashboard = () => {
                     }
                   }}
                   className={cn(
-                    "bg-card border border-border rounded-lg hover:bg-card/80 transition-all",
+                    "bg-card border border-border rounded-lg hover:bg-card/80 transition-all relative",
                     isCompact ? "p-2" : "p-4",
                     isClickable && "cursor-pointer hover:border-accent/50"
                   )}
                 >
+                  {/* Pin button - hide for completed games */}
+                  {game.event_id && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <PinButton
+                        eventId={game.event_id}
+                        sport={sport}
+                        matchup={`${game.away_team} @ ${game.home_team}`}
+                        homeTeam={game.home_team}
+                        awayTeam={game.away_team}
+                        size={isCompact ? "sm" : "sm"}
+                        disabled={game.state === 'post' || game.completed === true}
+                      />
+                    </div>
+                  )}
                   {/* Tournament name for tennis tournaments list */}
                   {showTournament && !isCompact && (
                     <div className="text-xs text-accent font-medium mb-2 truncate">
@@ -1148,6 +1192,9 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Pinned Games Section */}
+      <PinnedGamesSection />
 
       {/* Pending Bets Section - Now Primary */}
       {pendingBets.length > 0 && (

@@ -280,6 +280,72 @@ export const api = {
       belt?: string | null;
     }>>;
   },
+
+  // ==================== Pinned Games ====================
+
+  getPinnedGames: async () => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/pinned-games`, { headers });
+    if (!response.ok) throw new Error('Failed to fetch pinned games');
+    const data = await response.json();
+    return data.pinned_games as Array<{
+      id: string;
+      user_id: string;
+      event_id: string;
+      sport: string;
+      matchup?: string;
+      home_team?: string;
+      away_team?: string;
+      pinned_at: string;
+      game_end_time?: string;
+    }>;
+  },
+
+  pinGame: async (game: {
+    event_id: string;
+    sport: string;
+    matchup?: string;
+    home_team?: string;
+    away_team?: string;
+  }) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/pinned-games`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(game),
+    });
+    if (!response.ok) throw new Error('Failed to pin game');
+    return response.json();
+  },
+
+  unpinGame: async (eventId: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/pinned-games/${eventId}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!response.ok) throw new Error('Failed to unpin game');
+    return response.json();
+  },
+
+  isGamePinned: async (eventId: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/pinned-games/check/${eventId}`, { headers });
+    if (!response.ok) throw new Error('Failed to check if game is pinned');
+    const data = await response.json();
+    return data.is_pinned as boolean;
+  },
+
+  updateGameEndTime: async (eventId: string, endTime: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/pinned-games/${eventId}/end-time`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ end_time: endTime }),
+    });
+    if (!response.ok) throw new Error('Failed to update game end time');
+    return response.json();
+  },
 };
 
 
