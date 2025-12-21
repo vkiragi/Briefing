@@ -17,6 +17,9 @@ interface GameLiveData {
   is_live: boolean;
   is_final: boolean;
   last_play?: string | null;
+  last_play_team_id?: string | null;
+  home_team_id?: string | null;
+  away_team_id?: string | null;
   home_win_pct?: number | null;
   home_logo?: string | null;
   away_logo?: string | null;
@@ -63,6 +66,9 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
           is_live: isLive,
           is_final: isFinal,
           last_play: result.last_play,
+          last_play_team_id: result.last_play_team_id,
+          home_team_id: result.home_team_id,
+          away_team_id: result.away_team_id,
           home_win_pct: result.home_win_pct,
           home_logo: result.home_logo,
           away_logo: result.away_logo,
@@ -361,15 +367,31 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
             className="mt-3 pt-3 border-t border-border/30"
           >
             <div className="bg-gradient-to-r from-gray-800/80 to-gray-900/50 rounded-lg p-3 -mx-1">
-              <motion.p
-                key={liveData.last_play}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
-                className="text-sm text-white leading-relaxed line-clamp-2"
-              >
-                {liveData.last_play}
-              </motion.p>
+              <div className="flex items-start gap-2">
+                {/* Team logo for the play */}
+                {liveData.last_play_team_id && (
+                  <img
+                    src={
+                      liveData.last_play_team_id === liveData.home_team_id
+                        ? liveData.home_logo || ''
+                        : liveData.last_play_team_id === liveData.away_team_id
+                        ? liveData.away_logo || ''
+                        : ''
+                    }
+                    alt=""
+                    className="w-5 h-5 object-contain shrink-0 mt-0.5"
+                  />
+                )}
+                <motion.p
+                  key={liveData.last_play}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-sm text-white leading-relaxed line-clamp-2"
+                >
+                  {liveData.last_play}
+                </motion.p>
+              </div>
             </div>
           </motion.div>
         )}

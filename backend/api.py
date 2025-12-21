@@ -477,6 +477,9 @@ def get_pinned_games_live(games: List[Dict] = Body(...)):
                 "event_id": event_id,
                 "sport": sport,
                 "last_play": None,
+                "last_play_team_id": None,
+                "home_team_id": None,
+                "away_team_id": None,
                 "game_state": "unknown",
                 "game_status": "",
                 "home_score": None,
@@ -501,6 +504,7 @@ def get_pinned_games_live(games: List[Dict] = Body(...)):
                     result["game_state"] = summary.get("_game_state", "unknown")
                     result["game_status"] = summary.get("_game_status_detail", "")
                     result["last_play"] = summary.get("_last_play")
+                    result["last_play_team_id"] = summary.get("_last_play_team_id")
 
                     # Extract live situation data
                     live_situation = summary.get("_live_situation", {})
@@ -514,6 +518,8 @@ def get_pinned_games_live(games: List[Dict] = Body(...)):
                         result["home_logo"] = live_situation.get("home_logo")
                         result["away_logo"] = live_situation.get("away_logo")
                         result["home_win_pct"] = live_situation.get("home_win_pct")
+                        result["home_team_id"] = live_situation.get("home_team_id")
+                        result["away_team_id"] = live_situation.get("away_team_id")
                 else:
                     # For other sports, just get basic scores
                     scores = sports_fetcher.fetch_scores(sport, 50, date=None)

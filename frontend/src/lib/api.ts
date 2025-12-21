@@ -58,6 +58,9 @@ export const api = {
       event_id: string;
       sport: string;
       last_play: string | null;
+      last_play_team_id: string | null;
+      home_team_id: string | null;
+      away_team_id: string | null;
       game_state: string;
       game_status: string;
       home_score: string | number | null;

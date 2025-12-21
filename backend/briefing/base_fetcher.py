@@ -813,12 +813,16 @@ class BaseSportsFetcher:
 
                 # NBA/NCAAB: plays at top level
                 plays = data.get("plays", [])
+                last_play_team_id = None
                 if plays:
                     # Find the last meaningful play (skip "End of Game" etc.)
                     for play in reversed(plays):
                         text = play.get("text", "")
                         if text and text.lower() not in ["end of game", "end of period", "end of quarter", "end of half"]:
                             play_text = text
+                            # Get team ID from the play
+                            play_team = play.get("team", {})
+                            last_play_team_id = play_team.get("id") if play_team else None
                             break
 
                 # NFL/NCAAF: plays nested under drives
@@ -829,6 +833,9 @@ class BaseSportsFetcher:
                         # Get the last drive's last play
                         last_drive = previous_drives[-1] if previous_drives else None
                         if last_drive:
+                            # Get team from the drive itself
+                            drive_team = last_drive.get("team", {})
+                            last_play_team_id = drive_team.get("id") if drive_team else None
                             drive_plays = last_drive.get("plays", [])
                             if drive_plays:
                                 last_play_obj = drive_plays[-1]
@@ -836,6 +843,8 @@ class BaseSportsFetcher:
 
                 if play_text and state == "in":
                     data["_last_play"] = play_text
+                    if last_play_team_id:
+                        data["_last_play_team_id"] = str(last_play_team_id)
 
                 # Extract rich live situation data for live games
                 if state == "in":
@@ -857,15 +866,18 @@ class BaseSportsFetcher:
                             logo_url = logos[0].get("href", "") if logos else ""
                             score = c.get("score", "0")
                             team_abbrev = team_data.get("abbreviation", "")
+                            team_id = team_data.get("id", "")
 
                             if ha == "home":
                                 live_situation["home_logo"] = logo_url
                                 live_situation["home_score"] = score
                                 live_situation["home_abbrev"] = team_abbrev
+                                live_situation["home_team_id"] = str(team_id) if team_id else None
                             else:
                                 live_situation["away_logo"] = logo_url
                                 live_situation["away_score"] = score
                                 live_situation["away_abbrev"] = team_abbrev
+                                live_situation["away_team_id"] = str(team_id) if team_id else None
 
                         # Win probability (last entry is most recent)
                         win_prob = data.get("winprobability", [])
