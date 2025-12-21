@@ -22,7 +22,11 @@ interface GameLiveData {
   away_logo?: string | null;
 }
 
-export const PinnedGamesSection: React.FC = () => {
+interface PinnedGamesSectionProps {
+  onGameClick?: (game: { event_id: string; sport: string; home_team?: string; away_team?: string }, sport: string) => void;
+}
+
+export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameClick }) => {
   const { pinnedGames, unpinGame, isLoading } = usePinnedGames();
   const [liveData, setLiveData] = useState<Map<string, GameLiveData>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
@@ -171,6 +175,12 @@ export const PinnedGamesSection: React.FC = () => {
               game={game}
               liveData={live}
               onUnpin={() => unpinGame(game.event_id)}
+              onClick={() => onGameClick?.({
+                event_id: game.event_id,
+                sport: game.sport,
+                home_team: live?.home_team || game.home_team,
+                away_team: live?.away_team || game.away_team,
+              }, game.sport)}
             />
           );
         })}
@@ -183,9 +193,10 @@ interface PinnedGameCardProps {
   game: PinnedGame;
   liveData?: GameLiveData;
   onUnpin: () => void;
+  onClick?: () => void;
 }
 
-const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin }) => {
+const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin, onClick }) => {
   const isLive = liveData?.is_live;
   const isFinal = liveData?.is_final;
 
@@ -213,10 +224,14 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
     : null;
 
   return (
-    <div className={cn(
-      "relative bg-gradient-to-br from-gray-900/90 to-gray-800/50 border rounded-xl p-4 transition-all shadow-lg",
-      isLive ? "border-red-500/40" : isFinal ? "border-gray-600/50" : "border-gray-700/50"
-    )}>
+    <div
+      onClick={onClick}
+      className={cn(
+        "relative bg-gradient-to-br from-gray-900/90 to-gray-800/50 border rounded-xl p-4 transition-all shadow-lg",
+        isLive ? "border-red-500/40" : isFinal ? "border-gray-600/50" : "border-gray-700/50",
+        onClick && "cursor-pointer hover:border-accent/50"
+      )}
+    >
       {/* Header: Sport badge, status, and unpin button */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

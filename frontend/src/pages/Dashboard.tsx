@@ -1193,7 +1193,16 @@ export const Dashboard = () => {
       </div>
 
       {/* Pinned Games Section */}
-      <PinnedGamesSection />
+      <PinnedGamesSection
+        onGameClick={(game, sport) => {
+          setSelectedGame({
+            event_id: game.event_id,
+            home_team: game.home_team || '',
+            away_team: game.away_team || '',
+          } as Game);
+          setSelectedSport(sport);
+        }}
+      />
 
       {/* Pending Bets Section - Now Primary */}
       {pendingBets.length > 0 && (
