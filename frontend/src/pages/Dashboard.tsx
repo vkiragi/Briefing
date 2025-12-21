@@ -926,23 +926,21 @@ export const Dashboard = () => {
                       tournamentClickable && "cursor-pointer hover:border-accent/50"
                     )}
                   >
-                    {/* Pin button - hide for completed games */}
-                    {gameEventId && (
-                      <div className="absolute top-2 right-2 z-10">
-                        <PinButton
-                          eventId={gameEventId}
-                          sport={sport}
-                          matchup={game.tournament || game.home_team}
-                          homeTeam={game.home_team}
-                          awayTeam={game.away_team}
-                          size="sm"
-                          disabled={game.state === 'post' || game.completed === true}
-                        />
-                      </div>
-                    )}
                     <div className="text-center">
-                      <div className={cn("font-mono text-gray-400", isCompact ? "text-xs mb-1" : "text-sm mb-2")}>
-                        {formatGameTime(game, sport)}
+                      <div className={cn("font-mono text-gray-400 flex items-center justify-center gap-2", isCompact ? "text-xs mb-1" : "text-sm mb-2")}>
+                        <span>{formatGameTime(game, sport)}</span>
+                        {/* Pin button - hide for completed games */}
+                        {gameEventId && (
+                          <PinButton
+                            eventId={gameEventId}
+                            sport={sport}
+                            matchup={game.tournament || game.home_team}
+                            homeTeam={game.home_team}
+                            awayTeam={game.away_team}
+                            size="sm"
+                            disabled={game.state === 'post' || game.completed === true}
+                          />
+                        )}
                       </div>
                       <div className={cn("font-semibold text-white", isCompact ? "text-sm" : "text-base")}>
                         {game.tournament || game.home_team}
@@ -975,20 +973,6 @@ export const Dashboard = () => {
                       tennisClickable && "cursor-pointer hover:border-accent/50"
                     )}
                   >
-                    {/* Pin button - hide for completed games */}
-                    {gameEventId && (
-                      <div className="absolute top-2 right-2 z-10">
-                        <PinButton
-                          eventId={gameEventId}
-                          sport={sport}
-                          matchup={`${game.away_team} vs ${game.home_team}`}
-                          homeTeam={game.home_team}
-                          awayTeam={game.away_team}
-                          size="sm"
-                          disabled={game.state === 'post' || game.completed === true}
-                        />
-                      </div>
-                    )}
                     {/* Tournament name */}
                     {showTournament && (
                       <div className="text-xs text-gray-400 font-medium mb-2 truncate">
@@ -1005,9 +989,23 @@ export const Dashboard = () => {
                           Live
                         </span>
                       )}
-                      <span className="text-sm font-mono font-semibold text-gray-400">
-                        {formatGameTime(game, sport)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono font-semibold text-gray-400">
+                          {formatGameTime(game, sport)}
+                        </span>
+                        {/* Pin button - hide for completed games */}
+                        {gameEventId && (
+                          <PinButton
+                            eventId={gameEventId}
+                            sport={sport}
+                            matchup={`${game.away_team} vs ${game.home_team}`}
+                            homeTeam={game.home_team}
+                            awayTeam={game.away_team}
+                            size="sm"
+                            disabled={game.state === 'post' || game.completed === true}
+                          />
+                        )}
+                      </div>
                     </div>
                     {/* Player 1 */}
                     <div className="flex justify-between items-center mb-1">
@@ -1083,20 +1081,6 @@ export const Dashboard = () => {
                     isClickable && "cursor-pointer hover:border-accent/50"
                   )}
                 >
-                  {/* Pin button - hide for completed games */}
-                  {gameEventId && (
-                    <div className="absolute top-2 right-2 z-10">
-                      <PinButton
-                        eventId={gameEventId}
-                        sport={sport}
-                        matchup={`${game.away_team} @ ${game.home_team}`}
-                        homeTeam={game.home_team}
-                        awayTeam={game.away_team}
-                        size={isCompact ? "sm" : "sm"}
-                        disabled={game.state === 'post' || game.completed === true}
-                      />
-                    </div>
-                  )}
                   {/* Tournament name for tennis tournaments list */}
                   {showTournament && !isCompact && (
                     <div className="text-xs text-accent font-medium mb-2 truncate">
@@ -1113,9 +1097,23 @@ export const Dashboard = () => {
                         Live
                       </span>
                     )}
-                    <span className={cn("font-mono font-semibold text-gray-400", isCompact ? "text-xs" : "text-sm")}>
-                      {formatGameTime(game, sport)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("font-mono font-semibold text-gray-400", isCompact ? "text-xs" : "text-sm")}>
+                        {formatGameTime(game, sport)}
+                      </span>
+                      {/* Pin button - hide for completed games */}
+                      {gameEventId && (
+                        <PinButton
+                          eventId={gameEventId}
+                          sport={sport}
+                          matchup={`${game.away_team} @ ${game.home_team}`}
+                          homeTeam={game.home_team}
+                          awayTeam={game.away_team}
+                          size="sm"
+                          disabled={game.state === 'post' || game.completed === true}
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className={cn("flex justify-between items-center", isCompact ? "mb-1" : "mb-2")}>
                     <div className="flex items-center gap-2 min-w-0 flex-1">
