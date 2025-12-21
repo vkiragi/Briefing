@@ -1118,9 +1118,10 @@ export const Dashboard = () => {
                   {(() => {
                     const homeScore = typeof game.home_score === 'string' ? parseInt(game.home_score) : game.home_score;
                     const awayScore = typeof game.away_score === 'string' ? parseInt(game.away_score) : game.away_score;
-                    const homeWinning = homeScore > awayScore;
-                    const awayWinning = awayScore > homeScore;
                     const hasScores = !isNaN(homeScore) && !isNaN(awayScore);
+                    const isTied = hasScores && homeScore === awayScore;
+                    const homeWinning = hasScores && (homeScore > awayScore || isTied);
+                    const awayWinning = hasScores && (awayScore > homeScore || isTied);
 
                     return (
                       <>
@@ -1137,13 +1138,13 @@ export const Dashboard = () => {
                             <span className={cn(
                               "font-semibold truncate",
                               isCompact ? "text-sm" : "text-base",
-                              hasScores && homeWinning ? "text-white" : "text-gray-400"
+                              homeWinning ? "text-white" : "text-gray-400"
                             )}>{game.home_team}</span>
                           </div>
                           <span className={cn(
                             "font-mono font-semibold ml-2",
                             isCompact ? "text-base" : "text-xl",
-                            hasScores && homeWinning ? "text-white" : "text-gray-500"
+                            homeWinning ? "text-white" : "text-gray-500"
                           )}>{game.home_score}</span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -1159,13 +1160,13 @@ export const Dashboard = () => {
                             <span className={cn(
                               "font-semibold truncate",
                               isCompact ? "text-sm" : "text-base",
-                              hasScores && awayWinning ? "text-white" : "text-gray-400"
+                              awayWinning ? "text-white" : "text-gray-400"
                             )}>{game.away_team}</span>
                           </div>
                           <span className={cn(
                             "font-mono font-semibold ml-2",
                             isCompact ? "text-base" : "text-xl",
-                            hasScores && awayWinning ? "text-white" : "text-gray-500"
+                            awayWinning ? "text-white" : "text-gray-500"
                           )}>{game.away_score}</span>
                         </div>
                       </>

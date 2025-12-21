@@ -269,61 +269,66 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
       </div>
 
       {/* Teams and Scores - ESPN style */}
-      <div className="space-y-2 mb-3">
-        {/* Away Team */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {liveData?.away_logo && (
-              <img
-                src={liveData.away_logo}
-                alt=""
-                className="w-6 h-6 object-contain shrink-0"
-              />
-            )}
-            <span className={cn(
-              "text-base font-semibold truncate",
-              leadingTeam === 'away' ? "text-white" : "text-gray-300"
-            )}>
-              {liveData?.away_team || game.away_team || 'Away'}
-            </span>
-          </div>
-          <span className={cn(
-            "text-2xl font-mono font-bold shrink-0 ml-2",
-            awayScore !== undefined && homeScore !== undefined
-              ? awayScore > homeScore ? "text-white" : "text-gray-500"
-              : "text-gray-500"
-          )}>
-            {liveData?.away_score ?? '-'}
-          </span>
-        </div>
+      {(() => {
+        const hasScores = homeScore !== undefined && awayScore !== undefined;
+        const isTied = hasScores && homeScore === awayScore;
+        const homeWinning = hasScores && (homeScore > awayScore || isTied);
+        const awayWinning = hasScores && (awayScore > homeScore || isTied);
 
-        {/* Home Team */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {liveData?.home_logo && (
-              <img
-                src={liveData.home_logo}
-                alt=""
-                className="w-6 h-6 object-contain shrink-0"
-              />
-            )}
-            <span className={cn(
-              "text-base font-semibold truncate",
-              leadingTeam === 'home' ? "text-white" : "text-gray-300"
-            )}>
-              {liveData?.home_team || game.home_team || 'Home'}
-            </span>
+        return (
+          <div className="space-y-2 mb-3">
+            {/* Away Team */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {liveData?.away_logo && (
+                  <img
+                    src={liveData.away_logo}
+                    alt=""
+                    className="w-6 h-6 object-contain shrink-0"
+                  />
+                )}
+                <span className={cn(
+                  "text-base font-semibold truncate",
+                  awayWinning ? "text-white" : "text-gray-300"
+                )}>
+                  {liveData?.away_team || game.away_team || 'Away'}
+                </span>
+              </div>
+              <span className={cn(
+                "text-2xl font-mono font-bold shrink-0 ml-2",
+                awayWinning ? "text-white" : "text-gray-500"
+              )}>
+                {liveData?.away_score ?? '-'}
+              </span>
+            </div>
+
+            {/* Home Team */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {liveData?.home_logo && (
+                  <img
+                    src={liveData.home_logo}
+                    alt=""
+                    className="w-6 h-6 object-contain shrink-0"
+                  />
+                )}
+                <span className={cn(
+                  "text-base font-semibold truncate",
+                  homeWinning ? "text-white" : "text-gray-300"
+                )}>
+                  {liveData?.home_team || game.home_team || 'Home'}
+                </span>
+              </div>
+              <span className={cn(
+                "text-2xl font-mono font-bold shrink-0 ml-2",
+                homeWinning ? "text-white" : "text-gray-500"
+              )}>
+                {liveData?.home_score ?? '-'}
+              </span>
+            </div>
           </div>
-          <span className={cn(
-            "text-2xl font-mono font-bold shrink-0 ml-2",
-            awayScore !== undefined && homeScore !== undefined
-              ? homeScore > awayScore ? "text-white" : "text-gray-500"
-              : "text-gray-500"
-          )}>
-            {liveData?.home_score ?? '-'}
-          </span>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Sport tag and Win % */}
       <div className="flex items-center justify-between">
