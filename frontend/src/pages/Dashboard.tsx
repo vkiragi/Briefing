@@ -906,10 +906,11 @@ export const Dashboard = () => {
               const showTournament = isTennis && game.tournament && game.match_type !== 'tournament';
               const isTennisMatch = isTennis && game.match_type !== 'tournament';
               const isTennisTournament = isTennis && game.match_type === 'tournament';
+              const gameEventId = game.event_id || game.competition_id;
 
               // For upcoming tennis tournaments (no matches yet), show a clean card
               if (isTennisTournament) {
-                const tournamentClickable = !!game.event_id;
+                const tournamentClickable = !!gameEventId;
                 return (
                   <div
                     key={i}
@@ -926,10 +927,10 @@ export const Dashboard = () => {
                     )}
                   >
                     {/* Pin button - hide for completed games */}
-                    {game.event_id && (
+                    {gameEventId && (
                       <div className="absolute top-2 right-2 z-10">
                         <PinButton
-                          eventId={game.event_id}
+                          eventId={gameEventId}
                           sport={sport}
                           matchup={game.tournament || game.home_team}
                           homeTeam={game.home_team}
@@ -958,7 +959,7 @@ export const Dashboard = () => {
 
               // For tennis matches, render a special layout
               if (isTennisMatch) {
-                const tennisClickable = game.event_id;
+                const tennisClickable = !!gameEventId;
                 return (
                   <div
                     key={i}
@@ -975,10 +976,10 @@ export const Dashboard = () => {
                     )}
                   >
                     {/* Pin button - hide for completed games */}
-                    {game.event_id && (
+                    {gameEventId && (
                       <div className="absolute top-2 right-2 z-10">
                         <PinButton
-                          eventId={game.event_id}
+                          eventId={gameEventId}
                           sport={sport}
                           matchup={`${game.away_team} vs ${game.home_team}`}
                           homeTeam={game.home_team}
@@ -1066,7 +1067,7 @@ export const Dashboard = () => {
               const boxScoreSports = ['nba', 'nfl', 'mlb', 'ncaab', 'ncaaf', ...soccerLeagues, ...tennisTypes];
               // For tennis, only clickable if it's a match (not a tournament placeholder)
               const isTennisActualMatch = tennisTypes.includes(sport) && game.match_type !== 'tournament';
-              const isClickable = boxScoreSports.includes(sport) && game.event_id && (tennisTypes.includes(sport) ? isTennisActualMatch : true);
+              const isClickable = boxScoreSports.includes(sport) && gameEventId && (tennisTypes.includes(sport) ? isTennisActualMatch : true);
               return (
                 <div
                   key={i}
@@ -1083,10 +1084,10 @@ export const Dashboard = () => {
                   )}
                 >
                   {/* Pin button - hide for completed games */}
-                  {game.event_id && (
+                  {gameEventId && (
                     <div className="absolute top-2 right-2 z-10">
                       <PinButton
-                        eventId={game.event_id}
+                        eventId={gameEventId}
                         sport={sport}
                         matchup={`${game.away_team} @ ${game.home_team}`}
                         homeTeam={game.home_team}
