@@ -1221,19 +1221,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Pinned Games Section */}
-      <PinnedGamesSection
-        onGameClick={(game, sport) => {
-          setSelectedGame({
-            event_id: game.event_id,
-            home_team: game.home_team || '',
-            away_team: game.away_team || '',
-          } as Game);
-          setSelectedSport(sport);
-        }}
-      />
-
-      {/* Pending Bets Section - Now Primary */}
+      {/* Pending Bets Section - Primary */}
       {pendingBets.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -1355,6 +1343,18 @@ export const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Pinned Games Section */}
+      <PinnedGamesSection
+        onGameClick={(game, sport) => {
+          setSelectedGame({
+            event_id: game.event_id,
+            home_team: game.home_team || '',
+            away_team: game.away_team || '',
+          } as Game);
+          setSelectedSport(sport);
+        }}
+      />
 
       {/* Sports Sections - rendered based on settings order and enabled state */}
       {settings.homeScreen.sectionOrder.map(sectionId => {

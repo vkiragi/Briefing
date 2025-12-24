@@ -362,12 +362,14 @@ def _compute_prop_status(
     # Live game
     if game_state in ("pre", "in"):
         # Check if condition is met right now (HIT)
+        # For Over bets: >= line is winning (need to hit the line to win)
+        # For Under bets: < line is winning (going over means losing)
         is_hit = False
         if side == "over":
-            is_hit = current_value > line
+            is_hit = current_value >= line
         else: # under
             is_hit = current_value < line
-            
+
         return "live_hit" if is_hit else "live_miss"
 
     # Game is over - final result
