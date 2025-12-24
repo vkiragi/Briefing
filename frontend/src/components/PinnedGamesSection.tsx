@@ -49,10 +49,16 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
       const liveResults = await api.getPinnedGamesLive(gamesToFetch);
 
       const newLiveData = new Map<string, GameLiveData>();
+      const finishedGameIds: string[] = [];
 
       for (const result of liveResults) {
         const isLive = result.game_state === 'in';
         const isFinal = result.game_state === 'post';
+
+        // Track finished games for auto-unpin
+        if (isFinal) {
+          finishedGameIds.push(result.event_id);
+        }
 
         newLiveData.set(result.event_id, {
           event_id: result.event_id,
@@ -76,6 +82,13 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
       }
 
       setLiveData(newLiveData);
+
+      // Auto-unpin finished games after a short delay to show final score briefly
+      if (finishedGameIds.length > 0) {
+        setTimeout(() => {
+          finishedGameIds.forEach(eventId => unpinGame(eventId));
+        }, 5000); // 5 second delay to show final score
+      }
     } catch (error) {
       console.error('Failed to fetch live data:', error);
       // Fallback to the old method if the new endpoint fails
@@ -87,7 +100,7 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
     } finally {
       setRefreshing(false);
     }
-  }, [pinnedGames]);
+  }, [pinnedGames, unpinGame]);
 
   // Fallback to the old method of fetching scores by sport
   const fetchLiveDataFallback = async () => {

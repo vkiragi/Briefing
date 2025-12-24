@@ -846,17 +846,18 @@ class BaseSportsFetcher:
                     if last_play_team_id:
                         data["_last_play_team_id"] = str(last_play_team_id)
 
-                # Extract rich live situation data for live games
-                if state == "in":
+                # Extract rich live situation data for live and finished games
+                if state in ("in", "post"):
                     comps = header.get("competitions", [])
                     if comps:
                         comp = comps[0]
                         competitors = comp.get("competitors", [])
                         status_obj = comp.get("status", {})
 
-                        # Clock and period
-                        live_situation["display_clock"] = status_obj.get("displayClock", "")
-                        live_situation["period"] = status_obj.get("period", 1)
+                        # Clock and period (only meaningful for live games)
+                        if state == "in":
+                            live_situation["display_clock"] = status_obj.get("displayClock", "")
+                            live_situation["period"] = status_obj.get("period", 1)
 
                         # Team info with logos and scores
                         for c in competitors:
@@ -879,12 +880,13 @@ class BaseSportsFetcher:
                                 live_situation["away_abbrev"] = team_abbrev
                                 live_situation["away_team_id"] = str(team_id) if team_id else None
 
-                        # Win probability (last entry is most recent)
-                        win_prob = data.get("winprobability", [])
-                        if win_prob:
-                            latest_prob = win_prob[-1]
-                            home_win_pct = latest_prob.get("homeWinPercentage", 0.5)
-                            live_situation["home_win_pct"] = round(home_win_pct * 100, 1)
+                        # Win probability (last entry is most recent) - only for live games
+                        if state == "in":
+                            win_prob = data.get("winprobability", [])
+                            if win_prob:
+                                latest_prob = win_prob[-1]
+                                home_win_pct = latest_prob.get("homeWinPercentage", 0.5)
+                                live_situation["home_win_pct"] = round(home_win_pct * 100, 1)
 
                         if live_situation:
                             data["_live_situation"] = live_situation
