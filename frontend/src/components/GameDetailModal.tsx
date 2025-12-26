@@ -1063,9 +1063,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
             className="w-full max-w-4xl max-h-[90vh] overflow-hidden"
           >
             <Card className="flex flex-col h-full max-h-[90vh]">
-              {/* Header with score */}
-              <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-                <div className="flex items-center gap-4 flex-wrap">
+              {/* Header with score - centered */}
+              <div className="relative flex items-center justify-center p-4 border-b border-border flex-shrink-0">
+                <div className="flex items-center gap-4 flex-wrap justify-center">
                   <div className="flex items-center gap-2">
                     {game.away_logo && <img src={game.away_logo} alt="" className="w-8 h-8 object-contain" />}
                     <span className="font-semibold text-gray-300">{game.away_team}</span>
@@ -1080,7 +1080,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
                   <X size={20} />
                 </button>
