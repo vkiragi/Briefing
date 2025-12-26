@@ -567,17 +567,54 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     );
   };
 
-  // Soccer stat columns to display
-  const soccerStatColumns = ['G', 'A', 'SH', 'ST', 'FC', 'FA', 'YC', 'RC'];
+  // Soccer stat columns to display - simplified to most important stats
+  const soccerStatColumns = ['G', 'A', 'SH', 'ST', 'MIN'];
   const soccerStatLabels: Record<string, string> = {
     'G': 'Goals',
     'A': 'Assists',
     'SH': 'Shots',
     'ST': 'On Target',
-    'FC': 'Fouls',
-    'FA': 'Fouled',
-    'YC': 'Yellow',
-    'RC': 'Red',
+    'MIN': 'Minutes',
+  };
+
+  // Helper to render soccer player row
+  const renderSoccerPlayerRow = (player: BoxScorePlayer) => {
+    const stats = !Array.isArray(player.stats) ? player.stats : {};
+    const hasYellow = Number(stats['YC'] ?? 0) > 0;
+    const hasRed = Number(stats['RC'] ?? 0) > 0;
+
+    return (
+      <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
+        <td className="py-2 px-2 sticky left-0 bg-card">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
+            <span className="font-medium text-white">{player.name}</span>
+            <span className="text-gray-500 text-xs">{player.position}</span>
+            {/* Card indicators */}
+            {hasRed && <span className="w-3 h-4 bg-red-500 rounded-sm" title="Red Card" />}
+            {hasYellow && !hasRed && <span className="w-3 h-4 bg-yellow-400 rounded-sm" title="Yellow Card" />}
+          </div>
+        </td>
+        {soccerStatColumns.map(col => {
+          const value = stats[col] ?? 0;
+          const numValue = Number(value);
+          // Highlight goals in green, assists in blue
+          const isGoal = col === 'G' && numValue > 0;
+          const isAssist = col === 'A' && numValue > 0;
+          return (
+            <td
+              key={col}
+              className={cn(
+                "text-center py-2 px-2 font-mono text-xs",
+                isGoal ? "text-accent font-bold" : isAssist ? "text-blue-400 font-bold" : "text-gray-300"
+              )}
+            >
+              {numValue || '-'}
+            </td>
+          );
+        })}
+      </tr>
+    );
   };
 
   // Render Soccer team stats
@@ -613,22 +650,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       Starting XI
                     </td>
                   </tr>
-                  {starters.map(player => (
-                    <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
-                      <td className="py-2 px-2 sticky left-0 bg-card">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
-                          <span className="font-medium text-white">{player.name}</span>
-                          <span className="text-gray-500 text-xs">{player.position}</span>
-                        </div>
-                      </td>
-                      {soccerStatColumns.map(col => (
-                        <td key={col} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
-                          {!Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-'}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                  {starters.map(player => renderSoccerPlayerRow(player))}
                 </>
               )}
 
@@ -640,22 +662,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       Substitutes
                     </td>
                   </tr>
-                  {bench.map(player => (
-                    <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
-                      <td className="py-2 px-2 sticky left-0 bg-card">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
-                          <span className="font-medium text-white">{player.name}</span>
-                          <span className="text-gray-500 text-xs">{player.position}</span>
-                        </div>
-                      </td>
-                      {soccerStatColumns.map(col => (
-                        <td key={col} className="text-center py-2 px-2 text-gray-300 font-mono text-xs">
-                          {!Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-'}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                  {bench.map(player => renderSoccerPlayerRow(player))}
                 </>
               )}
             </tbody>
