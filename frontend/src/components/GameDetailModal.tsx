@@ -1111,7 +1111,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                           {teamBoxScore.linescores.home.map((_: number, i: number) => {
                             let label = `${i + 1}`;
                             if (teamBoxScore.sport === 'soccer') {
-                              label = i === 0 ? '1H' : '2H';
+                              label = i === 0 ? '1st Half' : '2nd Half';
                             } else if (teamBoxScore.sport === 'mlb') {
                               label = `${i + 1}`;
                             } else if (teamBoxScore.sport === 'nba' || teamBoxScore.sport === 'ncaab' ||
@@ -1119,7 +1119,10 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                               label = `Q${i + 1}`;
                             }
                             return (
-                              <div key={i} className="w-10 text-center text-xs font-medium text-gray-500">
+                              <div key={i} className={cn(
+                                "text-center text-xs font-medium text-gray-500",
+                                teamBoxScore.sport === 'soccer' ? "w-16" : "w-10"
+                              )}>
                                 {label}
                               </div>
                             );
@@ -1145,7 +1148,10 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                   {teamBoxScore.linescores.away_team}
                                 </div>
                                 {teamBoxScore.linescores.away.map((score: number, i: number) => (
-                                  <div key={i} className="w-10 h-8 flex items-center justify-center bg-gray-900/50 rounded text-sm text-gray-300">
+                                  <div key={i} className={cn(
+                                    "h-8 flex items-center justify-center bg-gray-900/50 rounded text-sm text-gray-300",
+                                    teamBoxScore.sport === 'soccer' ? "w-16" : "w-10"
+                                  )}>
                                     {score}
                                   </div>
                                 ))}
@@ -1166,7 +1172,10 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                                   {teamBoxScore.linescores.home_team}
                                 </div>
                                 {teamBoxScore.linescores.home.map((score: number, i: number) => (
-                                  <div key={i} className="w-10 h-8 flex items-center justify-center bg-gray-900/50 rounded text-sm text-gray-300">
+                                  <div key={i} className={cn(
+                                    "h-8 flex items-center justify-center bg-gray-900/50 rounded text-sm text-gray-300",
+                                    teamBoxScore.sport === 'soccer' ? "w-16" : "w-10"
+                                  )}>
                                     {score}
                                   </div>
                                 ))}
