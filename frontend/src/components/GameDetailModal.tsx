@@ -705,32 +705,121 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Substitutes list */}
-        {bench.length > 0 && (
-          <div className="bg-gray-800/50 rounded-lg p-3">
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Substitutes</div>
-            <div className="flex flex-wrap gap-2">
-              {bench.map(player => {
-                const stats = !Array.isArray(player.stats) ? player.stats : {};
-                const hasYellow = Number(stats['YC'] ?? 0) > 0;
-                const hasRed = Number(stats['RC'] ?? 0) > 0;
-                const goals = Number(stats['G'] ?? 0);
-                return (
-                  <div
-                    key={player.id}
-                    className="flex items-center gap-1.5 bg-gray-700/50 rounded px-2 py-1"
-                  >
-                    <span className="text-gray-500 text-xs">{player.jersey}</span>
-                    <span className="text-white text-xs">{player.name.split(' ').pop()}</span>
-                    {goals > 0 && <span className="text-[10px]">⚽</span>}
-                    {hasRed && <span className="w-2 h-3 bg-red-500 rounded-sm" />}
-                    {hasYellow && !hasRed && <span className="w-2 h-3 bg-yellow-400 rounded-sm" />}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Player Stats Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 px-2 font-medium text-gray-400 sticky left-0 bg-card min-w-[160px]">Player</th>
+                <th className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title="Goals">G</th>
+                <th className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title="Assists">A</th>
+                <th className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title="Shots">SH</th>
+                <th className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title="On Target">ST</th>
+                <th className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title="Fouls">FC</th>
+                <th className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title="Saves">SV</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Starting XI */}
+              {starters.length > 0 && (
+                <>
+                  <tr className="bg-accent/5">
+                    <td colSpan={7} className="py-1 px-2 text-xs font-bold text-accent uppercase tracking-wider">
+                      Starting XI
+                    </td>
+                  </tr>
+                  {starters.map(player => {
+                    const stats = !Array.isArray(player.stats) ? player.stats : {};
+                    const hasYellow = Number(stats['YC'] ?? 0) > 0;
+                    const hasRed = Number(stats['RC'] ?? 0) > 0;
+                    return (
+                      <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
+                        <td className="py-2 px-2 sticky left-0 bg-card">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
+                            <span className="font-medium text-white">{player.name}</span>
+                            <span className="text-gray-500 text-xs">{player.position}</span>
+                            {hasRed && <span className="w-3 h-4 bg-red-500 rounded-sm" title="Red Card" />}
+                            {hasYellow && !hasRed && <span className="w-3 h-4 bg-yellow-400 rounded-sm" title="Yellow Card" />}
+                          </div>
+                        </td>
+                        {['G', 'A', 'SH', 'ST', 'FC', 'SV'].map(col => {
+                          const value = stats[col];
+                          const hasValue = value !== undefined && value !== null && value !== '';
+                          const numValue = hasValue ? Number(value) : null;
+                          const isGoal = col === 'G' && numValue !== null && numValue > 0;
+                          const isAssist = col === 'A' && numValue !== null && numValue > 0;
+                          const isSaves = col === 'SV';
+                          const showValue = hasValue && (numValue !== 0 || !isSaves);
+                          return (
+                            <td
+                              key={col}
+                              className={cn(
+                                "text-center py-2 px-2 font-mono text-xs",
+                                isGoal ? "text-accent font-bold" : isAssist ? "text-blue-400 font-bold" : "text-gray-300"
+                              )}
+                            >
+                              {showValue ? numValue : '-'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Substitutes */}
+              {bench.length > 0 && (
+                <>
+                  <tr className="bg-gray-800/30">
+                    <td colSpan={7} className="py-1 px-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Substitutes
+                    </td>
+                  </tr>
+                  {bench.map(player => {
+                    const stats = !Array.isArray(player.stats) ? player.stats : {};
+                    const hasYellow = Number(stats['YC'] ?? 0) > 0;
+                    const hasRed = Number(stats['RC'] ?? 0) > 0;
+                    return (
+                      <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
+                        <td className="py-2 px-2 sticky left-0 bg-card">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
+                            <span className="font-medium text-white">{player.name}</span>
+                            <span className="text-gray-500 text-xs">{player.position}</span>
+                            {hasRed && <span className="w-3 h-4 bg-red-500 rounded-sm" title="Red Card" />}
+                            {hasYellow && !hasRed && <span className="w-3 h-4 bg-yellow-400 rounded-sm" title="Yellow Card" />}
+                          </div>
+                        </td>
+                        {['G', 'A', 'SH', 'ST', 'FC', 'SV'].map(col => {
+                          const value = stats[col];
+                          const hasValue = value !== undefined && value !== null && value !== '';
+                          const numValue = hasValue ? Number(value) : null;
+                          const isGoal = col === 'G' && numValue !== null && numValue > 0;
+                          const isAssist = col === 'A' && numValue !== null && numValue > 0;
+                          const isSaves = col === 'SV';
+                          const showValue = hasValue && (numValue !== 0 || !isSaves);
+                          return (
+                            <td
+                              key={col}
+                              className={cn(
+                                "text-center py-2 px-2 font-mono text-xs",
+                                isGoal ? "text-accent font-bold" : isAssist ? "text-blue-400 font-bold" : "text-gray-300"
+                              )}
+                            >
+                              {showValue ? numValue : '-'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
