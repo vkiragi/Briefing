@@ -568,13 +568,13 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   };
 
   // Soccer stat columns to display - simplified to most important stats
-  const soccerStatColumns = ['G', 'A', 'SH', 'ST', 'MIN'];
+  const soccerStatColumns = ['G', 'A', 'SH', 'ST', 'SV'];
   const soccerStatLabels: Record<string, string> = {
     'G': 'Goals',
     'A': 'Assists',
     'SH': 'Shots',
     'ST': 'On Target',
-    'MIN': 'Minutes',
+    'SV': 'Saves',
   };
 
   // Helper to render soccer player row
@@ -596,11 +596,15 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           </div>
         </td>
         {soccerStatColumns.map(col => {
-          const value = stats[col] ?? 0;
-          const numValue = Number(value);
+          const value = stats[col];
+          const hasValue = value !== undefined && value !== null && value !== '';
+          const numValue = hasValue ? Number(value) : null;
           // Highlight goals in green, assists in blue
-          const isGoal = col === 'G' && numValue > 0;
-          const isAssist = col === 'A' && numValue > 0;
+          const isGoal = col === 'G' && numValue !== null && numValue > 0;
+          const isAssist = col === 'A' && numValue !== null && numValue > 0;
+          // For saves, only show for goalkeepers (hide '-' for outfield players)
+          const isSaves = col === 'SV';
+          const showValue = hasValue && (numValue !== 0 || !isSaves);
           return (
             <td
               key={col}
@@ -609,7 +613,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 isGoal ? "text-accent font-bold" : isAssist ? "text-blue-400 font-bold" : "text-gray-300"
               )}
             >
-              {numValue || '-'}
+              {showValue ? numValue : '-'}
             </td>
           );
         })}
