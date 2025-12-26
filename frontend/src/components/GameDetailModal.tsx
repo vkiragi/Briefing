@@ -1088,63 +1088,99 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
 
               {/* Game status and period scores */}
               {teamBoxScore && (
-                <div className="px-4 py-3 border-b border-border flex-shrink-0">
-                  <div className="text-center text-sm text-gray-400 mb-3">
-                    {teamBoxScore.game_status}
+                <div className="px-4 py-4 border-b border-border flex-shrink-0">
+                  {/* Status badge */}
+                  <div className="flex justify-center mb-4">
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide",
+                      teamBoxScore.game_status?.toLowerCase().includes('final')
+                        ? "bg-gray-700 text-gray-300"
+                        : "bg-red-500/20 text-red-400"
+                    )}>
+                      {teamBoxScore.game_status}
+                    </span>
                   </div>
+
+                  {/* Period scores - redesigned */}
                   {teamBoxScore.linescores?.home?.length > 0 && (
                     <div className="flex justify-center">
-                      <table className="text-xs">
-                        <thead>
-                          <tr className="text-gray-500">
-                            <th className="w-24 text-left px-2 py-1"></th>
-                            {teamBoxScore.linescores.home.map((_: number, i: number) => {
-                              // Different labels based on sport
-                              let label = `${i + 1}`;
-                              if (teamBoxScore.sport === 'soccer') {
-                                label = i === 0 ? '1H' : '2H';
-                              } else if (teamBoxScore.sport === 'mlb') {
-                                label = `${i + 1}`;
-                              } else if (teamBoxScore.sport === 'nba' || teamBoxScore.sport === 'ncaab' ||
-                                         teamBoxScore.sport === 'nfl' || teamBoxScore.sport === 'ncaaf') {
-                                label = `Q${i + 1}`;
-                              } else {
-                                label = `Q${i + 1}`;
-                              }
-                              return (
-                                <th key={i} className="w-10 text-center px-2 py-1 font-medium">
-                                  {label}
-                                </th>
-                              );
-                            })}
-                            <th className="w-10 text-center px-2 py-1 font-bold text-gray-400">T</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td className="text-gray-400 text-left px-2 py-1 font-medium">{teamBoxScore.linescores.away_team}</td>
-                            {teamBoxScore.linescores.away.map((score: number, i: number) => (
-                              <td key={i} className="text-center px-2 py-1 text-gray-300 bg-background rounded">
-                                {score}
-                              </td>
-                            ))}
-                            <td className="text-center px-2 py-1 text-white font-bold">
-                              {teamBoxScore.linescores.away.reduce((a: number, b: number) => a + b, 0)}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="text-gray-400 text-left px-2 py-1 font-medium">{teamBoxScore.linescores.home_team}</td>
-                            {teamBoxScore.linescores.home.map((score: number, i: number) => (
-                              <td key={i} className="text-center px-2 py-1 text-gray-300 bg-background rounded">
-                                {score}
-                              </td>
-                            ))}
-                            <td className="text-center px-2 py-1 text-white font-bold">
-                              {teamBoxScore.linescores.home.reduce((a: number, b: number) => a + b, 0)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                      <div className="bg-gray-800/50 rounded-xl p-4 inline-block">
+                        {/* Period headers */}
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-28" /> {/* Spacer for team names */}
+                          {teamBoxScore.linescores.home.map((_: number, i: number) => {
+                            let label = `${i + 1}`;
+                            if (teamBoxScore.sport === 'soccer') {
+                              label = i === 0 ? '1H' : '2H';
+                            } else if (teamBoxScore.sport === 'mlb') {
+                              label = `${i + 1}`;
+                            } else if (teamBoxScore.sport === 'nba' || teamBoxScore.sport === 'ncaab' ||
+                                       teamBoxScore.sport === 'nfl' || teamBoxScore.sport === 'ncaaf') {
+                              label = `Q${i + 1}`;
+                            }
+                            return (
+                              <div key={i} className="w-10 text-center text-xs font-medium text-gray-500">
+                                {label}
+                              </div>
+                            );
+                          })}
+                          <div className="w-12 text-center text-xs font-bold text-gray-400">T</div>
+                        </div>
+
+                        {/* Away team row */}
+                        {(() => {
+                          const awayTotal = teamBoxScore.linescores.away.reduce((a: number, b: number) => a + b, 0);
+                          const homeTotal = teamBoxScore.linescores.home.reduce((a: number, b: number) => a + b, 0);
+                          const awayWinning = awayTotal > homeTotal;
+                          const homeWinning = homeTotal > awayTotal;
+                          const isTied = awayTotal === homeTotal;
+
+                          return (
+                            <>
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className={cn(
+                                  "w-28 text-sm font-medium truncate",
+                                  awayWinning || isTied ? "text-white" : "text-gray-500"
+                                )}>
+                                  {teamBoxScore.linescores.away_team}
+                                </div>
+                                {teamBoxScore.linescores.away.map((score: number, i: number) => (
+                                  <div key={i} className="w-10 h-8 flex items-center justify-center bg-gray-900/50 rounded text-sm text-gray-300">
+                                    {score}
+                                  </div>
+                                ))}
+                                <div className={cn(
+                                  "w-12 h-8 flex items-center justify-center rounded-lg text-lg font-bold",
+                                  awayWinning ? "bg-accent/20 text-accent" : isTied ? "bg-gray-700 text-white" : "bg-gray-900/50 text-gray-400"
+                                )}>
+                                  {awayTotal}
+                                </div>
+                              </div>
+
+                              {/* Home team row */}
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "w-28 text-sm font-medium truncate",
+                                  homeWinning || isTied ? "text-white" : "text-gray-500"
+                                )}>
+                                  {teamBoxScore.linescores.home_team}
+                                </div>
+                                {teamBoxScore.linescores.home.map((score: number, i: number) => (
+                                  <div key={i} className="w-10 h-8 flex items-center justify-center bg-gray-900/50 rounded text-sm text-gray-300">
+                                    {score}
+                                  </div>
+                                ))}
+                                <div className={cn(
+                                  "w-12 h-8 flex items-center justify-center rounded-lg text-lg font-bold",
+                                  homeWinning ? "bg-accent/20 text-accent" : isTied ? "bg-gray-700 text-white" : "bg-gray-900/50 text-gray-400"
+                                )}>
+                                  {homeTotal}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
                     </div>
                   )}
                 </div>
