@@ -1091,3 +1091,239 @@ def update_game_end_time(event_id: str, end_time: str = Body(..., embed=True), u
     except Exception as e:
         print(f"Error updating game end time: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== Favorite Teams Endpoints ====================
+
+@app.get("/api/teams/search")
+def search_teams(query: str = Query(..., min_length=2), limit: int = Query(10, ge=1, le=50)):
+    """
+    Search for teams across all supported sports.
+    Returns matching teams with their ID, name, abbreviation, logo, and sport.
+    """
+    try:
+        results = []
+        query_lower = query.lower().strip()
+
+        # Sports to search through (team-based sports only)
+        team_sports = [
+            ('nfl', 'NFL'),
+            ('nba', 'NBA'),
+            ('mlb', 'MLB'),
+            ('nhl', 'NHL'),
+            ('epl', 'Premier League'),
+            ('laliga', 'La Liga'),
+            ('ucl', 'Champions League'),
+            ('seriea', 'Serie A'),
+            ('bundesliga', 'Bundesliga'),
+            ('mls', 'MLS'),
+            ('ncaaf', 'College Football'),
+            ('ncaab', 'College Basketball'),
+        ]
+
+        for sport_key, sport_display in team_sports:
+            try:
+                sport_path = sports_fetcher.SPORTS.get(sport_key)
+                if not sport_path:
+                    continue
+
+                # Fetch teams from ESPN teams endpoint
+                url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams?limit=100"
+                response = sports_fetcher.session.get(url, timeout=5)
+
+                if response.status_code != 200:
+                    continue
+
+                data = response.json()
+                teams = data.get('sports', [{}])[0].get('leagues', [{}])[0].get('teams', [])
+
+                for team_entry in teams:
+                    team = team_entry.get('team', {})
+                    name = team.get('displayName', '')
+                    abbreviation = team.get('abbreviation', '')
+                    nickname = team.get('nickname', '')
+
+                    # Check if query matches team name, abbreviation, or nickname
+                    if (query_lower in name.lower() or
+                        query_lower in abbreviation.lower() or
+                        query_lower in nickname.lower()):
+
+                        # Get logo URL
+                        logos = team.get('logos', [])
+                        logo_url = logos[0].get('href', '') if logos else ''
+
+                        results.append({
+                            'id': team.get('id', ''),
+                            'name': name,
+                            'abbreviation': abbreviation,
+                            'logo': logo_url,
+                            'sport': sport_key,
+                            'sportDisplay': sport_display,
+                        })
+
+                        if len(results) >= limit:
+                            break
+
+            except Exception as e:
+                print(f"Error searching teams for {sport_key}: {e}")
+                continue
+
+            if len(results) >= limit:
+                break
+
+        # Sort results by relevance (starts with > contains)
+        def relevance(team):
+            name_lower = team['name'].lower()
+            abbrev_lower = team['abbreviation'].lower()
+            if name_lower.startswith(query_lower) or abbrev_lower.startswith(query_lower):
+                return 0
+            return 1
+
+        results.sort(key=relevance)
+        return results[:limit]
+
+    except Exception as e:
+        print(f"Error searching teams: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class FavoriteTeam(BaseModel):
+    id: str
+    name: str
+    sport: str
+
+
+@app.post("/api/teams/favorites/results")
+def get_favorite_teams_results(teams: List[FavoriteTeam] = Body(...)):
+    """
+    Get latest results and next game for favorite teams.
+    Returns last completed game result and next scheduled game for each team.
+    """
+    try:
+        results = []
+
+        for team in teams:
+            team_result = {
+                'team_id': team.id,
+                'team_name': team.name,
+                'sport': team.sport,
+                'last_game': None,
+                'next_game': None,
+                'logo': None,
+            }
+
+            try:
+                sport_path = sports_fetcher.SPORTS.get(team.sport.lower())
+                if not sport_path:
+                    results.append(team_result)
+                    continue
+
+                # Fetch team schedule (includes past and future games)
+                url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams/{team.id}/schedule"
+                response = sports_fetcher.session.get(url, timeout=10)
+
+                if response.status_code != 200:
+                    results.append(team_result)
+                    continue
+
+                data = response.json()
+
+                # Get team info (including logo)
+                team_info = data.get('team', {})
+                logos = team_info.get('logos', [])
+                team_result['logo'] = logos[0].get('href', '') if logos else None
+                team_result['team_name'] = team_info.get('displayName', team.name)
+
+                events = data.get('events', [])
+
+                # Find most recent completed game and next upcoming game
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+
+                completed_games = []
+                upcoming_games = []
+
+                for event in events:
+                    competitions = event.get('competitions', [])
+                    if not competitions:
+                        continue
+
+                    comp = competitions[0]
+                    status = comp.get('status', {}).get('type', {})
+                    state = status.get('state', 'pre')
+
+                    # Parse event date
+                    event_date_str = event.get('date', '')
+                    try:
+                        event_date = datetime.fromisoformat(event_date_str.replace('Z', '+00:00'))
+                    except:
+                        continue
+
+                    competitors = comp.get('competitors', [])
+                    if len(competitors) < 2:
+                        continue
+
+                    # Determine which competitor is our team
+                    our_team = None
+                    opponent = None
+                    is_home = False
+
+                    for c in competitors:
+                        c_team = c.get('team', {})
+                        if str(c_team.get('id', '')) == str(team.id):
+                            our_team = c
+                            is_home = c.get('homeAway', 'away') == 'home'
+                        else:
+                            opponent = c
+
+                    if not our_team or not opponent:
+                        continue
+
+                    opponent_team = opponent.get('team', {})
+                    opponent_logos = opponent_team.get('logos', [])
+
+                    game_data = {
+                        'event_id': event.get('id', ''),
+                        'date': event_date_str,
+                        'opponent_name': opponent_team.get('displayName', 'Unknown'),
+                        'opponent_abbreviation': opponent_team.get('abbreviation', ''),
+                        'opponent_logo': opponent_logos[0].get('href', '') if opponent_logos else '',
+                        'is_home': is_home,
+                        'our_score': our_team.get('score', {}).get('displayValue', '0') if isinstance(our_team.get('score'), dict) else our_team.get('score', '0'),
+                        'opponent_score': opponent.get('score', {}).get('displayValue', '0') if isinstance(opponent.get('score'), dict) else opponent.get('score', '0'),
+                        'status': status.get('description', ''),
+                        'state': state,
+                    }
+
+                    # Determine if it was a win/loss
+                    if state == 'post':
+                        try:
+                            our_score = int(game_data['our_score']) if game_data['our_score'] else 0
+                            opp_score = int(game_data['opponent_score']) if game_data['opponent_score'] else 0
+                            game_data['result'] = 'W' if our_score > opp_score else ('L' if our_score < opp_score else 'T')
+                        except:
+                            game_data['result'] = None
+                        completed_games.append((event_date, game_data))
+                    elif state == 'pre':
+                        upcoming_games.append((event_date, game_data))
+
+                # Get most recent completed game
+                if completed_games:
+                    completed_games.sort(key=lambda x: x[0], reverse=True)
+                    team_result['last_game'] = completed_games[0][1]
+
+                # Get next upcoming game
+                if upcoming_games:
+                    upcoming_games.sort(key=lambda x: x[0])
+                    team_result['next_game'] = upcoming_games[0][1]
+
+            except Exception as e:
+                print(f"Error fetching results for team {team.id}: {e}")
+
+            results.append(team_result)
+
+        return results
+
+    except Exception as e:
+        print(f"Error getting favorite teams results: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -374,6 +374,61 @@ export const api = {
     if (!response.ok) throw new Error('Failed to update game end time');
     return response.json();
   },
+
+  // ==================== Favorite Teams ====================
+
+  searchTeams: async (query: string, limit = 10) => {
+    const response = await fetch(
+      `${API_BASE_URL}/teams/search?query=${encodeURIComponent(query)}&limit=${limit}`
+    );
+    if (!response.ok) throw new Error('Failed to search teams');
+    return response.json() as Promise<Array<{
+      id: string;
+      name: string;
+      abbreviation: string;
+      logo: string;
+      sport: string;
+      sportDisplay: string;
+    }>>;
+  },
+
+  getFavoriteTeamsResults: async (teams: Array<{ id: string; name: string; sport: string }>) => {
+    const response = await fetch(`${API_BASE_URL}/teams/favorites/results`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(teams),
+    });
+    if (!response.ok) throw new Error('Failed to fetch favorite teams results');
+    return response.json() as Promise<Array<{
+      team_id: string;
+      team_name: string;
+      sport: string;
+      logo: string | null;
+      last_game: {
+        event_id: string;
+        date: string;
+        opponent_name: string;
+        opponent_abbreviation: string;
+        opponent_logo: string;
+        is_home: boolean;
+        our_score: string;
+        opponent_score: string;
+        result: 'W' | 'L' | 'T' | null;
+        status: string;
+        state: string;
+      } | null;
+      next_game: {
+        event_id: string;
+        date: string;
+        opponent_name: string;
+        opponent_abbreviation: string;
+        opponent_logo: string;
+        is_home: boolean;
+        status: string;
+        state: string;
+      } | null;
+    }>>;
+  },
 };
 
 

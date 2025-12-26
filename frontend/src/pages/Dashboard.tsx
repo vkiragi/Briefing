@@ -11,6 +11,7 @@ import { GameDetailModal } from "../components/GameDetailModal";
 import { F1RaceModal } from "../components/F1RaceModal";
 import { DateNavigator } from "../components/DateNavigator";
 import { PinnedGamesSection } from "../components/PinnedGamesSection";
+import { FavoriteTeamsSection } from "../components/FavoriteTeamsSection";
 import { api } from "../lib/api";
 import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
 import { cn } from "../lib/utils";
@@ -1220,6 +1221,9 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Favorite Teams Section */}
+      <FavoriteTeamsSection />
 
       {/* Pending Bets Section - Primary */}
       {pendingBets.length > 0 && (

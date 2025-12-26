@@ -36,11 +36,21 @@ interface HomeScreenSettings {
   sectionOrder: SectionId[];
 }
 
+export interface FavoriteTeam {
+  id: string;
+  name: string;
+  abbreviation: string;
+  logo: string;
+  sport: string;
+  sportDisplay: string;
+}
+
 interface AppSettings {
   refreshInterval: number;
   homeScreen: HomeScreenSettings;
   showPropTracker: boolean;
   compactMode: boolean;
+  favoriteTeams: FavoriteTeam[];
 }
 
 interface SettingsContextType {
@@ -52,6 +62,8 @@ interface SettingsContextType {
   toggleCompactMode: () => void;
   resetToDefaults: () => void;
   isSectionEnabled: (sectionId: SectionId) => boolean;
+  addFavoriteTeam: (team: FavoriteTeam) => void;
+  removeFavoriteTeam: (teamId: string) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -63,6 +75,7 @@ const defaultSettings: AppSettings = {
   },
   showPropTracker: true,
   compactMode: false,
+  favoriteTeams: [],
 };
 
 const STORAGE_KEY = 'briefing_settings';
@@ -171,6 +184,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     return settings.homeScreen.enabledSections.includes(sectionId);
   }, [settings.homeScreen.enabledSections]);
 
+  const addFavoriteTeam = useCallback((team: FavoriteTeam) => {
+    setSettings(prev => {
+      // Don't add duplicates
+      if (prev.favoriteTeams.some(t => t.id === team.id && t.sport === team.sport)) {
+        return prev;
+      }
+      // Limit to 10 favorite teams
+      if (prev.favoriteTeams.length >= 10) {
+        return prev;
+      }
+      return {
+        ...prev,
+        favoriteTeams: [...prev.favoriteTeams, team],
+      };
+    });
+  }, []);
+
+  const removeFavoriteTeam = useCallback((teamId: string) => {
+    setSettings(prev => ({
+      ...prev,
+      favoriteTeams: prev.favoriteTeams.filter(t => t.id !== teamId),
+    }));
+  }, []);
+
   return (
     <SettingsContext.Provider
       value={{
@@ -182,6 +219,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         toggleCompactMode,
         resetToDefaults,
         isSectionEnabled,
+        addFavoriteTeam,
+        removeFavoriteTeam,
       }}
     >
       {children}
