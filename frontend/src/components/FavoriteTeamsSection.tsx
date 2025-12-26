@@ -3,6 +3,8 @@ import { Star, RefreshCw, Settings } from 'lucide-react';
 import { useSettings, FavoriteTeam } from '../context/SettingsContext';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
+import { Game } from '../types';
+import { GameDetailModal } from './GameDetailModal';
 
 interface TeamResult {
   team_id: string;
@@ -43,6 +45,7 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
   const [results, setResults] = useState<TeamResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<{ game: Game; sport: string } | null>(null);
 
   const fetchResults = useCallback(async () => {
     if (settings.favoriteTeams.length === 0) return;
@@ -138,11 +141,20 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
                 key={result.team_id}
                 result={result}
                 team={team}
+                onGameClick={(game, sport) => setSelectedGame({ game, sport })}
               />
             );
           })}
         </div>
       )}
+
+      {/* Game Details Modal */}
+      <GameDetailModal
+        isOpen={!!selectedGame}
+        onClose={() => setSelectedGame(null)}
+        game={selectedGame?.game || null}
+        sport={selectedGame?.sport || ''}
+      />
     </div>
   );
 };
@@ -150,9 +162,10 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
 interface FavoriteTeamCardProps {
   result: TeamResult;
   team?: FavoriteTeam;
+  onGameClick?: (game: Game, sport: string) => void;
 }
 
-const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team }) => {
+const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGameClick }) => {
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
@@ -169,6 +182,37 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team }) => 
       }
     } catch {
       return dateStr;
+    }
+  };
+
+  // Create a Game object for the modal
+  const createGameObject = (gameData: typeof result.last_game | typeof result.next_game, isCompleted: boolean): Game | null => {
+    if (!gameData) return null;
+
+    // Determine home/away based on is_home flag
+    const ourTeamName = result.team_name;
+    const opponentName = gameData.opponent_name;
+
+    return {
+      event_id: gameData.event_id,
+      home_team: gameData.is_home ? ourTeamName : opponentName,
+      away_team: gameData.is_home ? opponentName : ourTeamName,
+      home_score: gameData.is_home ? (gameData as typeof result.last_game)?.our_score || '0' : (gameData as typeof result.last_game)?.opponent_score || '0',
+      away_score: gameData.is_home ? (gameData as typeof result.last_game)?.opponent_score || '0' : (gameData as typeof result.last_game)?.our_score || '0',
+      home_logo: gameData.is_home ? result.logo || undefined : gameData.opponent_logo || undefined,
+      away_logo: gameData.is_home ? gameData.opponent_logo || undefined : result.logo || undefined,
+      status: gameData.status,
+      state: gameData.state,
+      completed: isCompleted,
+      date: gameData.date,
+    };
+  };
+
+  const handleLastGameClick = () => {
+    if (!result.last_game || !onGameClick) return;
+    const game = createGameObject(result.last_game, true);
+    if (game) {
+      onGameClick(game, result.sport);
     }
   };
 
@@ -198,9 +242,12 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team }) => 
         </div>
       </div>
 
-      {/* Last Game Result - ESPN style scoreboard */}
+      {/* Last Game Result - ESPN style scoreboard - Clickable */}
       {lastGame && (
-        <div className="bg-gray-800/60 rounded-lg p-3 mb-3">
+        <button
+          onClick={handleLastGameClick}
+          className="w-full bg-gray-800/60 rounded-lg p-3 mb-3 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last Game</span>
             <span className={cn(
@@ -241,10 +288,10 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team }) => 
               </span>
             </div>
           </div>
-        </div>
+        </button>
       )}
 
-      {/* Next Game */}
+      {/* Next Game - Not clickable since it's upcoming */}
       {nextGame && (
         <div className={cn(
           "flex items-center justify-between",
