@@ -567,111 +567,170 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     );
   };
 
-  // Soccer stat columns to display - simplified to most important stats
-  const soccerStatColumns = ['G', 'A', 'SH', 'ST', 'SV'];
-  const soccerStatLabels: Record<string, string> = {
-    'G': 'Goals',
-    'A': 'Assists',
-    'SH': 'Shots',
-    'ST': 'On Target',
-    'SV': 'Saves',
+  // Helper to get position row for formation visualization
+  const getPositionRow = (position: string): number => {
+    // Map position codes to rows (0 = GK, 1 = DEF, 2 = MID, 3 = ATT/FWD)
+    const pos = position?.toUpperCase() || '';
+    if (pos === 'G' || pos === 'GK') return 0;
+    if (pos.includes('CD') || pos.includes('CB') || pos === 'LB' || pos === 'RB' || pos === 'LWB' || pos === 'RWB' || pos === 'D') return 1;
+    if (pos.includes('DM') || pos.includes('CM') || pos === 'LM' || pos === 'RM' || pos === 'M') return 2;
+    if (pos.includes('AM') || pos.includes('CAM') || pos.includes('LW') || pos.includes('RW') || pos === 'W') return 3;
+    if (pos === 'F' || pos === 'CF' || pos === 'ST' || pos === 'S' || pos.includes('FW')) return 4;
+    return 2; // Default to midfield
   };
 
-  // Helper to render soccer player row
-  const renderSoccerPlayerRow = (player: BoxScorePlayer) => {
+  // Helper to get horizontal position within row
+  const getHorizontalPosition = (position: string): number => {
+    const pos = position?.toUpperCase() || '';
+    // Left side
+    if (pos.includes('-L') || pos === 'LB' || pos === 'LM' || pos === 'LW' || pos === 'LWB') return 0;
+    // Center-left
+    if (pos === 'CD-L' || pos === 'CB-L' || pos === 'DM-L' || pos === 'CM-L') return 1;
+    // Center
+    if (pos === 'G' || pos === 'GK' || pos === 'CD' || pos === 'CB' || pos === 'DM' || pos === 'CM' || pos === 'AM' || pos === 'CAM' || pos === 'F' || pos === 'CF' || pos === 'ST' || pos === 'S') return 2;
+    // Center-right
+    if (pos === 'CD-R' || pos === 'CB-R' || pos === 'DM-R' || pos === 'CM-R') return 3;
+    // Right side
+    if (pos.includes('-R') || pos === 'RB' || pos === 'RM' || pos === 'RW' || pos === 'RWB') return 4;
+    return 2; // Default center
+  };
+
+  // Soccer player node component
+  const SoccerPlayerNode: React.FC<{ player: BoxScorePlayer; teamColor: string }> = ({ player, teamColor }) => {
     const stats = !Array.isArray(player.stats) ? player.stats : {};
     const hasYellow = Number(stats['YC'] ?? 0) > 0;
     const hasRed = Number(stats['RC'] ?? 0) > 0;
+    const goals = Number(stats['G'] ?? 0);
+    const assists = Number(stats['A'] ?? 0);
+
+    // Get first initial and last name
+    const nameParts = player.name.split(' ');
+    const displayName = nameParts.length > 1
+      ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
+      : player.name;
 
     return (
-      <tr key={player.id} className="border-b border-border/30 hover:bg-white/5">
-        <td className="py-2 px-2 sticky left-0 bg-card">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500 text-xs w-5 text-right">{player.jersey}</span>
-            <span className="font-medium text-white">{player.name}</span>
-            <span className="text-gray-500 text-xs">{player.position}</span>
-            {/* Card indicators */}
-            {hasRed && <span className="w-3 h-4 bg-red-500 rounded-sm" title="Red Card" />}
-            {hasYellow && !hasRed && <span className="w-3 h-4 bg-yellow-400 rounded-sm" title="Yellow Card" />}
-          </div>
-        </td>
-        {soccerStatColumns.map(col => {
-          const value = stats[col];
-          const hasValue = value !== undefined && value !== null && value !== '';
-          const numValue = hasValue ? Number(value) : null;
-          // Highlight goals in green, assists in blue
-          const isGoal = col === 'G' && numValue !== null && numValue > 0;
-          const isAssist = col === 'A' && numValue !== null && numValue > 0;
-          // For saves, only show for goalkeepers (hide '-' for outfield players)
-          const isSaves = col === 'SV';
-          const showValue = hasValue && (numValue !== 0 || !isSaves);
-          return (
-            <td
-              key={col}
-              className={cn(
-                "text-center py-2 px-2 font-mono text-xs",
-                isGoal ? "text-accent font-bold" : isAssist ? "text-blue-400 font-bold" : "text-gray-300"
-              )}
-            >
-              {showValue ? numValue : '-'}
-            </td>
-          );
-        })}
-      </tr>
+      <div className="flex flex-col items-center gap-0.5">
+        <div
+          className={cn(
+            "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 relative",
+            teamColor
+          )}
+        >
+          {player.jersey}
+          {/* Goal indicator */}
+          {goals > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-[10px]">⚽</span>
+          )}
+          {/* Card indicators */}
+          {hasRed && (
+            <span className="absolute -bottom-1 -right-1 w-3 h-4 bg-red-500 rounded-sm" />
+          )}
+          {hasYellow && !hasRed && (
+            <span className="absolute -bottom-1 -right-1 w-3 h-4 bg-yellow-400 rounded-sm" />
+          )}
+        </div>
+        <span className="text-[10px] text-white font-medium text-center leading-tight max-w-[60px] truncate">
+          {displayName}
+        </span>
+        {/* Assist indicator */}
+        {assists > 0 && (
+          <span className="text-[9px] text-blue-400 font-medium">🅰️ {assists}</span>
+        )}
+      </div>
     );
   };
 
-  // Render Soccer team stats
+  // Render Soccer formation visualization
   const renderSoccerTeamStats = (team: BoxScoreTeam) => {
     const starters = team.players.filter(p => p.starter);
     const bench = team.players.filter(p => !p.starter);
 
+    // Determine team color based on index
+    const teamIndex = (boxScore as BoxScoreData)?.teams?.findIndex(t => t.team_id === team.team_id) ?? 0;
+    const teamColor = teamIndex === 0
+      ? "bg-red-600 border-red-400 text-white"
+      : "bg-blue-500 border-blue-300 text-white";
+
+    // Group starters by row
+    const rows: BoxScorePlayer[][] = [[], [], [], [], []]; // GK, DEF, MID, AM, FWD
+    starters.forEach(player => {
+      const row = getPositionRow(player.position);
+      rows[row].push(player);
+    });
+
+    // Sort each row by horizontal position
+    rows.forEach(row => {
+      row.sort((a, b) => getHorizontalPosition(a.position) - getHorizontalPosition(b.position));
+    });
+
     return (
-      <div>
-        {team.formation && (
-          <div className="text-center text-sm text-accent mb-3">
-            Formation: {team.formation}
+      <div className="space-y-4">
+        {/* Formation pitch visualization */}
+        <div className="relative bg-gradient-to-b from-green-800 to-green-700 rounded-lg overflow-hidden">
+          {/* Pitch markings */}
+          <div className="absolute inset-0">
+            {/* Center line */}
+            <div className="absolute top-1/2 left-0 right-0 h-px bg-white/30" />
+            {/* Center circle */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border border-white/30 rounded-full" />
+            {/* Goal box top */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-10 border-b border-l border-r border-white/30" />
+            {/* Goal box bottom */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-10 border-t border-l border-r border-white/30" />
+          </div>
+
+          {/* Formation header */}
+          <div className="relative z-10 flex items-center justify-between px-3 py-2 bg-black/30">
+            <div className="flex items-center gap-2">
+              {team.logo && <img src={team.logo} alt="" className="w-5 h-5 object-contain" />}
+              <span className="text-white text-sm font-medium">{team.team_abbrev || team.team_name}</span>
+            </div>
+            <span className="text-white/80 text-sm">{team.formation}</span>
+          </div>
+
+          {/* Players on pitch */}
+          <div className="relative z-10 py-4 px-2 space-y-4 min-h-[320px]">
+            {/* Render rows in reverse order (forwards at top, GK at bottom) */}
+            {[...rows].reverse().map((row, rowIndex) => {
+              if (row.length === 0) return null;
+              return (
+                <div key={rowIndex} className="flex justify-around items-start">
+                  {row.map(player => (
+                    <SoccerPlayerNode key={player.id} player={player} teamColor={teamColor} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Substitutes list */}
+        {bench.length > 0 && (
+          <div className="bg-gray-800/50 rounded-lg p-3">
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Substitutes</div>
+            <div className="flex flex-wrap gap-2">
+              {bench.map(player => {
+                const stats = !Array.isArray(player.stats) ? player.stats : {};
+                const hasYellow = Number(stats['YC'] ?? 0) > 0;
+                const hasRed = Number(stats['RC'] ?? 0) > 0;
+                const goals = Number(stats['G'] ?? 0);
+                return (
+                  <div
+                    key={player.id}
+                    className="flex items-center gap-1.5 bg-gray-700/50 rounded px-2 py-1"
+                  >
+                    <span className="text-gray-500 text-xs">{player.jersey}</span>
+                    <span className="text-white text-xs">{player.name.split(' ').pop()}</span>
+                    {goals > 0 && <span className="text-[10px]">⚽</span>}
+                    {hasRed && <span className="w-2 h-3 bg-red-500 rounded-sm" />}
+                    {hasYellow && !hasRed && <span className="w-2 h-3 bg-yellow-400 rounded-sm" />}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-2 px-2 font-medium text-gray-400 sticky left-0 bg-card min-w-[160px]">Player</th>
-                {soccerStatColumns.map(col => (
-                  <th key={col} className="text-center py-2 px-2 font-medium text-gray-400 min-w-[40px]" title={soccerStatLabels[col]}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* Starting XI */}
-              {starters.length > 0 && (
-                <>
-                  <tr className="bg-accent/5">
-                    <td colSpan={soccerStatColumns.length + 1} className="py-1 px-2 text-xs font-bold text-accent uppercase tracking-wider">
-                      Starting XI
-                    </td>
-                  </tr>
-                  {starters.map(player => renderSoccerPlayerRow(player))}
-                </>
-              )}
-
-              {/* Substitutes */}
-              {bench.length > 0 && (
-                <>
-                  <tr className="bg-gray-800/30">
-                    <td colSpan={soccerStatColumns.length + 1} className="py-1 px-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Substitutes
-                    </td>
-                  </tr>
-                  {bench.map(player => renderSoccerPlayerRow(player))}
-                </>
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
     );
   };
