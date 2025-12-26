@@ -1064,18 +1064,18 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           >
             <Card className="flex flex-col h-full max-h-[90vh]">
               {/* Header with score - centered */}
-              <div className="relative flex items-center justify-center p-4 border-b border-border flex-shrink-0">
-                <div className="flex items-center gap-4 flex-wrap justify-center">
-                  <div className="flex items-center gap-2">
-                    {game.away_logo && <img src={game.away_logo} alt="" className="w-8 h-8 object-contain" />}
-                    <span className="font-semibold text-gray-300">{game.away_team}</span>
-                    <span className="text-2xl font-bold text-white">{game.away_score || '0'}</span>
+              <div className="relative flex items-center justify-center p-5 border-b border-border flex-shrink-0">
+                <div className="flex items-center gap-5 flex-wrap justify-center">
+                  <div className="flex items-center gap-3">
+                    {game.away_logo && <img src={game.away_logo} alt="" className="w-10 h-10 object-contain" />}
+                    <span className="text-lg font-semibold text-gray-300">{game.away_team}</span>
+                    <span className="text-3xl font-bold text-white">{game.away_score || '0'}</span>
                   </div>
-                  <span className="text-gray-500 text-sm">@</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-white">{game.home_score || '0'}</span>
-                    <span className="font-semibold text-gray-300">{game.home_team}</span>
-                    {game.home_logo && <img src={game.home_logo} alt="" className="w-8 h-8 object-contain" />}
+                  <span className="text-gray-500 text-base">@</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl font-bold text-white">{game.home_score || '0'}</span>
+                    <span className="text-lg font-semibold text-gray-300">{game.home_team}</span>
+                    {game.home_logo && <img src={game.home_logo} alt="" className="w-10 h-10 object-contain" />}
                   </div>
                 </div>
                 <button
