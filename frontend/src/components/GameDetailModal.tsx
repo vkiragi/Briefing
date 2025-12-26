@@ -1127,7 +1127,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                               </div>
                             );
                           })}
-                          <div className="w-12 text-center text-xs font-bold text-gray-400">T</div>
+                          <div className="w-12 text-center text-xs font-bold text-gray-400">Total</div>
                         </div>
 
                         {/* Away team row */}
