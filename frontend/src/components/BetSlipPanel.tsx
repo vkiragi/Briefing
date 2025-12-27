@@ -72,6 +72,18 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
     }
   }, [isOpen]);
 
+  // Close on escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const adjustLine = (id: string, currentLine: number, delta: number) => {
     onUpdateSelection(id, { line: Math.max(0, +(currentLine + delta).toFixed(1)) });
   };

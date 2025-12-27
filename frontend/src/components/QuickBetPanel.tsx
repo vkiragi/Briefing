@@ -71,6 +71,18 @@ export const QuickBetPanel: React.FC<QuickBetPanelProps> = ({
     setOdds('-110');
   }, [numericValue, player.name, market]);
 
+  // Close on escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const adjustLine = (delta: number) => {
     setLine(prev => Math.max(0, +(prev + delta).toFixed(1)));
   };

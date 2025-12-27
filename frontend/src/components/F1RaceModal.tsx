@@ -95,6 +95,18 @@ export const F1RaceModal = ({ isOpen, onClose, race }: F1RaceModalProps) => {
     }
   }, [isOpen]);
 
+  // Close on escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const getTeamColor = (team: string) => {
     return TEAM_COLORS[team] || 'bg-gray-600';
   };

@@ -182,6 +182,18 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     }
   }, [isOpen]);
 
+  // Close on escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const fetchBoxScore = async () => {
     if (!game?.event_id) return;
 
