@@ -1187,6 +1187,80 @@ def search_teams(query: str = Query(..., min_length=2), limit: int = Query(10, g
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/teams/by-sport/{sport}")
+def get_teams_by_sport(sport: str):
+    """
+    Get all teams for a specific sport/league.
+    Returns teams sorted alphabetically by name.
+    """
+    try:
+        # Map sport key to display name
+        sport_display_map = {
+            'nfl': 'NFL',
+            'nba': 'NBA',
+            'mlb': 'MLB',
+            'nhl': 'NHL',
+            'epl': 'Premier League',
+            'laliga': 'La Liga',
+            'ucl': 'Champions League',
+            'seriea': 'Serie A',
+            'bundesliga': 'Bundesliga',
+            'mls': 'MLS',
+            'ncaaf': 'College Football',
+            'ncaab': 'College Basketball',
+            'ligue1': 'Ligue 1',
+            'ligaportugal': 'Liga Portugal',
+            'saudi': 'Saudi Pro League',
+            'brasileirao': 'Brasileirao',
+            'ligamx': 'Liga MX',
+        }
+
+        sport_lower = sport.lower()
+        sport_display = sport_display_map.get(sport_lower, sport.upper())
+
+        sport_path = sports_fetcher.SPORTS.get(sport_lower)
+        if not sport_path:
+            raise HTTPException(status_code=404, detail=f"Sport '{sport}' not found")
+
+        # Fetch teams from ESPN teams endpoint
+        url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams?limit=100"
+        response = sports_fetcher.session.get(url, timeout=10)
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to fetch teams")
+
+        data = response.json()
+        teams = data.get('sports', [{}])[0].get('leagues', [{}])[0].get('teams', [])
+
+        results = []
+        for team_entry in teams:
+            team = team_entry.get('team', {})
+            name = team.get('displayName', '')
+
+            # Get logo URL
+            logos = team.get('logos', [])
+            logo_url = logos[0].get('href', '') if logos else ''
+
+            results.append({
+                'id': team.get('id', ''),
+                'name': name,
+                'abbreviation': team.get('abbreviation', ''),
+                'logo': logo_url,
+                'sport': sport_lower,
+                'sportDisplay': sport_display,
+            })
+
+        # Sort alphabetically by name
+        results.sort(key=lambda x: x['name'].lower())
+        return results
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting teams for sport {sport}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class FavoriteTeam(BaseModel):
     id: str
     name: str

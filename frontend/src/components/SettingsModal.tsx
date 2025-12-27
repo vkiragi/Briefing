@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react';
-import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2 } from 'lucide-react';
+import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2, ChevronLeft } from 'lucide-react';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
 import { useSettings, AVAILABLE_SECTIONS, SectionId, FavoriteTeam } from '../context/SettingsContext';
 import { api } from '../lib/api';
+
+// Sports available for team picker
+const TEAM_SPORTS = [
+  { id: 'nba', label: 'NBA', icon: '🏀' },
+  { id: 'nfl', label: 'NFL', icon: '🏈' },
+  { id: 'mlb', label: 'MLB', icon: '⚾' },
+  { id: 'nhl', label: 'NHL', icon: '🏒' },
+  { id: 'ncaab', label: 'NCAAB', icon: '🏀' },
+  { id: 'ncaaf', label: 'NCAAF', icon: '🏈' },
+  { id: 'epl', label: 'Premier League', icon: '⚽' },
+  { id: 'laliga', label: 'La Liga', icon: '⚽' },
+  { id: 'seriea', label: 'Serie A', icon: '⚽' },
+  { id: 'bundesliga', label: 'Bundesliga', icon: '⚽' },
+  { id: 'ligue1', label: 'Ligue 1', icon: '⚽' },
+  { id: 'ucl', label: 'Champions League', icon: '🏆' },
+  { id: 'mls', label: 'MLS', icon: '⚽' },
+] as const;
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -38,6 +55,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  // Sport picker state
+  const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [sportTeams, setSportTeams] = useState<FavoriteTeam[]>([]);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+
   // Debounced team search
   useEffect(() => {
     if (teamSearchQuery.length < 2) {
@@ -63,6 +85,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     return () => clearTimeout(timer);
   }, [teamSearchQuery]);
+
+  // Fetch teams when a sport is selected
+  useEffect(() => {
+    if (!selectedSport) {
+      setSportTeams([]);
+      return;
+    }
+
+    setIsLoadingTeams(true);
+    api.getTeamsBySport(selectedSport)
+      .then((teams) => {
+        setSportTeams(teams);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch teams:', error);
+        setSportTeams([]);
+      })
+      .finally(() => {
+        setIsLoadingTeams(false);
+      });
+  }, [selectedSport]);
 
   // Sync local interval when global settings change
   useEffect(() => {
@@ -445,6 +488,83 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 {searchError && (
                   <p className="mt-2 text-sm text-red-400">{searchError}</p>
+                )}
+              </div>
+
+              {/* Browse by League */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-400 mb-3">
+                  Or browse by league
+                </h4>
+
+                {!selectedSport ? (
+                  /* Sport/League Grid */
+                  <div className="grid grid-cols-3 gap-2">
+                    {TEAM_SPORTS.map((sport) => (
+                      <button
+                        key={sport.id}
+                        onClick={() => setSelectedSport(sport.id)}
+                        className="flex flex-col items-center gap-1 p-3 bg-card border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors"
+                      >
+                        <span className="text-xl">{sport.icon}</span>
+                        <span className="text-xs font-medium text-gray-300 text-center leading-tight">
+                          {sport.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  /* Team List for Selected Sport */
+                  <div>
+                    <button
+                      onClick={() => setSelectedSport(null)}
+                      className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 mb-3"
+                    >
+                      <ChevronLeft size={16} />
+                      Back to leagues
+                    </button>
+
+                    {isLoadingTeams ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 size={24} className="animate-spin text-gray-500" />
+                      </div>
+                    ) : (
+                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                        {sportTeams.map((team) => {
+                          const isAlreadyAdded = settings.favoriteTeams.some(
+                            t => t.id === team.id && t.sport === team.sport
+                          );
+                          return (
+                            <button
+                              key={`${team.sport}-${team.id}`}
+                              onClick={() => {
+                                if (!isAlreadyAdded) {
+                                  addFavoriteTeam(team);
+                                }
+                              }}
+                              disabled={isAlreadyAdded}
+                              className={cn(
+                                "w-full flex items-center gap-3 p-2.5 rounded-lg text-left transition-colors",
+                                isAlreadyAdded
+                                  ? "opacity-50 cursor-not-allowed bg-card"
+                                  : "hover:bg-card"
+                              )}
+                            >
+                              {team.logo && (
+                                <img src={team.logo} alt="" className="w-7 h-7 object-contain" />
+                              )}
+                              <span className="flex-1 text-sm font-medium text-white truncate">
+                                {team.name}
+                              </span>
+                              {isAlreadyAdded && (
+                                <span className="text-xs text-green-500">Added</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 

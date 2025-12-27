@@ -392,6 +392,19 @@ export const api = {
     }>>;
   },
 
+  getTeamsBySport: async (sport: string) => {
+    const response = await fetch(`${API_BASE_URL}/teams/by-sport/${sport}`);
+    if (!response.ok) throw new Error('Failed to fetch teams');
+    return response.json() as Promise<Array<{
+      id: string;
+      name: string;
+      abbreviation: string;
+      logo: string;
+      sport: string;
+      sportDisplay: string;
+    }>>;
+  },
+
   getFavoriteTeamsResults: async (teams: Array<{ id: string; name: string; sport: string }>) => {
     const response = await fetch(`${API_BASE_URL}/teams/favorites/results`, {
       method: 'POST',
