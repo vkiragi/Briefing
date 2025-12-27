@@ -1327,3 +1327,65 @@ def get_favorite_teams_results(teams: List[FavoriteTeam] = Body(...)):
     except Exception as e:
         print(f"Error getting favorite teams results: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# Favorite Teams Database Sync Endpoints
+# ==========================================
+
+class FavoriteTeamRequest(BaseModel):
+    id: str
+    name: str
+    abbreviation: Optional[str] = ""
+    logo: Optional[str] = ""
+    sport: str
+    sportDisplay: Optional[str] = ""
+
+
+@app.get("/api/favorite-teams")
+def get_favorite_teams(user_id: str = Depends(get_current_user)):
+    """Get user's favorite teams from the database"""
+    try:
+        teams = supabase_service.get_favorite_teams(user_id)
+        return teams
+    except Exception as e:
+        print(f"Error getting favorite teams: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/favorite-teams")
+def add_favorite_team(team: FavoriteTeamRequest, user_id: str = Depends(get_current_user)):
+    """Add a team to user's favorites"""
+    try:
+        result = supabase_service.add_favorite_team(user_id, team.model_dump())
+        return result
+    except Exception as e:
+        print(f"Error adding favorite team: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/favorite-teams/{team_id}/{sport}")
+def remove_favorite_team(team_id: str, sport: str, user_id: str = Depends(get_current_user)):
+    """Remove a team from user's favorites"""
+    try:
+        success = supabase_service.remove_favorite_team(user_id, team_id, sport)
+        if not success:
+            raise HTTPException(status_code=404, detail="Team not found in favorites")
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error removing favorite team: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/favorite-teams/sync")
+def sync_favorite_teams(teams: List[FavoriteTeamRequest], user_id: str = Depends(get_current_user)):
+    """Sync all favorite teams - replaces current favorites with provided list"""
+    try:
+        teams_data = [t.model_dump() for t in teams]
+        result = supabase_service.sync_favorite_teams(user_id, teams_data)
+        return result
+    except Exception as e:
+        print(f"Error syncing favorite teams: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -363,6 +363,76 @@ class SupabaseService:
         result = self.client.table('pinned_games').delete().eq('user_id', user_id).lt('game_end_time', cutoff_str).execute()
         return len(result.data) if result.data else 0
 
+    # ==================== Favorite Teams Methods ====================
+
+    def get_favorite_teams(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get all favorite teams for a user"""
+        result = self.client.table('favorite_teams').select('*').eq('user_id', user_id).order('added_at', desc=False).execute()
+        return [self._transform_favorite_team_from_db(t) for t in result.data]
+
+    def add_favorite_team(self, user_id: str, team_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a favorite team for a user"""
+        db_data = {
+            'user_id': user_id,
+            'team_id': team_data['id'],
+            'team_name': team_data['name'],
+            'abbreviation': team_data.get('abbreviation'),
+            'logo': team_data.get('logo'),
+            'sport': team_data['sport'],
+            'sport_display': team_data.get('sportDisplay'),
+        }
+
+        # Use upsert to handle duplicates gracefully
+        result = self.client.table('favorite_teams').upsert(
+            db_data,
+            on_conflict='user_id,team_id,sport'
+        ).execute()
+
+        return self._transform_favorite_team_from_db(result.data[0]) if result.data else team_data
+
+    def remove_favorite_team(self, user_id: str, team_id: str, sport: str) -> bool:
+        """Remove a favorite team for a user"""
+        result = self.client.table('favorite_teams').delete().eq('user_id', user_id).eq('team_id', team_id).eq('sport', sport).execute()
+        return len(result.data) > 0 if result.data else False
+
+    def sync_favorite_teams(self, user_id: str, teams: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Sync favorite teams - replaces all current favorites with the provided list.
+        This is used when the frontend sends its full list of favorites.
+        """
+        # Delete all current favorites for user
+        self.client.table('favorite_teams').delete().eq('user_id', user_id).execute()
+
+        # Insert all new favorites
+        if teams:
+            db_teams = []
+            for team in teams:
+                db_teams.append({
+                    'user_id': user_id,
+                    'team_id': team['id'],
+                    'team_name': team['name'],
+                    'abbreviation': team.get('abbreviation'),
+                    'logo': team.get('logo'),
+                    'sport': team['sport'],
+                    'sport_display': team.get('sportDisplay'),
+                })
+
+            result = self.client.table('favorite_teams').insert(db_teams).execute()
+            return [self._transform_favorite_team_from_db(t) for t in result.data]
+
+        return []
+
+    def _transform_favorite_team_from_db(self, db_team: Dict[str, Any]) -> Dict[str, Any]:
+        """Transform database favorite team format to frontend format"""
+        return {
+            'id': db_team['team_id'],
+            'name': db_team['team_name'],
+            'abbreviation': db_team.get('abbreviation', ''),
+            'logo': db_team.get('logo', ''),
+            'sport': db_team['sport'],
+            'sportDisplay': db_team.get('sport_display', ''),
+        }
+
 
 # Singleton instance
 supabase_service = SupabaseService()

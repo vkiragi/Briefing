@@ -429,6 +429,87 @@ export const api = {
       } | null;
     }>>;
   },
+
+  // ==================== Favorite Teams Database Sync ====================
+
+  getFavoriteTeamsFromDb: async () => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/favorite-teams`, { headers });
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Not authenticated');
+      throw new Error('Failed to fetch favorite teams');
+    }
+    return response.json() as Promise<Array<{
+      id: string;
+      name: string;
+      abbreviation: string;
+      logo: string;
+      sport: string;
+      sportDisplay: string;
+    }>>;
+  },
+
+  addFavoriteTeamToDb: async (team: {
+    id: string;
+    name: string;
+    abbreviation?: string;
+    logo?: string;
+    sport: string;
+    sportDisplay?: string;
+  }) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/favorite-teams`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(team),
+    });
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Not authenticated');
+      throw new Error('Failed to add favorite team');
+    }
+    return response.json();
+  },
+
+  removeFavoriteTeamFromDb: async (teamId: string, sport: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/favorite-teams/${teamId}/${sport}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Not authenticated');
+      throw new Error('Failed to remove favorite team');
+    }
+    return response.json();
+  },
+
+  syncFavoriteTeamsToDb: async (teams: Array<{
+    id: string;
+    name: string;
+    abbreviation?: string;
+    logo?: string;
+    sport: string;
+    sportDisplay?: string;
+  }>) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/favorite-teams/sync`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(teams),
+    });
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Not authenticated');
+      throw new Error('Failed to sync favorite teams');
+    }
+    return response.json() as Promise<Array<{
+      id: string;
+      name: string;
+      abbreviation: string;
+      logo: string;
+      sport: string;
+      sportDisplay: string;
+    }>>;
+  },
 };
 
 

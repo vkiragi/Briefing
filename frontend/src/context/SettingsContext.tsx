@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { api } from '../lib/api';
+import { useAuth } from './AuthContext';
 
 // Available sports sections for the home screen
 export const AVAILABLE_SECTIONS = [
@@ -63,7 +65,7 @@ interface SettingsContextType {
   resetToDefaults: () => void;
   isSectionEnabled: (sectionId: SectionId) => boolean;
   addFavoriteTeam: (team: FavoriteTeam) => void;
-  removeFavoriteTeam: (teamId: string) => void;
+  removeFavoriteTeam: (teamId: string, sport?: string) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -91,6 +93,7 @@ export const useSettings = () => {
 };
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -125,6 +128,32 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
     return defaultSettings;
   });
+
+  // Track if we've loaded from database for this user
+  const hasLoadedFromDb = useRef<string | null>(null);
+
+  // Load favorite teams from database when user logs in
+  useEffect(() => {
+    if (user && hasLoadedFromDb.current !== user.id) {
+      hasLoadedFromDb.current = user.id;
+      api.getFavoriteTeamsFromDb()
+        .then((dbTeams) => {
+          if (dbTeams.length > 0) {
+            // Database has teams - use them (they take precedence)
+            setSettings(prev => ({
+              ...prev,
+              favoriteTeams: dbTeams,
+            }));
+          } else if (settings.favoriteTeams.length > 0) {
+            // Database is empty but localStorage has teams - sync to database
+            api.syncFavoriteTeamsToDb(settings.favoriteTeams).catch(console.error);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load favorite teams from database:', err);
+        });
+    }
+  }, [user]);
 
   // Persist settings to localStorage
   useEffect(() => {
@@ -194,19 +223,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       if (prev.favoriteTeams.length >= 10) {
         return prev;
       }
+      // Sync to database if user is logged in
+      if (user) {
+        api.addFavoriteTeamToDb(team).catch(console.error);
+      }
       return {
         ...prev,
         favoriteTeams: [...prev.favoriteTeams, team],
       };
     });
-  }, []);
+  }, [user]);
 
-  const removeFavoriteTeam = useCallback((teamId: string) => {
-    setSettings(prev => ({
-      ...prev,
-      favoriteTeams: prev.favoriteTeams.filter(t => t.id !== teamId),
-    }));
-  }, []);
+  const removeFavoriteTeam = useCallback((teamId: string, sport?: string) => {
+    setSettings(prev => {
+      const teamToRemove = prev.favoriteTeams.find(t => t.id === teamId);
+      // Sync to database if user is logged in
+      if (user && teamToRemove) {
+        api.removeFavoriteTeamFromDb(teamId, sport || teamToRemove.sport).catch(console.error);
+      }
+      return {
+        ...prev,
+        favoriteTeams: prev.favoriteTeams.filter(t => t.id !== teamId),
+      };
+    });
+  }, [user]);
 
   return (
     <SettingsContext.Provider
