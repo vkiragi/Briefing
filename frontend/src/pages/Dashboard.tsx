@@ -13,7 +13,7 @@ import { F1RaceModal } from "../components/F1RaceModal";
 import { DateNavigator } from "../components/DateNavigator";
 import { PinnedGamesSection } from "../components/PinnedGamesSection";
 import { FavoriteTeamsSection } from "../components/FavoriteTeamsSection";
-import { VoiceBetFAB } from "../components/VoiceBetFAB";
+// import { VoiceBetFAB } from "../components/VoiceBetFAB";
 import { api } from "../lib/api";
 import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
 import { cn } from "../lib/utils";
@@ -1604,8 +1604,8 @@ export const Dashboard = () => {
         race={selectedF1Race}
       />
 
-      {/* Voice Bet FAB */}
-      <VoiceBetFAB />
+      {/* Voice Bet FAB - hidden for now */}
+      {/* <VoiceBetFAB /> */}
     </motion.div>
   );
 };
