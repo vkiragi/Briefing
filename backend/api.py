@@ -1391,6 +1391,90 @@ def get_favorite_teams_results(teams: List[FavoriteTeam] = Body(...)):
                     upcoming_games.sort(key=lambda x: x[0])
                     team_result['next_game'] = upcoming_games[0][1]
 
+                # If no upcoming games found in schedule, search scoreboard for next 14 days
+                # This is needed because some leagues (especially soccer) don't include future fixtures in schedule
+                if not team_result['next_game']:
+                    from datetime import timedelta
+                    for days_ahead in range(1, 15):
+                        future_date = now + timedelta(days=days_ahead)
+                        date_str = future_date.strftime('%Y%m%d')
+
+                        try:
+                            scoreboard_url = f"{sports_fetcher.BASE_URL}/{sport_path}/scoreboard?dates={date_str}"
+                            scoreboard_response = sports_fetcher.session.get(scoreboard_url, timeout=5)
+
+                            if scoreboard_response.status_code != 200:
+                                continue
+
+                            scoreboard_data = scoreboard_response.json()
+                            scoreboard_events = scoreboard_data.get('events', [])
+
+                            for event in scoreboard_events:
+                                competitions = event.get('competitions', [])
+                                if not competitions:
+                                    continue
+
+                                comp = competitions[0]
+                                competitors = comp.get('competitors', [])
+
+                                # Check if our team is in this game
+                                our_team_comp = None
+                                opponent_comp = None
+                                is_home = False
+
+                                for c in competitors:
+                                    c_team = c.get('team', {})
+                                    if str(c_team.get('id', '')) == str(team.id):
+                                        our_team_comp = c
+                                        is_home = c.get('homeAway', 'away') == 'home'
+                                    else:
+                                        opponent_comp = c
+
+                                if our_team_comp and opponent_comp:
+                                    status = comp.get('status', {}).get('type', {})
+                                    state = status.get('state', 'pre')
+
+                                    # Only consider pre-game or scheduled games
+                                    if state in ('pre', 'scheduled'):
+                                        opponent_team = opponent_comp.get('team', {})
+                                        opponent_logos = opponent_team.get('logos', [])
+                                        opponent_logo_url = opponent_logos[0].get('href', '') if opponent_logos else ''
+
+                                        # If no logo in scoreboard, fetch from team endpoint
+                                        if not opponent_logo_url:
+                                            opponent_id = opponent_team.get('id', '')
+                                            if opponent_id:
+                                                try:
+                                                    team_url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams/{opponent_id}"
+                                                    team_response = sports_fetcher.session.get(team_url, timeout=5)
+                                                    if team_response.status_code == 200:
+                                                        team_data = team_response.json()
+                                                        team_logos = team_data.get('team', {}).get('logos', [])
+                                                        if team_logos:
+                                                            opponent_logo_url = team_logos[0].get('href', '')
+                                                except:
+                                                    pass
+
+                                        team_result['next_game'] = {
+                                            'event_id': event.get('id', ''),
+                                            'date': event.get('date', ''),
+                                            'opponent_name': opponent_team.get('displayName', 'Unknown'),
+                                            'opponent_abbreviation': opponent_team.get('abbreviation', ''),
+                                            'opponent_logo': opponent_logo_url,
+                                            'is_home': is_home,
+                                            'status': status.get('description', ''),
+                                            'state': state,
+                                        }
+                                        break
+
+                            # If we found a game, stop searching
+                            if team_result['next_game']:
+                                break
+
+                        except Exception as scoreboard_err:
+                            # Continue to next day on error
+                            continue
+
             except Exception as e:
                 print(f"Error fetching results for team {team.id}: {e}")
 

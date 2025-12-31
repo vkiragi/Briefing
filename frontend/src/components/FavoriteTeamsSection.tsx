@@ -173,12 +173,15 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
+      const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
       if (date.toDateString() === now.toDateString()) {
-        return `Today ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+        return `Today ${timeStr}`;
       } else if (date.toDateString() === tomorrow.toDateString()) {
-        return `Tom ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+        return `Tom ${timeStr}`;
       } else {
-        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const dateFormatted = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return `${dateFormatted} ${timeStr}`;
       }
     } catch {
       return dateStr;

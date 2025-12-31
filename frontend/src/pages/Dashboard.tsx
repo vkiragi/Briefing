@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { useBets } from "../context/BetContext";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext";
 import { PropTracker } from "../components/PropTracker";
 import { ParlayTracker } from "../components/ParlayTracker";
 import { GameDetailModal } from "../components/GameDetailModal";
@@ -12,6 +13,7 @@ import { F1RaceModal } from "../components/F1RaceModal";
 import { DateNavigator } from "../components/DateNavigator";
 import { PinnedGamesSection } from "../components/PinnedGamesSection";
 import { FavoriteTeamsSection } from "../components/FavoriteTeamsSection";
+import { VoiceBetFAB } from "../components/VoiceBetFAB";
 import { api } from "../lib/api";
 import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
 import { cn } from "../lib/utils";
@@ -140,6 +142,11 @@ interface LeagueState {
 export const Dashboard = () => {
   const { stats, bets, clearPendingBets } = useBets();
   const { settings, isSectionEnabled } = useSettings();
+  const { user } = useAuth();
+
+  // Get user's first name for the header
+  const fullName = user?.user_metadata?.full_name;
+  const firstName = fullName ? fullName.split(' ')[0] : null;
 
   // Dynamic state for all leagues - initialize from cache if available
   const [leagueData, setLeagueData] = useState<Record<string, LeagueState>>(() => {
@@ -1196,7 +1203,7 @@ export const Dashboard = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-            Your <span className="text-accent">Briefing</span>
+            {firstName ? `${firstName}'s` : 'Your'} <span className="text-accent">Briefing</span>
           </h1>
           <p className="text-gray-500 text-xs md:text-sm mt-1">
             {format(new Date(), 'EEEE, MMMM d, yyyy')}
@@ -1596,6 +1603,9 @@ export const Dashboard = () => {
         onClose={() => setSelectedF1Race(null)}
         race={selectedF1Race}
       />
+
+      {/* Voice Bet FAB */}
+      <VoiceBetFAB />
     </motion.div>
   );
 };
