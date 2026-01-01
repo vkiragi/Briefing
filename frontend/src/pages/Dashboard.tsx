@@ -10,6 +10,7 @@ import { PropTracker } from "../components/PropTracker";
 import { ParlayTracker } from "../components/ParlayTracker";
 import { GameDetailModal } from "../components/GameDetailModal";
 import { F1RaceModal } from "../components/F1RaceModal";
+import { BoxingFightModal } from "../components/BoxingFightModal";
 import { DateNavigator } from "../components/DateNavigator";
 import { PinnedGamesSection } from "../components/PinnedGamesSection";
 import { FavoriteTeamsSection } from "../components/FavoriteTeamsSection";
@@ -124,6 +125,16 @@ interface BoxingFight {
   method?: string | null;
   rounds?: number | null;
   belt?: string | null;
+  // Fighter 1 stats
+  fighter1_record?: string;
+  fighter1_ko_pct?: number;
+  fighter1_age?: number;
+  fighter1_stance?: string;
+  // Fighter 2 stats
+  fighter2_record?: string;
+  fighter2_ko_pct?: number;
+  fighter2_age?: number;
+  fighter2_stance?: string;
 }
 
 // Boxing state
@@ -195,9 +206,13 @@ export const Dashboard = () => {
 
   // F1 race detail modal state
   const [selectedF1Race, setSelectedF1Race] = useState<F1Race | null>(null);
+  const [selectedBoxingFight, setSelectedBoxingFight] = useState<BoxingFight | null>(null);
 
   // Boxing fights state
   const [boxingData, setBoxingData] = useState<BoxingState>({ fights: [], loading: true, lastUpdated: null });
+
+  // Boxing date navigation state
+  const [boxingSelectedDate, setBoxingSelectedDate] = useState<Date>(new Date());
 
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -1474,19 +1489,46 @@ export const Dashboard = () => {
         // Handle Boxing separately
         if (config?.isBoxing) {
           const isCompact = settings.compactMode;
+
+          // Filter fights by selected week
+          const boxingWeekStart = startOfWeek(boxingSelectedDate, { weekStartsOn: 1 });
+          const boxingWeekEnd = endOfWeek(boxingSelectedDate, { weekStartsOn: 1 });
+
+          const filteredFights = boxingData.fights.filter(fight => {
+            const fightDate = new Date(fight.date);
+            return fightDate >= boxingWeekStart && fightDate <= boxingWeekEnd;
+          });
+
+          // Generate display label for boxing date navigator
+          const boxingDisplayLabel = `${format(boxingWeekStart, 'MMM d')} - ${format(boxingWeekEnd, 'MMM d')}`;
+
           return (
             <div key={sectionId} className={cn("space-y-4", isCompact && "space-y-2")}>
               <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <h2 className={cn("font-semibold tracking-tight text-white", isCompact ? "text-lg" : "text-xl")}>
-                    {config.title}
-                  </h2>
-                  {boxingData.lastUpdated && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Clock size={12} />
-                      <span>Updated {boxingData.lastUpdated.toLocaleTimeString()}</span>
-                    </div>
-                  )}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <h2 className={cn("font-semibold tracking-tight text-white", isCompact ? "text-lg" : "text-xl")}>
+                      {config.title}
+                    </h2>
+                    {boxingData.lastUpdated && (
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Clock size={12} />
+                        <span>Updated {boxingData.lastUpdated.toLocaleTimeString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Date Navigator for Boxing */}
+                  <DateNavigator
+                    displayLabel={boxingDisplayLabel}
+                    navigationType="weekly"
+                    selectedDate={boxingSelectedDate}
+                    onPrevious={() => setBoxingSelectedDate(subWeeks(boxingSelectedDate, 1))}
+                    onNext={() => setBoxingSelectedDate(addWeeks(boxingSelectedDate, 1))}
+                    onToday={() => setBoxingSelectedDate(new Date())}
+                    onDateSelect={(date) => setBoxingSelectedDate(date)}
+                    compact={isCompact}
+                  />
                 </div>
                 <div className="w-full h-0.5 bg-accent/40 rounded-full" />
               </div>
@@ -1501,8 +1543,8 @@ export const Dashboard = () => {
                       <div key={i} className={cn("bg-card/50 animate-pulse rounded-lg", isCompact ? "h-16" : "h-28")} />
                     ))}
                   </>
-                ) : boxingData.fights.length > 0 ? (
-                  boxingData.fights.map((fight, i) => {
+                ) : filteredFights.length > 0 ? (
+                  filteredFights.map((fight, i) => {
                     const fightDate = new Date(fight.date);
                     const isPast = fight.completed;
                     const isUpcoming = !isPast && fightDate > new Date();
@@ -1510,8 +1552,9 @@ export const Dashboard = () => {
                     return (
                       <div
                         key={i}
+                        onClick={() => setSelectedBoxingFight(fight)}
                         className={cn(
-                          "bg-card border border-border rounded-lg hover:bg-card/80 transition-all hover:border-accent/50",
+                          "bg-card border border-border rounded-lg hover:bg-card/80 transition-all hover:border-accent/50 cursor-pointer",
                           isCompact ? "p-2" : "p-4"
                         )}
                       >
@@ -1570,7 +1613,7 @@ export const Dashboard = () => {
                   })
                 ) : (
                   <div className="text-gray-500 text-sm text-center py-8 col-span-full">
-                    No boxing fights available
+                    No boxing fights this week
                   </div>
                 )}
               </div>
@@ -1602,6 +1645,13 @@ export const Dashboard = () => {
         isOpen={!!selectedF1Race}
         onClose={() => setSelectedF1Race(null)}
         race={selectedF1Race}
+      />
+
+      {/* Boxing Fight Modal */}
+      <BoxingFightModal
+        isOpen={!!selectedBoxingFight}
+        onClose={() => setSelectedBoxingFight(null)}
+        fight={selectedBoxingFight}
       />
 
       {/* Voice Bet FAB - hidden for now */}
