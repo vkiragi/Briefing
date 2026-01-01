@@ -62,13 +62,23 @@ briefing/
 - **Favorite Teams** — Personalized dashboard with your teams' results
 - **Pinned Games** — Save games for quick access
 
-## CLI (Optional)
+## CLI Usage
 
-The original CLI is still available in `backend/`:
+The original terminal CLI is still available:
 
 ```bash
 cd backend
 pip install -e .
+
+# Sports scores
 briefing sports --sport nfl --scores
-briefing news --sources bbc cnn
+briefing sports --sport nba --live --watch
+
+# News
+briefing news --sources bbc cnn techcrunch
+
+# Interactive props dashboard
+briefing props --sport nfl
 ```
+
+See [backend/README.md](backend/README.md) for full CLI documentation including all sports, news sources, configuration options, and troubleshooting.
