@@ -1,9 +1,11 @@
-# Briefing - Project Structure
+> **Note:** This documentation describes the CLI package structure. The project has since evolved into a full-stack web app. See the [root README](../README.md) for the current project structure.
+
+# Briefing CLI - Package Structure
 
 ## Directory Layout
 
 ```
-cli-tool/
+backend/
 ├── briefing/                    # Main package directory
 │   ├── __init__.py             # Package initialization (version info)
 │   ├── __main__.py             # Module entry point (python -m briefing)

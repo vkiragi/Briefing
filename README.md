@@ -50,6 +50,11 @@ briefing/
 │   ├── supabase_migrations/  # Database schema
 │   └── requirements.txt
 │
+├── docs/                     # Additional documentation
+│   ├── cli-quickstart.md     # CLI quick start guide
+│   ├── cli-install.md        # CLI installation options
+│   └── backend-server.md     # Local server setup
+│
 └── README.md
 ```
 

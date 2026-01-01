@@ -1,6 +1,6 @@
-# Starting the Backend Server
+# Starting the Backend Server (Local Development)
 
-The frontend requires the backend FastAPI server to be running to fetch live games, scores, and other data.
+The frontend requires the backend FastAPI server to be running to fetch live games, scores, and other data. In production, the backend runs on Fly.io.
 
 ## Quick Start
 

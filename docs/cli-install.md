@@ -1,3 +1,5 @@
+> **Note:** This documentation is for the CLI tool. The web app is now the primary interface. See the [root README](../README.md) for setup instructions.
+
 # Installation Guide - Briefing CLI
 
 ## Quick Install (Recommended)
