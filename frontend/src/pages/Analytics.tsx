@@ -7,8 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useBets } from '../context/BetContext';
 import { Card } from '../components/ui/Card';
 import { cn } from '../lib/utils';
-import { TrendingUp, TrendingDown, Target, DollarSign, Trophy, Flame, BarChart3, Calendar, X, CheckCircle, XCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, DollarSign, Trophy, Flame, BarChart3, Calendar, X, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Bet } from '../types';
+import { addMonths, subMonths, format } from 'date-fns';
 
 // Day detail modal component
 interface DayDetailModalProps {
@@ -182,6 +183,7 @@ const DayDetailModal: React.FC<DayDetailModalProps> = ({ isOpen, onClose, date, 
 export const Analytics = () => {
   const { bets, stats } = useBets();
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
   const finishedBets = useMemo(() => bets.filter(b => b.status === 'Won' || b.status === 'Lost' || b.status === 'Pushed'), [bets]);
 
@@ -347,11 +349,11 @@ export const Analytics = () => {
     });
   }, [finishedBets]);
 
-  // Monthly Calendar Data (show each day of the current month)
+  // Monthly Calendar Data (show each day of the selected month)
   const calendarData = useMemo(() => {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
 
     // Get first day of month and total days
     const firstDay = new Date(year, month, 1);
@@ -387,11 +389,14 @@ export const Analytics = () => {
       currentWeek.push({ day: null, wins: 0, losses: 0, avgOdds: 0, isToday: false });
     }
 
+    // Check if selected month is the current month
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+
     // Add each day of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const stats = dayStats[day] || { wins: 0, losses: 0, totalOdds: 0, bets: 0 };
       const avgOdds = stats.bets > 0 ? Math.round(stats.totalOdds / stats.bets) : 0;
-      const isToday = day === now.getDate();
+      const isToday = isCurrentMonth && day === now.getDate();
 
       currentWeek.push({ day, wins: stats.wins, losses: stats.losses, avgOdds, isToday });
 
@@ -410,12 +415,12 @@ export const Analytics = () => {
     }
 
     return {
-      monthName: now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      monthName: format(calendarMonth, 'MMMM yyyy'),
       weeks,
       year,
       month
     };
-  }, [finishedBets]);
+  }, [finishedBets, calendarMonth]);
 
   // Handle day click - create a Date object for the selected day
   const handleDayClick = (day: number | null) => {
@@ -649,7 +654,29 @@ export const Analytics = () => {
 
           {/* Monthly Performance - Calendar View */}
           <Card>
-            <h3 className="text-lg font-bold mb-4">{calendarData.monthName}</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">{calendarData.monthName}</h3>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={() => setCalendarMonth(new Date())}
+                  className="px-2 py-1 rounded-lg text-xs text-accent hover:bg-accent/10 transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
             <div className="w-full">
               {/* Day headers */}
               <div className="grid grid-cols-7 gap-1 mb-2">
