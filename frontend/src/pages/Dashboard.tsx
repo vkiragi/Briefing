@@ -1491,12 +1491,16 @@ export const Dashboard = () => {
           const isCompact = settings.compactMode;
 
           // Filter fights by selected week
-          const boxingWeekStart = startOfWeek(boxingSelectedDate, { weekStartsOn: 1 });
-          const boxingWeekEnd = endOfWeek(boxingSelectedDate, { weekStartsOn: 1 });
+          const boxingWeekStart = startOfWeek(boxingSelectedDate, { weekStartsOn: 0 }); // Sunday start
+          const boxingWeekEnd = endOfWeek(boxingSelectedDate, { weekStartsOn: 0 });
 
           const filteredFights = boxingData.fights.filter(fight => {
             const fightDate = new Date(fight.date);
-            return fightDate >= boxingWeekStart && fightDate <= boxingWeekEnd;
+            // Compare dates only, ignoring timezone differences
+            const fightDateOnly = new Date(fightDate.getFullYear(), fightDate.getMonth(), fightDate.getDate());
+            const weekStartOnly = new Date(boxingWeekStart.getFullYear(), boxingWeekStart.getMonth(), boxingWeekStart.getDate());
+            const weekEndOnly = new Date(boxingWeekEnd.getFullYear(), boxingWeekEnd.getMonth(), boxingWeekEnd.getDate());
+            return fightDateOnly >= weekStartOnly && fightDateOnly <= weekEndOnly;
           });
 
           // Generate display label for boxing date navigator

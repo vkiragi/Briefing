@@ -88,19 +88,6 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
           <Calendar size={compact ? 12 : 14} className="text-gray-400" />
         </button>
 
-        {/* Today Quick Jump (only show if not today) */}
-        {!isToday && !compact && (
-          <button
-            onClick={() => {
-              onToday();
-              setShowCalendar(false);
-            }}
-            className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-accent hover:underline whitespace-nowrap"
-          >
-            Today
-          </button>
-        )}
-
         {/* Calendar Dropdown */}
         <AnimatePresence>
           {showCalendar && (
@@ -197,6 +184,22 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
       >
         <ChevronRight size={compact ? 14 : 16} />
       </button>
+
+      {/* Today Quick Jump */}
+      {!isToday && (
+        <button
+          onClick={() => {
+            onToday();
+            setShowCalendar(false);
+          }}
+          className={cn(
+            "text-accent hover:underline whitespace-nowrap",
+            compact ? "text-[10px] ml-1" : "text-xs ml-2"
+          )}
+        >
+          Today
+        </button>
+      )}
     </div>
   );
 };
