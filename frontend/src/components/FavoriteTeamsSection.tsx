@@ -188,6 +188,15 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
     }
   };
 
+  const formatLastGameDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  };
+
   // Create a Game object for the modal
   const createGameObject = (gameData: typeof result.last_game | typeof result.next_game, isCompleted: boolean): Game | null => {
     if (!gameData) return null;
@@ -252,7 +261,10 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
           className="w-full bg-gray-800/60 rounded-lg p-3 mb-3 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last Game</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last Game</span>
+              <span className="text-[10px] text-gray-600">{formatLastGameDate(lastGame.date)}</span>
+            </div>
             <span className={cn(
               "text-xs font-bold px-2 py-0.5 rounded-full",
               lastGame.result === 'W' ? "bg-green-500/20 text-green-400 border border-green-500/30" :
