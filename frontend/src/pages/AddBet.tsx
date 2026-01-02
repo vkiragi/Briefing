@@ -106,7 +106,7 @@ export const AddBet = () => {
     type: '',
     matchup: '',
     selection: '',
-    odds: -110,
+    odds: '-110',
     stake: '',
     date: new Date().toISOString().split('T')[0],
     book: '',
@@ -520,7 +520,7 @@ export const AddBet = () => {
       line: '',
       side: 'Over',
       periodBetType: '',
-      odds: -110
+      odds: '-110'
     }));
     // Reset combined players
     setCombinedPlayers([{ player_name: '' }, { player_name: '' }]);
@@ -1525,11 +1525,27 @@ export const AddBet = () => {
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-gray-400 uppercase">Odds</label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="text"
                           placeholder="-110"
                           className="w-full bg-background border border-border rounded-lg p-3 text-white focus:outline-none focus:border-accent"
                           value={formData.odds}
-                          onChange={(e) => setFormData({...formData, odds: Number(e.target.value)})}
+                          onFocus={(e) => e.target.select()}
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                          onChange={(e) => {
+                            // Allow digits, minus, plus signs only
+                            const value = e.target.value.replace(/[^0-9+-]/g, '');
+                            // Only allow sign at the beginning
+                            const cleaned = value.replace(/(?!^)[+-]/g, '');
+                            setFormData({...formData, odds: cleaned});
+                          }}
+                          onBlur={(e) => {
+                            // If user typed a number without a sign, default to positive
+                            const value = e.target.value;
+                            if (value && !value.startsWith('-') && !value.startsWith('+')) {
+                              setFormData({...formData, odds: '+' + value});
+                            }
+                          }}
                           required
                         />
                       </div>
@@ -1538,10 +1554,13 @@ export const AddBet = () => {
                         <div className="relative">
                           <span className="absolute left-3 top-3.5 text-gray-500">$</span>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="100"
                             className="w-full bg-background border border-border rounded-lg p-3 pl-7 text-white focus:outline-none focus:border-accent"
                             value={formData.stake}
+                            onFocus={(e) => e.target.select()}
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
                             onChange={(e) => setFormData({...formData, stake: e.target.value})}
                           />
                         </div>
