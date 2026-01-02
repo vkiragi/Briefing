@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { BarChart3, DollarSign, Zap, TrendingUp, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -233,14 +234,21 @@ export const SignIn = () => {
         </motion.div>
 
         {/* Footer */}
-        <motion.p
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.1, duration: 0.5 }}
-          className="text-xs text-gray-600 text-center mt-6"
+          className="text-xs text-gray-500 text-center mt-6"
         >
-          By signing in, you agree to our terms of service
-        </motion.p>
+          By signing in, you agree to our{' '}
+          <Link to="/terms" className="text-gray-400 hover:text-emerald-400 underline transition-colors">
+            Terms of Service
+          </Link>
+          {' '}and{' '}
+          <Link to="/privacy" className="text-gray-400 hover:text-emerald-400 underline transition-colors">
+            Privacy Policy
+          </Link>
+        </motion.div>
       </motion.div>
     </div>
   );
