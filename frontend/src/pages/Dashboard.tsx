@@ -214,6 +214,9 @@ export const Dashboard = () => {
   // Boxing date navigation state
   const [boxingSelectedDate, setBoxingSelectedDate] = useState<Date>(new Date());
 
+  // Standings data - maps team name to their record
+  const [nbaStandings, setNbaStandings] = useState<Map<string, { wins: string; losses: string; rank: number }>>(new Map());
+
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
 
@@ -531,6 +534,30 @@ export const Dashboard = () => {
     }
   }, []);
 
+  // Fetch NBA standings
+  const fetchNbaStandings = useCallback(async () => {
+    try {
+      const standings = await api.getStandings('nba');
+      const standingsMap = new Map<string, { wins: string; losses: string; rank: number }>();
+
+      // Process both conferences
+      Object.values(standings).forEach(conference => {
+        conference.forEach(team => {
+          // Store by team name (normalize for matching)
+          standingsMap.set(team.team.toLowerCase(), {
+            wins: team.wins,
+            losses: team.losses,
+            rank: team.rank
+          });
+        });
+      });
+
+      setNbaStandings(standingsMap);
+    } catch (e) {
+      console.error('Failed to fetch NBA standings', e);
+    }
+  }, []);
+
   // Generic fetch function for all leagues
   // Optimized to reduce API calls - fetches scores which includes all game states
   const fetchLeagueData = useCallback(async (leagueId: string, dateOverride?: Date) => {
@@ -743,6 +770,33 @@ export const Dashboard = () => {
       clearInterval(interval);
     };
   }, [fetchLeagueData, refreshInterval, settings.homeScreen.sectionOrder, isSectionEnabled]);
+
+  // Fetch NBA standings when NBA section is enabled
+  useEffect(() => {
+    if (isSectionEnabled('nba')) {
+      fetchNbaStandings();
+    }
+  }, [isSectionEnabled, fetchNbaStandings]);
+
+  // Helper to get team record from standings
+  const getTeamRecord = useCallback((teamName: string, sport: string): string | null => {
+    if (sport !== 'nba' || nbaStandings.size === 0) return null;
+
+    // Try exact match first
+    const teamLower = teamName.toLowerCase();
+    let record = nbaStandings.get(teamLower);
+    if (record) return `${record.wins}-${record.losses}`;
+
+    // Try matching by last word (e.g., "Knicks" from "New York Knicks")
+    const lastWord = teamLower.split(' ').pop() || '';
+    for (const [name, rec] of nbaStandings) {
+      if (name.endsWith(lastWord) || name.includes(teamLower) || teamLower.includes(name)) {
+        return `${rec.wins}-${rec.losses}`;
+      }
+    }
+
+    return null;
+  }, [nbaStandings]);
 
   // Helper function to format game time based on sport
   const formatGameTime = (game: Game, sport: string) => {
@@ -1163,6 +1217,12 @@ export const Dashboard = () => {
                               isCompact ? "text-sm" : "text-base",
                               homeWinning ? "text-white" : "text-gray-400"
                             )}>{game.home_team}</span>
+                            {(() => {
+                              const homeRecord = getTeamRecord(game.home_team, sport);
+                              return homeRecord && !isCompact ? (
+                                <span className="text-xs text-gray-500 font-normal">({homeRecord})</span>
+                              ) : null;
+                            })()}
                           </div>
                           <span className={cn(
                             "font-mono font-semibold ml-2",
@@ -1185,6 +1245,12 @@ export const Dashboard = () => {
                               isCompact ? "text-sm" : "text-base",
                               awayWinning ? "text-white" : "text-gray-400"
                             )}>{game.away_team}</span>
+                            {(() => {
+                              const awayRecord = getTeamRecord(game.away_team, sport);
+                              return awayRecord && !isCompact ? (
+                                <span className="text-xs text-gray-500 font-normal">({awayRecord})</span>
+                              ) : null;
+                            })()}
                           </div>
                           <span className={cn(
                             "font-mono font-semibold ml-2",

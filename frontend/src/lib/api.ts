@@ -309,6 +309,20 @@ export const api = {
     }>>;
   },
 
+  getStandings: async (sport: string) => {
+    const response = await fetch(`${API_BASE_URL}/sports/standings?sport=${sport}`);
+    if (!response.ok) throw new Error(`Failed to fetch standings for ${sport}`);
+    return response.json() as Promise<Record<string, Array<{
+      rank: number;
+      team: string;
+      wins: string;
+      losses: string;
+      win_pct: string;
+      games_back: string;
+      streak: string;
+    }>>>;
+  },
+
   // ==================== Pinned Games ====================
 
   getPinnedGames: async () => {
