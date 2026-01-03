@@ -2,7 +2,8 @@
 NFL specific fetcher logic.
 """
 
-from typing import Dict, Optional, Any
+from typing import Dict, List, Optional, Any
+import requests
 
 class NFLFetcherMixin:
     """Mixin for NFL specific fetcher logic."""
@@ -247,4 +248,64 @@ class NFLFetcherMixin:
                         continue
 
         return None
+
+    def fetch_nfl_standings(self) -> Dict[str, List[Dict]]:
+        """
+        Fetch NFL standings for both conferences (2024 season).
+
+        Returns:
+            Dictionary mapping conference names to list of team standings
+        """
+        url = "https://site.api.espn.com/apis/v2/sports/football/nfl/standings?season=2024"
+
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+
+            standings = {}
+
+            # Process both conferences (AFC and NFC)
+            for conference in data.get('children', []):
+                conf_name = conference.get('name', 'Unknown')
+                conf_standings = []
+
+                # NFL has divisions within conferences
+                for division in conference.get('children', []):
+                    entries = division.get('standings', {}).get('entries', [])
+
+                    for entry in entries:
+                        team = entry.get('team', {})
+                        stats = entry.get('stats', [])
+
+                        # Extract relevant stats
+                        wins = next((s['displayValue'] for s in stats if s['name'] == 'wins'), '0')
+                        losses = next((s['displayValue'] for s in stats if s['name'] == 'losses'), '0')
+                        ties = next((s['displayValue'] for s in stats if s['name'] == 'ties'), '0')
+                        win_pct = next((s['displayValue'] for s in stats if s['name'] == 'winPercent'), '0.000')
+
+                        team_info = {
+                            'rank': len(conf_standings) + 1,
+                            'team': team.get('displayName', 'Unknown'),
+                            'wins': wins,
+                            'losses': losses,
+                            'ties': ties,
+                            'win_pct': win_pct,
+                        }
+
+                        conf_standings.append(team_info)
+
+                # Sort by win percentage descending
+                conf_standings.sort(key=lambda x: float(x['win_pct']), reverse=True)
+                for i, team in enumerate(conf_standings, 1):
+                    team['rank'] = i
+
+                standings[conf_name] = conf_standings
+
+            return standings
+
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Error fetching NFL standings: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Error parsing NFL standings: {str(e)}")
 

@@ -165,6 +165,8 @@ def get_standings(sport: str):
             return sports_fetcher.fetch_mlb_standings()
         elif sport == 'f1':
             return sports_fetcher.fetch_f1_standings()
+        elif sport == 'nfl':
+            return sports_fetcher.fetch_nfl_standings()
         elif sport in ['soccer', 'epl', 'laliga', 'ucl', 'europa']:
             return sports_fetcher.fetch_soccer_standings(league=sport)
         else:

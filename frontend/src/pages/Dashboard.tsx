@@ -216,6 +216,7 @@ export const Dashboard = () => {
 
   // Standings data - maps team name to their record
   const [nbaStandings, setNbaStandings] = useState<Map<string, { wins: string; losses: string; rank: number }>>(new Map());
+  const [nflStandings, setNflStandings] = useState<Map<string, { wins: string; losses: string; ties: string; rank: number }>>(new Map());
 
   // Use refresh interval from settings
   const refreshInterval = settings.refreshInterval;
@@ -558,6 +559,31 @@ export const Dashboard = () => {
     }
   }, []);
 
+  // Fetch NFL standings
+  const fetchNflStandings = useCallback(async () => {
+    try {
+      const standings = await api.getStandings('nfl');
+      const standingsMap = new Map<string, { wins: string; losses: string; ties: string; rank: number }>();
+
+      // Process both conferences (AFC and NFC)
+      Object.values(standings).forEach(conference => {
+        conference.forEach((team: { team: string; wins: string; losses: string; ties?: string; rank: number }) => {
+          // Store by team name (normalize for matching)
+          standingsMap.set(team.team.toLowerCase(), {
+            wins: team.wins,
+            losses: team.losses,
+            ties: team.ties || '0',
+            rank: team.rank
+          });
+        });
+      });
+
+      setNflStandings(standingsMap);
+    } catch (e) {
+      console.error('Failed to fetch NFL standings', e);
+    }
+  }, []);
+
   // Generic fetch function for all leagues
   // Optimized to reduce API calls - fetches scores which includes all game states
   const fetchLeagueData = useCallback(async (leagueId: string, dateOverride?: Date) => {
@@ -778,25 +804,50 @@ export const Dashboard = () => {
     }
   }, [isSectionEnabled, fetchNbaStandings]);
 
+  // Fetch NFL standings when NFL section is enabled
+  useEffect(() => {
+    if (isSectionEnabled('nfl')) {
+      fetchNflStandings();
+    }
+  }, [isSectionEnabled, fetchNflStandings]);
+
   // Helper to get team record from standings
   const getTeamRecord = useCallback((teamName: string, sport: string): string | null => {
-    if (sport !== 'nba' || nbaStandings.size === 0) return null;
-
-    // Try exact match first
     const teamLower = teamName.toLowerCase();
-    let record = nbaStandings.get(teamLower);
-    if (record) return `${record.wins}-${record.losses}`;
-
-    // Try matching by last word (e.g., "Knicks" from "New York Knicks")
     const lastWord = teamLower.split(' ').pop() || '';
-    for (const [name, rec] of nbaStandings) {
-      if (name.endsWith(lastWord) || name.includes(teamLower) || teamLower.includes(name)) {
-        return `${rec.wins}-${rec.losses}`;
+
+    if (sport === 'nba' && nbaStandings.size > 0) {
+      // Try exact match first
+      let record = nbaStandings.get(teamLower);
+      if (record) return `${record.wins}-${record.losses}`;
+
+      // Try matching by last word (e.g., "Knicks" from "New York Knicks")
+      for (const [name, rec] of nbaStandings) {
+        if (name.endsWith(lastWord) || name.includes(teamLower) || teamLower.includes(name)) {
+          return `${rec.wins}-${rec.losses}`;
+        }
+      }
+    }
+
+    if (sport === 'nfl' && nflStandings.size > 0) {
+      // Try exact match first
+      let record = nflStandings.get(teamLower);
+      if (record) {
+        const ties = parseInt(record.ties);
+        return ties > 0 ? `${record.wins}-${record.losses}-${record.ties}` : `${record.wins}-${record.losses}`;
+      }
+
+      // Try matching by last word (e.g., "Chiefs" from "Kansas City Chiefs")
+      for (const [name, rec] of nflStandings) {
+        if (name.endsWith(lastWord) || name.includes(teamLower) || teamLower.includes(name)) {
+          const ties = parseInt(rec.ties);
+          return ties > 0 ? `${rec.wins}-${rec.losses}-${rec.ties}` : `${rec.wins}-${rec.losses}`;
+        }
       }
     }
 
     return null;
-  }, [nbaStandings]);
+  }, [nbaStandings, nflStandings]);
 
   // Helper function to format game time based on sport
   const formatGameTime = (game: Game, sport: string) => {
