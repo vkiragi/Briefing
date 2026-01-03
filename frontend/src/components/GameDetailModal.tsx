@@ -48,7 +48,7 @@ const isTennisMatch = (data: BoxScoreData | TennisMatchData): data is TennisMatc
 
 // Selection for multi-select betting
 export interface BetSelection {
-  id: string; // unique key: `${playerId}-${market}`
+  id: string; // unique key: `${playerId}-${market}` or `moneyline-${teamId}`
   player: BoxScorePlayer;
   market: string;
   marketLabel: string;
@@ -58,6 +58,10 @@ export interface BetSelection {
   line?: number;
   side?: 'over' | 'under';
   odds?: number;
+  // Moneyline specific
+  isMoneyline?: boolean;
+  teamId?: string;
+  teamLogo?: string;
 }
 
 export const GameDetailModal: React.FC<GameDetailModalProps> = ({
@@ -66,7 +70,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   game,
   sport,
 }) => {
-  const { addParlayLeg } = useBets();
+  useBets(); // Context used by BetSlipPanel
   const [boxScore, setBoxScore] = useState<BoxScoreData | TennisMatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +166,44 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
       return category ? !!MLB_STAT_TO_MARKET[category]?.[statColumn] : false;
     }
     return false;
+  };
+
+  // Handle moneyline team selection
+  const handleMoneylineClick = (
+    teamName: string,
+    teamId: string,
+    teamLogo?: string,
+  ) => {
+    const selectionId = `moneyline-${teamId}`;
+
+    setSelectedBets(prev => {
+      const existingIndex = prev.findIndex(s => s.id === selectionId);
+      if (existingIndex >= 0) {
+        // Deselect - remove from array
+        return prev.filter(s => s.id !== selectionId);
+      } else {
+        // Remove any other moneyline selection (can only pick one team)
+        const withoutOtherMoneyline = prev.filter(s => !s.id.startsWith('moneyline-'));
+        // Select - add to array with default values
+        return [...withoutOtherMoneyline, {
+          id: selectionId,
+          player: { id: teamId, name: teamName, jersey: '', position: '', starter: false, stats: {} } as BoxScorePlayer,
+          market: 'moneyline',
+          marketLabel: 'Moneyline',
+          currentValue: '-',
+          teamName,
+          odds: -110,
+          isMoneyline: true,
+          teamId,
+          teamLogo,
+        }];
+      }
+    });
+  };
+
+  // Check if a moneyline is selected
+  const isMoneylineSelected = (teamId: string): boolean => {
+    return selectedBets.some(s => s.id === `moneyline-${teamId}`);
   };
 
   useEffect(() => {
@@ -1078,17 +1120,55 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               {/* Header with score - centered */}
               <div className="relative flex items-center justify-center p-5 border-b border-border flex-shrink-0">
                 <div className="flex items-center gap-5 flex-wrap justify-center">
-                  <div className="flex items-center gap-3">
+                  {/* Away Team - clickable for moneyline */}
+                  <button
+                    onClick={() => handleMoneylineClick(
+                      game.away_team,
+                      `away-${game.event_id}`,
+                      game.away_logo
+                    )}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl transition-all",
+                      isMoneylineSelected(`away-${game.event_id}`)
+                        ? "bg-accent/20 ring-2 ring-accent"
+                        : "hover:bg-white/10"
+                    )}
+                  >
                     {game.away_logo && <img src={game.away_logo} alt="" className="w-10 h-10 object-contain" />}
-                    <span className="text-lg font-semibold text-gray-300">{game.away_team}</span>
+                    <span className={cn(
+                      "text-lg font-semibold",
+                      isMoneylineSelected(`away-${game.event_id}`) ? "text-accent" : "text-gray-300"
+                    )}>{game.away_team}</span>
                     <span className="text-3xl font-bold text-white">{game.away_score || '0'}</span>
-                  </div>
+                    {isMoneylineSelected(`away-${game.event_id}`) && (
+                      <Check size={18} className="text-accent" />
+                    )}
+                  </button>
                   <span className="text-gray-500 text-base">@</span>
-                  <div className="flex items-center gap-3">
+                  {/* Home Team - clickable for moneyline */}
+                  <button
+                    onClick={() => handleMoneylineClick(
+                      game.home_team,
+                      `home-${game.event_id}`,
+                      game.home_logo
+                    )}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl transition-all",
+                      isMoneylineSelected(`home-${game.event_id}`)
+                        ? "bg-accent/20 ring-2 ring-accent"
+                        : "hover:bg-white/10"
+                    )}
+                  >
+                    {isMoneylineSelected(`home-${game.event_id}`) && (
+                      <Check size={18} className="text-accent" />
+                    )}
                     <span className="text-3xl font-bold text-white">{game.home_score || '0'}</span>
-                    <span className="text-lg font-semibold text-gray-300">{game.home_team}</span>
+                    <span className={cn(
+                      "text-lg font-semibold",
+                      isMoneylineSelected(`home-${game.event_id}`) ? "text-accent" : "text-gray-300"
+                    )}>{game.home_team}</span>
                     {game.home_logo && <img src={game.home_logo} alt="" className="w-10 h-10 object-contain" />}
-                  </div>
+                  </button>
                 </div>
                 <button
                   onClick={onClose}
@@ -1096,6 +1176,13 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                 >
                   <X size={20} />
                 </button>
+              </div>
+
+              {/* Moneyline hint */}
+              <div className="px-4 py-2 bg-accent/5 text-center flex-shrink-0">
+                <p className="text-xs text-gray-400">
+                  <span className="text-accent">Tap a team</span> to add moneyline bet • <span className="text-accent">Tap stats</span> for player props
+                </p>
               </div>
 
               {/* Game status and period scores */}
@@ -1295,7 +1382,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
       </AnimatePresence>
 
       {/* Bet Slip Panel */}
-      {game && (
+      {game && game.event_id && (
         <BetSlipPanel
           isOpen={showBetSlip}
           onClose={() => setShowBetSlip(false)}
