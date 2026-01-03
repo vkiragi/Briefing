@@ -986,18 +986,16 @@ export const Dashboard = () => {
               <h2 className={cn("font-semibold tracking-tight text-white", isCompact ? "text-lg" : "text-xl")}>{title}</h2>
 
               {hasLiveGames && (
-                <>
-                  <span className="text-xs text-gray-500 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    Live
-                  </span>
-                  {lastUpdated && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Clock size={12} />
-                      <span>Updated {lastUpdated.toLocaleTimeString()}</span>
-                    </div>
-                  )}
-                </>
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                  Live
+                </span>
+              )}
+              {lastUpdated && (
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <Clock size={12} />
+                  <span>Updated {lastUpdated.toLocaleTimeString()}</span>
+                </div>
               )}
             </div>
 
