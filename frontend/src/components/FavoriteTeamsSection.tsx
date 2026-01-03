@@ -197,6 +197,17 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
     }
   };
 
+  // Check if a game is today
+  const isGameToday = (dateStr: string): boolean => {
+    try {
+      const gameDate = new Date(dateStr);
+      const now = new Date();
+      return gameDate.toDateString() === now.toDateString();
+    } catch {
+      return false;
+    }
+  };
+
   // Create a Game object for the modal
   const createGameObject = (gameData: typeof result.last_game | typeof result.next_game, isCompleted: boolean): Game | null => {
     if (!gameData) return null;
@@ -220,9 +231,9 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
     };
   };
 
-  const handleLastGameClick = () => {
-    if (!result.last_game || !onGameClick) return;
-    const game = createGameObject(result.last_game, true);
+  const handleGameClick = (gameData: typeof result.last_game | typeof result.next_game, isCompleted: boolean) => {
+    if (!gameData || !onGameClick) return;
+    const game = createGameObject(gameData, isCompleted);
     if (game) {
       onGameClick(game, result.sport);
     }
@@ -230,6 +241,10 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
 
   const lastGame = result.last_game;
   const nextGame = result.next_game;
+
+  // Determine if there's a game today (next game is today or in progress)
+  const hasTodayGame = nextGame && isGameToday(nextGame.date);
+  const isLive = nextGame?.state === 'in';
 
   return (
     <div className="relative bg-gradient-to-br from-gray-900/90 to-gray-800/50 border border-gray-700/50 rounded-xl p-4 transition-all hover:border-accent/40 shadow-lg">
@@ -254,84 +269,161 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
         </div>
       </div>
 
-      {/* Last Game Result - ESPN style scoreboard - Clickable */}
-      {lastGame && (
-        <button
-          onClick={handleLastGameClick}
-          className="w-full bg-gray-800/60 rounded-lg p-3 mb-3 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last Game</span>
-              <span className="text-[10px] text-gray-600">{formatLastGameDate(lastGame.date)}</span>
-            </div>
-            <span className={cn(
-              "text-xs font-bold px-2 py-0.5 rounded-full",
-              lastGame.result === 'W' ? "bg-green-500/20 text-green-400 border border-green-500/30" :
-              lastGame.result === 'L' ? "bg-red-500/20 text-red-400 border border-red-500/30" :
-              "bg-gray-500/20 text-gray-400 border border-gray-500/30"
-            )}>
-              {lastGame.result === 'W' ? 'WIN' : lastGame.result === 'L' ? 'LOSS' : 'TIE'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {lastGame.opponent_logo && (
-                <img
-                  src={lastGame.opponent_logo}
-                  alt=""
-                  className="w-6 h-6 object-contain"
-                />
-              )}
-              <span className="text-sm text-gray-300">
-                {lastGame.is_home ? 'vs' : '@'} {lastGame.opponent_abbreviation || lastGame.opponent_name}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className={cn(
-                "text-xl font-bold font-mono",
-                lastGame.result === 'W' ? "text-white" : "text-gray-400"
-              )}>
-                {lastGame.our_score}
-              </span>
-              <span className="text-gray-600 text-lg">-</span>
-              <span className={cn(
-                "text-xl font-bold font-mono",
-                lastGame.result === 'L' ? "text-white" : "text-gray-400"
-              )}>
-                {lastGame.opponent_score}
-              </span>
-            </div>
-          </div>
-        </button>
-      )}
-
-      {/* Next Game - Not clickable since it's upcoming */}
-      {nextGame && (
-        <div className={cn(
-          "flex items-center justify-between",
-          lastGame && "pt-2 border-t border-gray-700/30"
-        )}>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wide">Next</span>
-            <span className="text-sm text-gray-400">
-              {nextGame.is_home ? 'vs' : '@'}
-            </span>
-            {nextGame.opponent_logo && (
-              <img
-                src={nextGame.opponent_logo}
-                alt=""
-                className="w-5 h-5 object-contain"
-              />
+      {/* Priority: Today's Game or Live Game as main display */}
+      {(hasTodayGame || isLive) && nextGame ? (
+        <>
+          {/* Today's Game - Main Display */}
+          <button
+            onClick={() => handleGameClick(nextGame, false)}
+            className={cn(
+              "w-full rounded-lg p-3 mb-3 text-left transition-colors cursor-pointer",
+              isLive ? "bg-red-500/10 border border-red-500/30" : "bg-accent/10 border border-accent/30"
             )}
-            <span className="text-sm text-gray-300 font-medium">
-              {nextGame.opponent_abbreviation || nextGame.opponent_name}
-            </span>
-          </div>
-          <span className="text-xs text-accent font-medium">
-            {formatDate(nextGame.date)}
-          </span>
-        </div>
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {isLive && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+                <span className={cn(
+                  "text-[10px] uppercase tracking-wide font-semibold",
+                  isLive ? "text-red-400" : "text-accent"
+                )}>
+                  {isLive ? 'LIVE' : 'Today'}
+                </span>
+              </div>
+              <span className={cn(
+                "text-xs font-medium",
+                isLive ? "text-red-400" : "text-accent"
+              )}>
+                {formatDate(nextGame.date)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {nextGame.opponent_logo && (
+                  <img
+                    src={nextGame.opponent_logo}
+                    alt=""
+                    className="w-7 h-7 object-contain"
+                  />
+                )}
+                <span className="text-base text-white font-medium">
+                  {nextGame.is_home ? 'vs' : '@'} {nextGame.opponent_name}
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {/* Last Game - Small insight */}
+          {lastGame && (
+            <button
+              onClick={() => handleGameClick(lastGame, true)}
+              className="w-full flex items-center justify-between pt-2 border-t border-gray-700/30 hover:bg-gray-800/30 rounded px-1 -mx-1 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last</span>
+                {lastGame.opponent_logo && (
+                  <img src={lastGame.opponent_logo} alt="" className="w-4 h-4 object-contain" />
+                )}
+                <span className="text-xs text-gray-400">
+                  {lastGame.is_home ? 'vs' : '@'} {lastGame.opponent_abbreviation}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={cn(
+                  "text-xs font-bold",
+                  lastGame.result === 'W' ? "text-green-400" : lastGame.result === 'L' ? "text-red-400" : "text-gray-400"
+                )}>
+                  {lastGame.result}
+                </span>
+                <span className="text-xs text-gray-400 font-mono">
+                  {lastGame.our_score}-{lastGame.opponent_score}
+                </span>
+              </div>
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          {/* No game today - Show Last Game as main display */}
+          {lastGame && (
+            <button
+              onClick={() => handleGameClick(lastGame, true)}
+              className="w-full bg-gray-800/60 rounded-lg p-3 mb-3 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last Game</span>
+                  <span className="text-[10px] text-gray-600">{formatLastGameDate(lastGame.date)}</span>
+                </div>
+                <span className={cn(
+                  "text-xs font-bold px-2 py-0.5 rounded-full",
+                  lastGame.result === 'W' ? "bg-green-500/20 text-green-400 border border-green-500/30" :
+                  lastGame.result === 'L' ? "bg-red-500/20 text-red-400 border border-red-500/30" :
+                  "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                )}>
+                  {lastGame.result === 'W' ? 'WIN' : lastGame.result === 'L' ? 'LOSS' : 'TIE'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {lastGame.opponent_logo && (
+                    <img
+                      src={lastGame.opponent_logo}
+                      alt=""
+                      className="w-6 h-6 object-contain"
+                    />
+                  )}
+                  <span className="text-sm text-gray-300">
+                    {lastGame.is_home ? 'vs' : '@'} {lastGame.opponent_abbreviation || lastGame.opponent_name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className={cn(
+                    "text-xl font-bold font-mono",
+                    lastGame.result === 'W' ? "text-white" : "text-gray-400"
+                  )}>
+                    {lastGame.our_score}
+                  </span>
+                  <span className="text-gray-600 text-lg">-</span>
+                  <span className={cn(
+                    "text-xl font-bold font-mono",
+                    lastGame.result === 'L' ? "text-white" : "text-gray-400"
+                  )}>
+                    {lastGame.opponent_score}
+                  </span>
+                </div>
+              </div>
+            </button>
+          )}
+
+          {/* Next Game - Small insight when no game today */}
+          {nextGame && (
+            <div className={cn(
+              "flex items-center justify-between",
+              lastGame && "pt-2 border-t border-gray-700/30"
+            )}>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide">Next</span>
+                <span className="text-sm text-gray-400">
+                  {nextGame.is_home ? 'vs' : '@'}
+                </span>
+                {nextGame.opponent_logo && (
+                  <img
+                    src={nextGame.opponent_logo}
+                    alt=""
+                    className="w-5 h-5 object-contain"
+                  />
+                )}
+                <span className="text-sm text-gray-300 font-medium">
+                  {nextGame.opponent_abbreviation || nextGame.opponent_name}
+                </span>
+              </div>
+              <span className="text-xs text-accent font-medium">
+                {formatDate(nextGame.date)}
+              </span>
+            </div>
+          )}
+        </>
       )}
 
       {/* No games available */}
