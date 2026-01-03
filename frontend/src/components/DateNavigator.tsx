@@ -79,7 +79,7 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
           onClick={() => setShowCalendar(!showCalendar)}
           className={cn(
             "flex items-center gap-1.5 rounded-lg bg-card border border-border hover:bg-card/80 transition-colors justify-center",
-            compact ? "px-2 py-1 min-w-[100px]" : "px-3 py-1.5 min-w-[120px]"
+            compact ? "px-2 py-1 w-[120px]" : "px-3 py-1.5 w-[160px]"
           )}
         >
           <span className={cn("font-medium text-white", compact ? "text-xs" : "text-sm")}>
@@ -185,21 +185,21 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
         <ChevronRight size={compact ? 14 : 16} />
       </button>
 
-      {/* Today Quick Jump */}
-      {!isToday && (
-        <button
-          onClick={() => {
-            onToday();
-            setShowCalendar(false);
-          }}
-          className={cn(
-            "text-accent hover:underline whitespace-nowrap",
-            compact ? "text-[10px] ml-1" : "text-xs ml-2"
-          )}
-        >
-          Today
-        </button>
-      )}
+      {/* Today Quick Jump - always rendered to prevent layout shift */}
+      <button
+        onClick={() => {
+          onToday();
+          setShowCalendar(false);
+        }}
+        className={cn(
+          "whitespace-nowrap transition-opacity",
+          compact ? "text-[10px] ml-1 w-[32px]" : "text-xs ml-2 w-[38px]",
+          isToday ? "opacity-0 pointer-events-none" : "text-accent hover:underline"
+        )}
+        disabled={isToday}
+      >
+        Today
+      </button>
     </div>
   );
 };

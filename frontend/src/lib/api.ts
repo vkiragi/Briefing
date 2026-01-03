@@ -392,31 +392,59 @@ export const api = {
   // ==================== Favorite Teams ====================
 
   searchTeams: async (query: string, limit = 10) => {
-    const response = await fetch(
-      `${API_BASE_URL}/teams/search?query=${encodeURIComponent(query)}&limit=${limit}`
-    );
-    if (!response.ok) throw new Error('Failed to search teams');
-    return response.json() as Promise<Array<{
-      id: string;
-      name: string;
-      abbreviation: string;
-      logo: string;
-      sport: string;
-      sportDisplay: string;
-    }>>;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/teams/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error('Failed to search teams');
+      return response.json() as Promise<Array<{
+        id: string;
+        name: string;
+        abbreviation: string;
+        logo: string;
+        sport: string;
+        sportDisplay: string;
+      }>>;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Search timed out. Please try again.');
+      }
+      throw error;
+    }
   },
 
   getTeamsBySport: async (sport: string) => {
-    const response = await fetch(`${API_BASE_URL}/teams/by-sport/${sport}`);
-    if (!response.ok) throw new Error('Failed to fetch teams');
-    return response.json() as Promise<Array<{
-      id: string;
-      name: string;
-      abbreviation: string;
-      logo: string;
-      sport: string;
-      sportDisplay: string;
-    }>>;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/teams/by-sport/${sport}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error('Failed to fetch teams');
+      return response.json() as Promise<Array<{
+        id: string;
+        name: string;
+        abbreviation: string;
+        logo: string;
+        sport: string;
+        sportDisplay: string;
+      }>>;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      throw error;
+    }
   },
 
   getFavoriteTeamsResults: async (teams: Array<{ id: string; name: string; sport: string }>) => {

@@ -1097,11 +1097,70 @@ def update_game_end_time(event_id: str, end_time: str = Body(..., embed=True), u
 
 # ==================== Favorite Teams Endpoints ====================
 
+# In-memory cache for teams data (refreshes every 24 hours)
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+_teams_cache: Dict[str, Dict] = {}  # {sport: {'data': [...], 'timestamp': float}}
+_TEAMS_CACHE_TTL = 86400  # 24 hours in seconds
+
+def _get_cached_teams(sport_key: str, sport_display: str) -> list:
+    """Get teams from cache or fetch from ESPN if stale/missing."""
+    cache_entry = _teams_cache.get(sport_key)
+    now = time.time()
+
+    # Return cached data if fresh
+    if cache_entry and (now - cache_entry['timestamp']) < _TEAMS_CACHE_TTL:
+        return cache_entry['data']
+
+    # Fetch fresh data
+    try:
+        sport_path = sports_fetcher.SPORTS.get(sport_key)
+        if not sport_path:
+            return []
+
+        url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams?limit=100"
+        response = sports_fetcher.session.get(url, timeout=5)
+
+        if response.status_code != 200:
+            # Return stale cache if available, otherwise empty
+            return cache_entry['data'] if cache_entry else []
+
+        data = response.json()
+        teams_raw = data.get('sports', [{}])[0].get('leagues', [{}])[0].get('teams', [])
+
+        # Parse and cache
+        teams = []
+        for team_entry in teams_raw:
+            team = team_entry.get('team', {})
+            logos = team.get('logos', [])
+            logo_url = logos[0].get('href', '') if logos else ''
+
+            teams.append({
+                'id': team.get('id', ''),
+                'name': team.get('displayName', ''),
+                'abbreviation': team.get('abbreviation', ''),
+                'nickname': team.get('nickname', ''),
+                'logo': logo_url,
+                'sport': sport_key,
+                'sportDisplay': sport_display,
+            })
+
+        _teams_cache[sport_key] = {'data': teams, 'timestamp': now}
+        return teams
+
+    except Exception as e:
+        print(f"Error fetching teams for {sport_key}: {e}")
+        # Return stale cache if available
+        return cache_entry['data'] if cache_entry else []
+
+
 @app.get("/api/teams/search")
 def search_teams(query: str = Query(..., min_length=2), limit: int = Query(10, ge=1, le=50)):
     """
     Search for teams across all supported sports.
     Returns matching teams with their ID, name, abbreviation, logo, and sport.
+    Uses cached team data for fast responses.
     """
     try:
         results = []
@@ -1121,57 +1180,45 @@ def search_teams(query: str = Query(..., min_length=2), limit: int = Query(10, g
             ('mls', 'MLS'),
             ('ncaaf', 'College Football'),
             ('ncaab', 'College Basketball'),
+            ('ligue1', 'Ligue 1'),
         ]
 
-        for sport_key, sport_display in team_sports:
-            try:
-                sport_path = sports_fetcher.SPORTS.get(sport_key)
-                if not sport_path:
-                    continue
+        # Fetch teams from all sports in parallel (uses cache when available)
+        def fetch_sport(sport_tuple):
+            sport_key, sport_display = sport_tuple
+            return _get_cached_teams(sport_key, sport_display)
 
-                # Fetch teams from ESPN teams endpoint
-                url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams?limit=100"
-                response = sports_fetcher.session.get(url, timeout=5)
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {executor.submit(fetch_sport, s): s for s in team_sports}
+            all_teams = []
+            for future in as_completed(futures, timeout=10):
+                try:
+                    teams = future.result()
+                    all_teams.extend(teams)
+                except Exception as e:
+                    print(f"Error in parallel team fetch: {e}")
 
-                if response.status_code != 200:
-                    continue
+        # Search through all teams
+        for team in all_teams:
+            name = team.get('name', '')
+            abbreviation = team.get('abbreviation', '')
+            nickname = team.get('nickname', '')
 
-                data = response.json()
-                teams = data.get('sports', [{}])[0].get('leagues', [{}])[0].get('teams', [])
+            if (query_lower in name.lower() or
+                query_lower in abbreviation.lower() or
+                query_lower in nickname.lower()):
 
-                for team_entry in teams:
-                    team = team_entry.get('team', {})
-                    name = team.get('displayName', '')
-                    abbreviation = team.get('abbreviation', '')
-                    nickname = team.get('nickname', '')
+                results.append({
+                    'id': team['id'],
+                    'name': name,
+                    'abbreviation': abbreviation,
+                    'logo': team['logo'],
+                    'sport': team['sport'],
+                    'sportDisplay': team['sportDisplay'],
+                })
 
-                    # Check if query matches team name, abbreviation, or nickname
-                    if (query_lower in name.lower() or
-                        query_lower in abbreviation.lower() or
-                        query_lower in nickname.lower()):
-
-                        # Get logo URL
-                        logos = team.get('logos', [])
-                        logo_url = logos[0].get('href', '') if logos else ''
-
-                        results.append({
-                            'id': team.get('id', ''),
-                            'name': name,
-                            'abbreviation': abbreviation,
-                            'logo': logo_url,
-                            'sport': sport_key,
-                            'sportDisplay': sport_display,
-                        })
-
-                        if len(results) >= limit:
-                            break
-
-            except Exception as e:
-                print(f"Error searching teams for {sport_key}: {e}")
-                continue
-
-            if len(results) >= limit:
-                break
+                if len(results) >= limit * 2:  # Get extra for sorting
+                    break
 
         # Sort results by relevance (starts with > contains)
         def relevance(team):
@@ -1194,6 +1241,7 @@ def get_teams_by_sport(sport: str):
     """
     Get all teams for a specific sport/league.
     Returns teams sorted alphabetically by name.
+    Uses cached team data for fast responses.
     """
     try:
         # Map sport key to display name
@@ -1224,33 +1272,21 @@ def get_teams_by_sport(sport: str):
         if not sport_path:
             raise HTTPException(status_code=404, detail=f"Sport '{sport}' not found")
 
-        # Fetch teams from ESPN teams endpoint
-        url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams?limit=100"
-        response = sports_fetcher.session.get(url, timeout=10)
+        # Use cached teams data
+        teams = _get_cached_teams(sport_lower, sport_display)
 
-        if response.status_code != 200:
+        if not teams:
             raise HTTPException(status_code=500, detail="Failed to fetch teams")
 
-        data = response.json()
-        teams = data.get('sports', [{}])[0].get('leagues', [{}])[0].get('teams', [])
-
-        results = []
-        for team_entry in teams:
-            team = team_entry.get('team', {})
-            name = team.get('displayName', '')
-
-            # Get logo URL
-            logos = team.get('logos', [])
-            logo_url = logos[0].get('href', '') if logos else ''
-
-            results.append({
-                'id': team.get('id', ''),
-                'name': name,
-                'abbreviation': team.get('abbreviation', ''),
-                'logo': logo_url,
-                'sport': sport_lower,
-                'sportDisplay': sport_display,
-            })
+        # Format results (cache already has parsed data)
+        results = [{
+            'id': team['id'],
+            'name': team['name'],
+            'abbreviation': team['abbreviation'],
+            'logo': team['logo'],
+            'sport': team['sport'],
+            'sportDisplay': team['sportDisplay'],
+        } for team in teams]
 
         # Sort alphabetically by name
         results.sort(key=lambda x: x['name'].lower())

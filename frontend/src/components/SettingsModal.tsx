@@ -107,14 +107,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     return () => clearTimeout(timer);
   }, [teamSearchQuery]);
 
+  // State for sport teams error
+  const [sportTeamsError, setSportTeamsError] = useState<string | null>(null);
+
   // Fetch teams when a sport is selected
   useEffect(() => {
     if (!selectedSport) {
       setSportTeams([]);
+      setSportTeamsError(null);
       return;
     }
 
     setIsLoadingTeams(true);
+    setSportTeamsError(null);
     api.getTeamsBySport(selectedSport)
       .then((teams) => {
         setSportTeams(teams);
@@ -122,6 +127,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       .catch((error) => {
         console.error('Failed to fetch teams:', error);
         setSportTeams([]);
+        setSportTeamsError(error.message || 'Failed to load teams. Please try again.');
       })
       .finally(() => {
         setIsLoadingTeams(false);
@@ -662,6 +668,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {isLoadingTeams ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 size={24} className="animate-spin text-gray-500" />
+                        <span className="ml-2 text-sm text-gray-500">Loading teams...</span>
+                      </div>
+                    ) : sportTeamsError ? (
+                      <div className="py-6 text-center">
+                        <AlertCircle size={24} className="mx-auto text-red-400 mb-2" />
+                        <p className="text-sm text-red-400">{sportTeamsError}</p>
+                        <button
+                          onClick={() => {
+                            const sport = selectedSport;
+                            setSelectedSport(null);
+                            setTimeout(() => setSelectedSport(sport), 100);
+                          }}
+                          className="mt-3 text-xs text-accent hover:underline"
+                        >
+                          Try again
+                        </button>
                       </div>
                     ) : (
                       <div className="space-y-1 max-h-64 overflow-y-auto">

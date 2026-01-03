@@ -1343,7 +1343,7 @@ export const Dashboard = () => {
               );
             })
           ) : (
-            <div className="text-gray-500 text-sm text-center py-8 col-span-full">No {title} games available</div>
+            <div className="text-gray-500 text-sm text-center py-8 col-span-full">No games scheduled this week</div>
           )}
         </div>
 
