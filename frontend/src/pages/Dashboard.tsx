@@ -1425,9 +1425,6 @@ export const Dashboard = () => {
         enabledSections={settings.homeScreen.enabledSections}
       />
 
-      {/* Favorite Teams Section */}
-      <FavoriteTeamsSection />
-
       {/* Pending Bets Section - filtered by selected sport */}
       {filteredPendingBets.length > 0 && (
         <div>
@@ -1550,6 +1547,9 @@ export const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Favorite Teams Section */}
+      <FavoriteTeamsSection />
 
       {/* Pinned Games Section - filtered by selected sport */}
       <PinnedGamesSection
