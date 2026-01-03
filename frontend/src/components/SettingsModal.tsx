@@ -1,9 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2, ChevronLeft } from 'lucide-react';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
 import { useSettings, AVAILABLE_SECTIONS, SectionId, FavoriteTeam } from '../context/SettingsContext';
 import { api } from '../lib/api';
+
+// Touch drag state
+interface TouchDragState {
+  isDragging: boolean;
+  draggedId: SectionId | null;
+  startY: number;
+  currentY: number;
+  itemHeight: number;
+}
 
 // Sports available for team picker
 const TEAM_SPORTS = [
@@ -48,6 +57,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<'general' | 'homescreen' | 'teams'>('general');
   const [draggedItem, setDraggedItem] = useState<SectionId | null>(null);
   const [customSeconds, setCustomSeconds] = useState('');
+
+  // Touch drag state for mobile
+  const [touchDrag, setTouchDrag] = useState<TouchDragState>({
+    isDragging: false,
+    draggedId: null,
+    startY: 0,
+    currentY: 0,
+    itemHeight: 56, // approximate height of each item
+  });
+  const touchDragRef = useRef<TouchDragState>(touchDrag);
+  const itemRefs = useRef<Map<SectionId, HTMLDivElement>>(new Map());
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Team search state
   const [teamSearchQuery, setTeamSearchQuery] = useState('');
@@ -173,6 +194,99 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleDragEnd = () => {
     setDraggedItem(null);
   };
+
+  // Keep ref in sync with state for touch handlers
+  useEffect(() => {
+    touchDragRef.current = touchDrag;
+  }, [touchDrag]);
+
+  // Touch handlers for mobile drag and drop
+  const handleTouchStart = useCallback((e: React.TouchEvent, sectionId: SectionId) => {
+    const touch = e.touches[0];
+    const itemEl = itemRefs.current.get(sectionId);
+    const itemHeight = itemEl?.offsetHeight || 56;
+
+    // Start a long press timer - only start dragging after 150ms hold
+    longPressTimerRef.current = setTimeout(() => {
+      setTouchDrag({
+        isDragging: true,
+        draggedId: sectionId,
+        startY: touch.clientY,
+        currentY: touch.clientY,
+        itemHeight,
+      });
+      // Haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 150);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const state = touchDragRef.current;
+
+    // If not dragging yet, cancel the long press if user moved significantly
+    if (!state.isDragging && longPressTimerRef.current) {
+      const touch = e.touches[0];
+      const moveDistance = Math.abs(touch.clientY - state.startY);
+      if (moveDistance > 10) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (!state.isDragging || !state.draggedId) return;
+
+    e.preventDefault(); // Prevent scrolling while dragging
+
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - state.startY;
+    const moveThreshold = state.itemHeight * 0.6;
+
+    // Calculate how many positions to move
+    const positionsToMove = Math.round(deltaY / state.itemHeight);
+
+    if (Math.abs(deltaY) > moveThreshold && positionsToMove !== 0) {
+      const currentOrder = [...settings.homeScreen.sectionOrder];
+      const currentIndex = currentOrder.indexOf(state.draggedId);
+      const targetIndex = Math.max(0, Math.min(currentOrder.length - 1, currentIndex + (positionsToMove > 0 ? 1 : -1)));
+
+      if (currentIndex !== targetIndex) {
+        currentOrder.splice(currentIndex, 1);
+        currentOrder.splice(targetIndex, 0, state.draggedId);
+        setSectionOrder(currentOrder);
+
+        // Reset the start position to current touch position
+        setTouchDrag(prev => ({
+          ...prev,
+          startY: touch.clientY,
+          currentY: touch.clientY,
+        }));
+      }
+    } else {
+      setTouchDrag(prev => ({
+        ...prev,
+        currentY: touch.clientY,
+      }));
+    }
+  }, [settings.homeScreen.sectionOrder, setSectionOrder]);
+
+  const handleTouchEnd = useCallback(() => {
+    // Clear long press timer if it hasn't fired yet
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    setTouchDrag({
+      isDragging: false,
+      draggedId: null,
+      startY: 0,
+      currentY: 0,
+      itemHeight: 56,
+    });
+  }, []);
 
   // Get ordered sections for display
   const orderedSections = settings.homeScreen.sectionOrder
@@ -356,7 +470,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {activeTab === 'homescreen' && (
             <div className="space-y-6">
               <p className="text-sm text-gray-400">
-                Choose which sports sections to show on your home screen. Drag to reorder.
+                Choose which sports sections to show on your home screen.
+                <span className="hidden md:inline"> Drag to reorder.</span>
+                <span className="md:hidden"> Hold and drag to reorder.</span>
               </p>
 
               {/* Sports Sections */}
@@ -364,23 +480,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {orderedSections.map((section) => (
                   <div
                     key={section.id}
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(section.id, el);
+                    }}
                     draggable
                     onDragStart={(e) => handleDragStart(e, section.id)}
                     onDragOver={(e) => handleDragOver(e, section.id)}
                     onDragEnd={handleDragEnd}
+                    onTouchStart={(e) => handleTouchStart(e, section.id)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
                     className={cn(
-                      "flex items-center justify-between p-3 bg-card border rounded-lg transition-all cursor-move",
-                      draggedItem === section.id
-                        ? "border-accent opacity-50"
+                      "flex items-center justify-between p-3 bg-card border rounded-lg transition-all select-none",
+                      "cursor-move touch-none",
+                      draggedItem === section.id || touchDrag.draggedId === section.id
+                        ? "border-accent bg-accent/10 scale-[1.02] shadow-lg z-10"
                         : "border-border hover:border-gray-600"
                     )}
+                    style={{
+                      transform: touchDrag.draggedId === section.id
+                        ? `translateY(${touchDrag.currentY - touchDrag.startY}px)`
+                        : undefined,
+                    }}
                   >
                     <div className="flex items-center gap-3">
-                      <GripVertical size={18} className="text-gray-500" />
+                      <GripVertical
+                        size={18}
+                        className={cn(
+                          "transition-colors",
+                          touchDrag.draggedId === section.id ? "text-accent" : "text-gray-500"
+                        )}
+                      />
                       <span className="text-lg">{section.icon}</span>
                       <span className="text-sm font-medium">{section.label}</span>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label
+                      className="relative inline-flex items-center cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
                         checked={isSectionEnabled(section.id)}
