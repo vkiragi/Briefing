@@ -71,6 +71,11 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
   sport,
 }) => {
   useBets(); // Context used by BetSlipPanel
+
+  // Check if game is finished - betting should be disabled
+  const isGameFinished = game?.completed ||
+    game?.state === 'post' ||
+    game?.status?.toLowerCase().includes('final');
   const [boxScore, setBoxScore] = useState<BoxScoreData | TennisMatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +93,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     teamName: string,
     category?: string // For NFL/MLB category-based stats
   ) => {
+    // Don't allow betting on finished games
+    if (isGameFinished) return;
+
     // Get market type based on sport
     let market: string | undefined;
     let marketLabel = statColumn;
@@ -174,6 +182,9 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     teamId: string,
     teamLogo?: string,
   ) => {
+    // Don't allow betting on finished games
+    if (isGameFinished) return;
+
     const selectionId = `moneyline-${teamId}`;
 
     setSelectedBets(prev => {
@@ -434,7 +445,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       </div>
                     </td>
                     {nbaStatColumns.map(col => {
-                      const isBettable = isBettableStat(col);
+                      const isBettable = isBettableStat(col) && !isGameFinished;
                       const statValue = !Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-';
                       const market = NBA_STAT_TO_MARKET[col];
                       const isSelected = market && isStatSelected(player.id, market);
@@ -482,7 +493,7 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       </div>
                     </td>
                     {nbaStatColumns.map(col => {
-                      const isBettable = isBettableStat(col);
+                      const isBettable = isBettableStat(col) && !isGameFinished;
                       const statValue = !Array.isArray(player.stats) ? (player.stats[col] ?? '-') : '-';
                       const market = NBA_STAT_TO_MARKET[col];
                       const isSelected = market && isStatSelected(player.id, market);
@@ -1127,11 +1138,14 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       `away-${game.event_id}`,
                       game.away_logo
                     )}
+                    disabled={isGameFinished}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-xl transition-all",
-                      isMoneylineSelected(`away-${game.event_id}`)
-                        ? "bg-accent/20 ring-2 ring-accent"
-                        : "hover:bg-white/10"
+                      isGameFinished
+                        ? "cursor-default"
+                        : isMoneylineSelected(`away-${game.event_id}`)
+                          ? "bg-accent/20 ring-2 ring-accent"
+                          : "hover:bg-white/10"
                     )}
                   >
                     {game.away_logo && <img src={game.away_logo} alt="" className="w-10 h-10 object-contain" />}
@@ -1152,11 +1166,14 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
                       `home-${game.event_id}`,
                       game.home_logo
                     )}
+                    disabled={isGameFinished}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-xl transition-all",
-                      isMoneylineSelected(`home-${game.event_id}`)
-                        ? "bg-accent/20 ring-2 ring-accent"
-                        : "hover:bg-white/10"
+                      isGameFinished
+                        ? "cursor-default"
+                        : isMoneylineSelected(`home-${game.event_id}`)
+                          ? "bg-accent/20 ring-2 ring-accent"
+                          : "hover:bg-white/10"
                     )}
                   >
                     {isMoneylineSelected(`home-${game.event_id}`) && (
@@ -1181,7 +1198,13 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
               {/* Moneyline hint */}
               <div className="px-4 py-2 bg-accent/5 text-center flex-shrink-0">
                 <p className="text-xs text-gray-400">
-                  <span className="text-accent">Tap a team</span> to add moneyline bet • <span className="text-accent">Tap stats</span> for player props
+                  {isGameFinished ? (
+                    <span className="text-gray-500">Game has ended — betting is closed</span>
+                  ) : (
+                    <>
+                      <span className="text-accent">Tap a team</span> to add moneyline bet • <span className="text-accent">Tap stats</span> for player props
+                    </>
+                  )}
                 </p>
               </div>
 
