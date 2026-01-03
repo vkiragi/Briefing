@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
@@ -20,6 +21,8 @@ import {
   Users,
   DollarSign,
   ChevronRight,
+  Search,
+  X,
 } from 'lucide-react';
 
 interface FeatureSection {
@@ -253,6 +256,49 @@ const quickTips = [
 ];
 
 export const Help = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter feature sections based on search query
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) return featureSections;
+
+    const query = searchQuery.toLowerCase();
+    return featureSections
+      .map(section => {
+        // Check if section title or description matches
+        const sectionMatches =
+          section.title.toLowerCase().includes(query) ||
+          section.description.toLowerCase().includes(query);
+
+        // Filter features within section
+        const matchingFeatures = section.features.filter(
+          feature =>
+            feature.name.toLowerCase().includes(query) ||
+            feature.description.toLowerCase().includes(query) ||
+            (feature.tip && feature.tip.toLowerCase().includes(query))
+        );
+
+        // If section title matches, return all features; otherwise return only matching features
+        if (sectionMatches) {
+          return section;
+        } else if (matchingFeatures.length > 0) {
+          return { ...section, features: matchingFeatures };
+        }
+        return null;
+      })
+      .filter((section): section is FeatureSection => section !== null);
+  }, [searchQuery]);
+
+  // Filter quick tips based on search query
+  const filteredTips = useMemo(() => {
+    if (!searchQuery.trim()) return quickTips;
+
+    const query = searchQuery.toLowerCase();
+    return quickTips.filter(item => item.tip.toLowerCase().includes(query));
+  }, [searchQuery]);
+
+  const hasResults = filteredSections.length > 0 || filteredTips.length > 0;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -278,131 +324,189 @@ export const Help = () => {
             <p className="text-gray-400">Everything you can do with Briefing</p>
           </div>
         </div>
+
+        {/* Search Bar */}
+        <div className="relative mt-6">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search features, tips, or topics..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-card border border-border rounded-xl pl-11 pr-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-accent transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <X size={16} className="text-gray-400" />
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* No Results Message */}
+      {searchQuery && !hasResults && (
+        <div className="max-w-4xl mx-auto mb-10">
+          <Card className="p-8 text-center">
+            <Search size={40} className="text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-white mb-2">No results found</h3>
+            <p className="text-gray-400 text-sm">
+              No features or tips match "{searchQuery}". Try a different search term.
+            </p>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Tips */}
-      <div className="max-w-4xl mx-auto mb-10">
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Zap size={20} className="text-accent" />
-            Quick Tips
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {quickTips.map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-start gap-3 p-3 bg-white/5 rounded-lg"
-              >
-                <item.icon size={18} className="text-accent flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-gray-300">{item.tip}</span>
-              </motion.div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      {filteredTips.length > 0 && (
+        <div className="max-w-4xl mx-auto mb-10">
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Zap size={20} className="text-accent" />
+              Quick Tips
+              {searchQuery && (
+                <span className="text-xs font-normal text-gray-500 ml-2">
+                  ({filteredTips.length} result{filteredTips.length !== 1 ? 's' : ''})
+                </span>
+              )}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredTips.map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex items-start gap-3 p-3 bg-white/5 rounded-lg"
+                >
+                  <item.icon size={18} className="text-accent flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-gray-300">{item.tip}</span>
+                </motion.div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Feature Sections */}
-      <div className="max-w-4xl mx-auto space-y-6">
-        {featureSections.map((section, sectionIndex) => (
-          <motion.div
-            key={section.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: sectionIndex * 0.1 }}
-          >
-            <Card className="overflow-hidden">
-              {/* Section Header */}
-              <div className="p-5 border-b border-border bg-gradient-to-r from-accent/10 to-transparent">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center">
-                    <section.icon size={22} className="text-accent" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">{section.title}</h2>
-                    <p className="text-sm text-gray-400">{section.description}</p>
+      {filteredSections.length > 0 && (
+        <div className="max-w-4xl mx-auto space-y-6">
+          {searchQuery && (
+            <p className="text-sm text-gray-500">
+              {filteredSections.length} section{filteredSections.length !== 1 ? 's' : ''} found
+            </p>
+          )}
+          {filteredSections.map((section, sectionIndex) => (
+            <motion.div
+              key={section.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: sectionIndex * 0.1 }}
+            >
+              <Card className="overflow-hidden">
+                {/* Section Header */}
+                <div className="p-5 border-b border-border bg-gradient-to-r from-accent/10 to-transparent">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center">
+                      <section.icon size={22} className="text-accent" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">{section.title}</h2>
+                      <p className="text-sm text-gray-400">{section.description}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Features List */}
-              <div className="p-5 space-y-4">
-                {section.features.map((feature, featureIndex) => (
-                  <div
-                    key={feature.name}
-                    className="pl-4 border-l-2 border-accent/30"
+                {/* Features List */}
+                <div className="p-5 space-y-4">
+                  {section.features.map((feature, featureIndex) => (
+                    <div
+                      key={feature.name}
+                      className="pl-4 border-l-2 border-accent/30"
+                    >
+                      <h3 className="font-semibold text-white flex items-center gap-2">
+                        <ChevronRight size={16} className="text-accent" />
+                        {feature.name}
+                      </h3>
+                      <p className="text-sm text-gray-400 mt-1 ml-6">
+                        {feature.description}
+                      </p>
+                      {feature.tip && (
+                        <div className="mt-2 ml-6 px-3 py-2 bg-accent/10 rounded-lg border border-accent/20">
+                          <p className="text-xs text-accent flex items-start gap-2">
+                            <Star size={12} className="flex-shrink-0 mt-0.5" />
+                            <span>{feature.tip}</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Supported Sports - show when no search or when searching for sport-related terms */}
+      {(!searchQuery || 'sports leagues supported'.includes(searchQuery.toLowerCase()) ||
+        ['NFL', 'NBA', 'MLB', 'NHL', 'NCAAF', 'NCAAB', 'MLS', 'UFC', 'Boxing', 'F1', 'Tennis', 'Golf', 'EPL', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1']
+          .some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
+      ) && (
+        <div className="max-w-4xl mx-auto mt-10">
+          <Card className="p-5">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Users size={20} className="text-accent" />
+              Supported Sports & Leagues
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {['NFL', 'NBA', 'MLB', 'NHL', 'NCAAF', 'NCAAB', 'MLS', 'UFC', 'Boxing', 'F1', 'Tennis', 'Golf', 'EPL', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1'].map(
+                (sport) => (
+                  <span
+                    key={sport}
+                    className={`px-3 py-1.5 border rounded-full text-sm transition-colors ${
+                      searchQuery && sport.toLowerCase().includes(searchQuery.toLowerCase())
+                        ? 'bg-accent/20 border-accent text-accent'
+                        : 'bg-white/5 border-white/10 text-gray-300'
+                    }`}
                   >
-                    <h3 className="font-semibold text-white flex items-center gap-2">
-                      <ChevronRight size={16} className="text-accent" />
-                      {feature.name}
-                    </h3>
-                    <p className="text-sm text-gray-400 mt-1 ml-6">
-                      {feature.description}
-                    </p>
-                    {feature.tip && (
-                      <div className="mt-2 ml-6 px-3 py-2 bg-accent/10 rounded-lg border border-accent/20">
-                        <p className="text-xs text-accent flex items-start gap-2">
-                          <Star size={12} className="flex-shrink-0 mt-0.5" />
-                          <span>{feature.tip}</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    {sport}
+                  </span>
+                )
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Contact / Feedback - only show when not searching */}
+      {!searchQuery && (
+        <div className="max-w-4xl mx-auto mt-10 mb-8">
+          <Card className="p-5 bg-gradient-to-r from-accent/10 to-transparent">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-accent/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <DollarSign size={24} className="text-accent" />
               </div>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Supported Sports */}
-      <div className="max-w-4xl mx-auto mt-10">
-        <Card className="p-5">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Users size={20} className="text-accent" />
-            Supported Sports & Leagues
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {['NFL', 'NBA', 'MLB', 'NHL', 'NCAAF', 'NCAAB', 'MLS', 'UFC', 'Boxing', 'F1', 'Tennis', 'Golf', 'EPL', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1'].map(
-              (sport) => (
-                <span
-                  key={sport}
-                  className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-sm text-gray-300"
+              <div>
+                <h3 className="font-semibold text-white mb-1">Questions or Feedback?</h3>
+                <p className="text-sm text-gray-400 mb-3">
+                  We're always looking to improve Briefing. If you have suggestions, found a bug,
+                  or need help with something not covered here, reach out!
+                </p>
+                <a
+                  href="mailto:support@briefingapp.com"
+                  className="inline-flex items-center gap-2 text-accent hover:underline text-sm"
                 >
-                  {sport}
-                </span>
-              )
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Contact / Feedback */}
-      <div className="max-w-4xl mx-auto mt-10 mb-8">
-        <Card className="p-5 bg-gradient-to-r from-accent/10 to-transparent">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-accent/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <DollarSign size={24} className="text-accent" />
+                  support@briefingapp.com
+                  <ChevronRight size={14} />
+                </a>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-white mb-1">Questions or Feedback?</h3>
-              <p className="text-sm text-gray-400 mb-3">
-                We're always looking to improve Briefing. If you have suggestions, found a bug,
-                or need help with something not covered here, reach out!
-              </p>
-              <a
-                href="mailto:support@briefingapp.com"
-                className="inline-flex items-center gap-2 text-accent hover:underline text-sm"
-              >
-                support@briefingapp.com
-                <ChevronRight size={14} />
-              </a>
-            </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
     </motion.div>
   );
 };
