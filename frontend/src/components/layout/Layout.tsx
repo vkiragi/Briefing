@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, PlusCircle, List, BarChart2, Settings, User } from "lucide-react";
+import { Home, PlusCircle, List, BarChart2, Settings, User, HelpCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 import { SettingsModal } from "../SettingsModal";
@@ -63,7 +63,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
           ))}
         </div>
-        {/* Profile and Settings at bottom */}
+        {/* Profile, Help, and Settings at bottom */}
         <div className="mt-auto flex flex-col gap-2 w-full px-3">
           {/* Profile Button */}
           <div className="flex flex-col items-center group">
@@ -83,6 +83,28 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </button>
             <span className="text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center text-gray-400 opacity-0 group-hover:opacity-100">
               Profile
+            </span>
+          </div>
+          {/* Help Button */}
+          <div className="flex flex-col items-center group">
+            <Link
+              to="/help"
+              className={cn(
+                "flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 relative w-full hover:bg-white/[0.03]",
+                location.pathname === "/help"
+                  ? "text-accent"
+                  : "text-gray-400 hover:text-white"
+              )}
+            >
+              <HelpCircle size={26} />
+            </Link>
+            <span className={cn(
+              "text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center",
+              location.pathname === "/help"
+                ? "text-accent opacity-100"
+                : "text-gray-400 opacity-0 group-hover:opacity-100"
+            )}>
+              Help
             </span>
           </div>
           {/* Settings Button */}
@@ -107,20 +129,31 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <span className="text-accent">B</span>S<span className="text-accent">B</span>
           </span>
         </div>
-        <button
-          onClick={() => setProfileOpen(true)}
-          className="flex items-center justify-center p-2 rounded-full transition-all duration-300 hover:bg-white/[0.05] text-gray-400 hover:text-white"
-        >
-          {user?.user_metadata?.avatar_url ? (
-            <img
-              src={user.user_metadata.avatar_url}
-              alt="Profile"
-              className="w-8 h-8 rounded-full border border-accent/50"
-            />
-          ) : (
-            <User size={24} />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/help"
+            className={cn(
+              "flex items-center justify-center p-2 rounded-full transition-all duration-300 hover:bg-white/[0.05]",
+              location.pathname === "/help" ? "text-accent" : "text-gray-400 hover:text-white"
+            )}
+          >
+            <HelpCircle size={22} />
+          </Link>
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="flex items-center justify-center p-2 rounded-full transition-all duration-300 hover:bg-white/[0.05] text-gray-400 hover:text-white"
+          >
+            {user?.user_metadata?.avatar_url ? (
+              <img
+                src={user.user_metadata.avatar_url}
+                alt="Profile"
+                className="w-8 h-8 rounded-full border border-accent/50"
+              />
+            ) : (
+              <User size={24} />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}

@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AddBet } from './pages/AddBet';
 import { BetHistory } from './pages/BetHistory';
 import { Analytics } from './pages/Analytics';
+import { Help } from './pages/Help';
 import { Terms } from './pages/Terms';
 import { Privacy } from './pages/Privacy';
 import { BetProvider } from './context/BetContext';
@@ -37,6 +38,7 @@ function App() {
                             <Route path="/add" element={<AddBet />} />
                             <Route path="/history" element={<BetHistory />} />
                             <Route path="/analytics" element={<Analytics />} />
+                            <Route path="/help" element={<Help />} />
                           </Routes>
                         </Layout>
                       </AuthGate>
