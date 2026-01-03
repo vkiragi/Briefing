@@ -748,48 +748,77 @@ export const Dashboard = () => {
       isSectionEnabled(id) && LEAGUE_CONFIG[id]
     );
 
-    // Batch size - fetch this many leagues at a time
-    const BATCH_SIZE = 3;
-    const BATCH_DELAY = 300; // ms between batches
+    // Reduced batch size - each league makes 2 API calls, so batch of 2 = 4 concurrent requests
+    const BATCH_SIZE = 2;
+    const BATCH_DELAY = 500; // ms between batches - increased to let connections close
 
     let cancelled = false;
+    let isRefreshing = false; // Mutex to prevent overlapping refreshes
     const cache = getCachedData();
 
     const fetchBatches = async (forceRefresh = false) => {
-      // Filter to only leagues that need fetching
-      const leaguesToFetch = forceRefresh
-        ? enabledLeagues
-        : enabledLeagues.filter(id => !isCacheValid(cache[id]));
+      // Prevent overlapping refreshes
+      if (isRefreshing) {
+        console.log('[Dashboard] Skipping refresh - already in progress');
+        return;
+      }
+      isRefreshing = true;
 
-      if (leaguesToFetch.length === 0) return;
+      try {
+        // Filter to only leagues that need fetching
+        const leaguesToFetch = forceRefresh
+          ? enabledLeagues
+          : enabledLeagues.filter(id => !isCacheValid(cache[id]));
 
-      for (let i = 0; i < leaguesToFetch.length; i += BATCH_SIZE) {
-        if (cancelled) break;
+        if (leaguesToFetch.length === 0) return;
 
-        const batch = leaguesToFetch.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < leaguesToFetch.length; i += BATCH_SIZE) {
+          if (cancelled) break;
 
-        // Fetch this batch in parallel
-        await Promise.all(batch.map(leagueId => fetchLeagueData(leagueId)));
+          const batch = leaguesToFetch.slice(i, i + BATCH_SIZE);
 
-        // Wait before next batch (unless it's the last batch)
-        if (i + BATCH_SIZE < leaguesToFetch.length && !cancelled) {
-          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+          // Fetch this batch sequentially to reduce concurrent connections
+          for (const leagueId of batch) {
+            if (cancelled) break;
+            try {
+              await fetchLeagueData(leagueId);
+            } catch (e) {
+              console.error(`Failed to fetch ${leagueId}:`, e);
+            }
+            // Small delay between individual fetches within a batch
+            if (!cancelled) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+          }
+
+          // Wait before next batch (unless it's the last batch)
+          if (i + BATCH_SIZE < leaguesToFetch.length && !cancelled) {
+            await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+          }
         }
+      } finally {
+        isRefreshing = false;
       }
     };
 
     // Initial fetch - only fetch stale/missing data
     fetchBatches(false);
 
-    // Fetch NFL week info on mount
-    api.getNFLWeekInfo()
-      .then(info => setNflWeekInfo(info))
-      .catch(console.error);
+    // Fetch NFL week info on mount (after a small delay to not compete with initial fetch)
+    setTimeout(() => {
+      if (!cancelled) {
+        api.getNFLWeekInfo()
+          .then(info => setNflWeekInfo(info))
+          .catch(console.error);
+      }
+    }, 1000);
 
-    // Set up refresh interval - force refresh all enabled leagues
+    // Set up refresh interval for sports data
+    // Use a minimum of 30 seconds for sports data even if props refresh is faster
+    const sportsRefreshInterval = Math.max(refreshInterval, 30000);
     const interval = setInterval(() => {
       fetchBatches(true);
-    }, refreshInterval);
+    }, sportsRefreshInterval);
 
     return () => {
       cancelled = true;

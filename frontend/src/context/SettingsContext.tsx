@@ -69,7 +69,7 @@ interface SettingsContextType {
 }
 
 const defaultSettings: AppSettings = {
-  refreshInterval: 5000,
+  refreshInterval: 30000, // 30 seconds default - reduces API load
   homeScreen: {
     // Only enable major leagues by default - users can enable others in settings
     enabledSections: ['nba', 'ncaab', 'nfl', 'ncaaf', 'mlb', 'epl', 'laliga', 'seriea', 'bundesliga', 'ligue1', 'ucl', 'europa', 'tennis', 'f1', 'boxing'],
