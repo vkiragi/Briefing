@@ -68,7 +68,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   });
   const touchDragRef = useRef<TouchDragState>(touchDrag);
   const itemRefs = useRef<Map<SectionId, HTMLDivElement>>(new Map());
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Team search state
   const [teamSearchQuery, setTeamSearchQuery] = useState('');
@@ -205,14 +205,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const touch = e.touches[0];
     const itemEl = itemRefs.current.get(sectionId);
     const itemHeight = itemEl?.offsetHeight || 56;
+    // Store touch position immediately (touch object becomes invalid after event)
+    const startY = touch.clientY;
+
+    // Store initial position for move detection before drag starts
+    touchDragRef.current = {
+      ...touchDragRef.current,
+      startY,
+      currentY: startY,
+    };
 
     // Start a long press timer - only start dragging after 150ms hold
     longPressTimerRef.current = setTimeout(() => {
       setTouchDrag({
         isDragging: true,
         draggedId: sectionId,
-        startY: touch.clientY,
-        currentY: touch.clientY,
+        startY,
+        currentY: startY,
         itemHeight,
       });
       // Haptic feedback if available
