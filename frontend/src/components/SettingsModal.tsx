@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2, ChevronLeft } from 'lucide-react';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
@@ -66,7 +66,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     currentY: 0,
     itemHeight: 56, // approximate height of each item
   });
-  const touchDragRef = useRef<TouchDragState>(touchDrag);
+  const touchStartYRef = useRef<number>(0);
   const itemRefs = useRef<Map<SectionId, HTMLDivElement>>(new Map());
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -195,25 +195,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setDraggedItem(null);
   };
 
-  // Keep ref in sync with state for touch handlers
-  useEffect(() => {
-    touchDragRef.current = touchDrag;
-  }, [touchDrag]);
-
   // Touch handlers for mobile drag and drop
-  const handleTouchStart = useCallback((e: React.TouchEvent, sectionId: SectionId) => {
+  const handleTouchStart = (e: React.TouchEvent, sectionId: SectionId) => {
     const touch = e.touches[0];
     const itemEl = itemRefs.current.get(sectionId);
     const itemHeight = itemEl?.offsetHeight || 56;
     // Store touch position immediately (touch object becomes invalid after event)
     const startY = touch.clientY;
-
-    // Store initial position for move detection before drag starts
-    touchDragRef.current = {
-      ...touchDragRef.current,
-      startY,
-      currentY: startY,
-    };
+    touchStartYRef.current = startY;
 
     // Start a long press timer - only start dragging after 150ms hold
     longPressTimerRef.current = setTimeout(() => {
@@ -229,15 +218,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         navigator.vibrate(50);
       }
     }, 150);
-  }, []);
+  };
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const state = touchDragRef.current;
-
+  const handleTouchMove = (e: React.TouchEvent) => {
     // If not dragging yet, cancel the long press if user moved significantly
-    if (!state.isDragging && longPressTimerRef.current) {
+    if (!touchDrag.isDragging && longPressTimerRef.current) {
       const touch = e.touches[0];
-      const moveDistance = Math.abs(touch.clientY - state.startY);
+      const moveDistance = Math.abs(touch.clientY - touchStartYRef.current);
       if (moveDistance > 10) {
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
@@ -245,25 +232,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
 
-    if (!state.isDragging || !state.draggedId) return;
+    if (!touchDrag.isDragging || !touchDrag.draggedId) return;
 
     e.preventDefault(); // Prevent scrolling while dragging
 
     const touch = e.touches[0];
-    const deltaY = touch.clientY - state.startY;
-    const moveThreshold = state.itemHeight * 0.6;
+    const deltaY = touch.clientY - touchDrag.startY;
+    const moveThreshold = touchDrag.itemHeight * 0.6;
 
     // Calculate how many positions to move
-    const positionsToMove = Math.round(deltaY / state.itemHeight);
+    const positionsToMove = Math.round(deltaY / touchDrag.itemHeight);
 
     if (Math.abs(deltaY) > moveThreshold && positionsToMove !== 0) {
       const currentOrder = [...settings.homeScreen.sectionOrder];
-      const currentIndex = currentOrder.indexOf(state.draggedId);
+      const currentIndex = currentOrder.indexOf(touchDrag.draggedId);
       const targetIndex = Math.max(0, Math.min(currentOrder.length - 1, currentIndex + (positionsToMove > 0 ? 1 : -1)));
 
       if (currentIndex !== targetIndex) {
         currentOrder.splice(currentIndex, 1);
-        currentOrder.splice(targetIndex, 0, state.draggedId);
+        currentOrder.splice(targetIndex, 0, touchDrag.draggedId);
         setSectionOrder(currentOrder);
 
         // Reset the start position to current touch position
@@ -279,9 +266,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         currentY: touch.clientY,
       }));
     }
-  }, [settings.homeScreen.sectionOrder, setSectionOrder]);
+  };
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = () => {
     // Clear long press timer if it hasn't fired yet
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -295,7 +282,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       currentY: 0,
       itemHeight: 56,
     });
-  }, []);
+  };
 
   // Get ordered sections for display
   const orderedSections = settings.homeScreen.sectionOrder
