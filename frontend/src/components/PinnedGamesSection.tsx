@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Pin, X, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePinnedGames, PinnedGame } from '../context/PinnedGamesContext';
@@ -27,10 +27,18 @@ interface GameLiveData {
 
 interface PinnedGamesSectionProps {
   onGameClick?: (game: { event_id: string; sport: string; home_team?: string; away_team?: string }, sport: string) => void;
+  sportFilter?: string;
 }
 
-export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameClick }) => {
+export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameClick, sportFilter }) => {
   const { pinnedGames, unpinGame, isLoading } = usePinnedGames();
+
+  // Filter pinned games by sport if filter is applied
+  const filteredPinnedGames = useMemo(() => {
+    if (!sportFilter || sportFilter === 'home') return pinnedGames;
+    return pinnedGames.filter(game => game.sport === sportFilter);
+  }, [pinnedGames, sportFilter]);
+
   const [liveData, setLiveData] = useState<Map<string, GameLiveData>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
 
@@ -162,7 +170,7 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
     return null;
   }
 
-  if (pinnedGames.length === 0) {
+  if (filteredPinnedGames.length === 0) {
     return null;
   }
 
@@ -172,7 +180,7 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
         <div className="flex items-center gap-2">
           <Pin size={18} className="text-accent" />
           <h2 className="text-lg font-semibold text-white">Pinned Games</h2>
-          <span className="text-xs text-gray-500">({pinnedGames.length})</span>
+          <span className="text-xs text-gray-500">({filteredPinnedGames.length})</span>
         </div>
         <button
           onClick={fetchLiveData}
@@ -185,7 +193,7 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {pinnedGames.map((game) => {
+        {filteredPinnedGames.map((game) => {
           const live = liveData.get(game.event_id);
 
           return (

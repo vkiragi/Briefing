@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Clock, Trash2 } from "lucide-react";
 import { PinButton } from "../components/PinButton";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +15,7 @@ import { BoxingFightModal } from "../components/BoxingFightModal";
 import { DateNavigator } from "../components/DateNavigator";
 import { PinnedGamesSection } from "../components/PinnedGamesSection";
 import { FavoriteTeamsSection } from "../components/FavoriteTeamsSection";
+import { SportTabs } from "../components/SportTabs";
 // import { VoiceBetFAB } from "../components/VoiceBetFAB";
 import { api } from "../lib/api";
 import { Game, Bet, NavigationType, SPORT_NAVIGATION, NFLWeekInfo } from "../types";
@@ -154,6 +156,19 @@ export const Dashboard = () => {
   const { stats, bets, clearPendingBets } = useBets();
   const { settings, isSectionEnabled } = useSettings();
   const { user } = useAuth();
+
+  // Sport filter state from URL
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedSportFilter = searchParams.get('sport') || 'home';
+
+  const handleSelectSport = useCallback((sport: string) => {
+    if (sport === 'home') {
+      searchParams.delete('sport');
+    } else {
+      searchParams.set('sport', sport);
+    }
+    setSearchParams(searchParams);
+  }, [searchParams, setSearchParams]);
 
   // Get user's first name for the header
   const fullName = user?.user_metadata?.full_name;
@@ -336,6 +351,21 @@ export const Dashboard = () => {
       return true;
     });
   }, [bets]);
+
+  // Filter pending bets by selected sport
+  const filteredPendingBets = useMemo(() => {
+    if (selectedSportFilter === 'home') return pendingBets;
+    return pendingBets.filter(bet => bet.sport === selectedSportFilter);
+  }, [pendingBets, selectedSportFilter]);
+
+  // Filter sections to render based on selected sport
+  const sectionsToRender = useMemo(() => {
+    if (selectedSportFilter === 'home') return settings.homeScreen.sectionOrder;
+    // Only render the selected sport's section if it's enabled
+    return settings.homeScreen.sectionOrder.filter(
+      sectionId => sectionId === selectedSportFilter && isSectionEnabled(sectionId)
+    );
+  }, [selectedSportFilter, settings.homeScreen.sectionOrder, isSectionEnabled]);
 
   // Combine all props that need tracking
   const allPropsToTrack = useMemo(() =>
@@ -1388,11 +1418,18 @@ export const Dashboard = () => {
         </div>
       </div>
 
+      {/* Sport Filter Tabs */}
+      <SportTabs
+        selectedSport={selectedSportFilter}
+        onSelectSport={handleSelectSport}
+        enabledSections={settings.homeScreen.enabledSections}
+      />
+
       {/* Favorite Teams Section */}
       <FavoriteTeamsSection />
 
-      {/* Pending Bets Section - Primary */}
-      {pendingBets.length > 0 && (
+      {/* Pending Bets Section - filtered by selected sport */}
+      {filteredPendingBets.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-4">
             <h2 className="text-lg font-semibold tracking-tight">Pending Bets</h2>
@@ -1423,9 +1460,9 @@ export const Dashboard = () => {
               <span>Resolve All</span>
             </button>
           </div>
-          <div className={cn("grid gap-4", pendingBets.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}>
+          <div className={cn("grid gap-4", filteredPendingBets.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2")}>
             <AnimatePresence mode="popLayout">
-                {pendingBets.map(bet => {
+                {filteredPendingBets.map(bet => {
                   // For parlays, apply updated legs data from parlay refresh
                   if (bet.type === 'Parlay') {
                     const updatedLegs = parlayLegsData.get(bet.id);
@@ -1514,8 +1551,9 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Pinned Games Section */}
+      {/* Pinned Games Section - filtered by selected sport */}
       <PinnedGamesSection
+        sportFilter={selectedSportFilter}
         onGameClick={(game, sport) => {
           setSelectedGame({
             event_id: game.event_id,
@@ -1527,7 +1565,7 @@ export const Dashboard = () => {
       />
 
       {/* Sports Sections - rendered based on settings order and enabled state */}
-      {settings.homeScreen.sectionOrder.map(sectionId => {
+      {sectionsToRender.map(sectionId => {
         if (!isSectionEnabled(sectionId)) return null;
 
         const config = LEAGUE_CONFIG[sectionId];
