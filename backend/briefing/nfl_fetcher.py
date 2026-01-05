@@ -63,14 +63,14 @@ class NFLFetcherMixin:
                 return {"value": val, "team": base['team'], "player": base['player']}
             return None
             
-        if market_type == "anytime_touchdowns":
-            # Sum of Rushing + Receiving TDs. 
+        if market_type in ("anytime_touchdowns", "anytime_touchdown"):
+            # Sum of Rushing + Receiving TDs.
             # Note: This misses return TDs or defensive TDs, but covers the vast majority of props.
             # Could also check 'scoring' category if available.
             rush_td = self.get_nfl_player_stat(event_id, player_name, "rushing_touchdowns", data)
             rec_td = self.get_nfl_player_stat(event_id, player_name, "receiving_touchdowns", data)
             val = (rush_td['value'] if rush_td else 0.0) + (rec_td['value'] if rec_td else 0.0)
-            
+
             # Check for return/defensive TDs via general 'touchdowns' category if needed?
             # For now, explicit sum is safer than assuming a 'total' column exists everywhere.
             base = rush_td or rec_td
@@ -80,7 +80,7 @@ class NFLFetcherMixin:
                 if finder:
                     return {"value": 0.0, "team": finder['team_name'], "player": finder['display_name']}
                 return None
-                
+
             return {"value": val, "team": base['team'], "player": base['player']}
 
         # --- Event-Based Stats (First/Last TD) ---

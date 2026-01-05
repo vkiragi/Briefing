@@ -1548,8 +1548,8 @@ export const Dashboard = () => {
         </div>
       )}
 
-      {/* Favorite Teams Section */}
-      <FavoriteTeamsSection />
+      {/* Favorite Teams Section - only show on home page */}
+      {selectedSportFilter === 'home' && <FavoriteTeamsSection />}
 
       {/* Pinned Games Section - filtered by selected sport */}
       <PinnedGamesSection

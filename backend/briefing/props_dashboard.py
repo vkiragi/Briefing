@@ -251,7 +251,7 @@ class PropsDashboard:
                             market_type=p.market_type,
                             stats_payload=stats,
                         )
-                    
+
                     if result:
                         if isinstance(result, dict):
                             value = result.get('value')
@@ -272,10 +272,12 @@ class PropsDashboard:
                             value = float(result)
 
                 p.current_value = value
-                
-                # Special handling for NFL: Players often don't appear in specific stat categories 
-                if p.current_value is None and self.sport == 'nfl' and game_state == 'in' and p.market_type not in ("moneyline", "spread", "total_score"):
+
+                # Special handling for NFL: Players often don't appear in specific stat categories
+                # This applies to both live games and finished games - if player didn't record any of the stat, value is 0
+                if p.current_value is None and self.sport == 'nfl' and game_state in ('in', 'post', 'final') and p.market_type not in ("moneyline", "spread", "total_score"):
                     p.current_value = 0.0
+                    value = 0.0  # Also update value for prop_status calculation
 
                 p.game_state = game_state
                 p.game_status_text = game_status_detail
