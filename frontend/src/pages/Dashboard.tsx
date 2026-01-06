@@ -669,7 +669,14 @@ export const Dashboard = () => {
         }
       }
 
-      const finalGames = combinedGames.length > 0 ? combinedGames.slice(0, 10) : [];
+      // Sort games: live games first, then by original order
+      const sortedGames = [...combinedGames].sort((a, b) => {
+        const aIsLive = a.state === 'in' ? 1 : 0;
+        const bIsLive = b.state === 'in' ? 1 : 0;
+        return bIsLive - aIsLive; // Live games first
+      });
+
+      const finalGames = sortedGames.length > 0 ? sortedGames.slice(0, 10) : [];
 
       // Update state
       setLeagueData(prev => ({
