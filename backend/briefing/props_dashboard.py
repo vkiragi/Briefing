@@ -207,7 +207,9 @@ class PropsDashboard:
                         
                     elif "moneyline" in p.market_type:
                         # Value is just the margin
-                        if p.side.lower() in away_team_name.lower():
+                        # Use team_name if side is not a valid team name (frontend sends side=None for ML)
+                        picked_team = p.team_name if p.side in ('over', 'under', '') else p.side
+                        if picked_team and picked_team.lower() in away_team_name.lower():
                             value = a_s - h_s
                         else:
                             value = h_s - a_s

@@ -686,8 +686,8 @@ def refresh_props(bet_ids: List[str] = Body(...), user_id: str = Depends(get_cur
                     player_name=bet.get('player_name', ''),
                     team_name=bet.get('team_name', ''),
                     market_type=bet.get('market_type', ''),
-                    line=float(bet.get('line', 0)),
-                    side=bet.get('side', 'over'),
+                    line=float(bet.get('line') or 0),
+                    side=bet.get('side') or 'over',  # Default to 'over' if None
                     stake=bet.get('stake', 0),
                     odds=bet.get('odds')
                 )
