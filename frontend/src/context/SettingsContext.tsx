@@ -47,12 +47,15 @@ export interface FavoriteTeam {
   sportDisplay: string;
 }
 
+export type Theme = 'dark' | 'light';
+
 interface AppSettings {
   refreshInterval: number;
   homeScreen: HomeScreenSettings;
   showPropTracker: boolean;
   compactMode: boolean;
   favoriteTeams: FavoriteTeam[];
+  theme: Theme;
 }
 
 interface SettingsContextType {
@@ -62,6 +65,7 @@ interface SettingsContextType {
   setSectionOrder: (order: SectionId[]) => void;
   togglePropTracker: () => void;
   toggleCompactMode: () => void;
+  toggleTheme: () => void;
   resetToDefaults: () => void;
   isSectionEnabled: (sectionId: SectionId) => boolean;
   addFavoriteTeam: (team: FavoriteTeam) => void;
@@ -78,6 +82,7 @@ const defaultSettings: AppSettings = {
   showPropTracker: true,
   compactMode: false,
   favoriteTeams: [],
+  theme: 'dark',
 };
 
 const STORAGE_KEY = 'briefing_settings';
@@ -166,6 +171,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [settings]);
 
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', settings.theme);
+  }, [settings.theme]);
+
   const updateRefreshInterval = useCallback((interval: number) => {
     setSettings(prev => ({ ...prev, refreshInterval: interval }));
   }, []);
@@ -203,6 +213,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const toggleCompactMode = useCallback(() => {
     setSettings(prev => ({ ...prev, compactMode: !prev.compactMode }));
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setSettings(prev => ({ ...prev, theme: prev.theme === 'dark' ? 'light' : 'dark' }));
   }, []);
 
   const resetToDefaults = useCallback(() => {
@@ -257,6 +271,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setSectionOrder,
         togglePropTracker,
         toggleCompactMode,
+        toggleTheme,
         resetToDefaults,
         isSectionEnabled,
         addFavoriteTeam,

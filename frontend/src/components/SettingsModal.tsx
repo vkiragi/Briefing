@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2, ChevronLeft } from 'lucide-react';
+import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2, ChevronLeft, Sun, Moon } from 'lucide-react';
 import { Card } from './ui/Card';
 import { cn } from '../lib/utils';
 import { useSettings, AVAILABLE_SECTIONS, SectionId, FavoriteTeam } from '../context/SettingsContext';
@@ -47,6 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setSectionOrder,
     togglePropTracker,
     toggleCompactMode,
+    toggleTheme,
     resetToDefaults,
     isSectionEnabled,
     addFavoriteTeam,
@@ -433,6 +434,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Display Options
                 </label>
                 <div className="space-y-3">
+                  {/* Theme Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {settings.theme === 'dark' ? (
+                        <Moon size={18} className="text-gray-400" />
+                      ) : (
+                        <Sun size={18} className="text-yellow-500" />
+                      )}
+                      <div>
+                        <span className="text-sm font-medium">Theme</span>
+                        <p className="text-xs text-gray-500">Switch between dark and light mode</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={toggleTheme}
+                      className={cn(
+                        "relative w-14 h-8 rounded-full transition-colors",
+                        settings.theme === 'dark' ? "bg-gray-700" : "bg-accent"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute top-1 flex items-center justify-center w-6 h-6 bg-white rounded-full shadow-md transition-transform",
+                          settings.theme === 'dark' ? "left-1" : "translate-x-6 left-1"
+                        )}
+                      >
+                        {settings.theme === 'dark' ? (
+                          <Moon size={14} className="text-gray-700" />
+                        ) : (
+                          <Sun size={14} className="text-yellow-500" />
+                        )}
+                      </span>
+                    </button>
+                  </div>
+
                   <label className="flex items-center justify-between p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
                     <div className="flex items-center gap-3">
                       <Eye size={18} className="text-gray-400" />

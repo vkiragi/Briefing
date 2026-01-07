@@ -1,12 +1,37 @@
 @import "tailwindcss";
 
+/* Dark theme (default) */
+:root, [data-theme="dark"] {
+  --theme-background: #0A0A0B;
+  --theme-card: #141417;
+  --theme-border: #1F1F23;
+  --theme-text-primary: #ffffff;
+  --theme-text-secondary: #9ca3af;
+  --theme-text-muted: #6b7280;
+  --theme-gradient: linear-gradient(135deg, #0A0A0B 0%, #0d1a12 50%, #0A0A0B 100%);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --theme-background: #f8fafc;
+  --theme-card: #ffffff;
+  --theme-border: #e2e8f0;
+  --theme-text-primary: #0f172a;
+  --theme-text-secondary: #475569;
+  --theme-text-muted: #94a3b8;
+  --theme-gradient: linear-gradient(135deg, #f8fafc 0%, #e8f5e9 50%, #f8fafc 100%);
+}
+
 @theme {
-  --color-background: #0A0A0B;
-  --color-card: #141417;
-  --color-border: #1F1F23;
+  --color-background: var(--theme-background);
+  --color-card: var(--theme-card);
+  --color-border: var(--theme-border);
   --color-accent: #00FF85;
   --color-accent-red: #FF4757;
   --color-accent-neutral: #8B8B8B;
+  --color-text-primary: var(--theme-text-primary);
+  --color-text-secondary: var(--theme-text-secondary);
+  --color-text-muted: var(--theme-text-muted);
 
   --font-sans: 'Inter Variable', Inter, system-ui, sans-serif;
 }
@@ -18,11 +43,12 @@
 }
 
 body {
-  background: linear-gradient(135deg, #0A0A0B 0%, #0d1a12 50%, #0A0A0B 100%);
+  background: var(--theme-gradient);
   background-attachment: fixed;
-  color: white;
+  color: var(--theme-text-primary);
   cursor: default;
   min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* Cursor Pointer for Clickable Elements */
@@ -66,18 +92,22 @@ textarea {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-card);
+  background: var(--theme-card);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--theme-border);
   border-radius: 4px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #2A2A2E;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
 }
 
 ::-webkit-scrollbar-thumb:active {
@@ -87,7 +117,7 @@ textarea {
 /* For Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border) var(--color-card);
+  scrollbar-color: var(--theme-border) var(--theme-card);
 }
 
 /* Custom scrollbar class for specific elements */
@@ -107,5 +137,119 @@ textarea {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent);
+}
+
+/* Light theme text color overrides */
+[data-theme="light"] .text-white {
+  color: var(--theme-text-primary);
+}
+
+[data-theme="light"] .text-gray-300 {
+  color: #475569;
+}
+
+[data-theme="light"] .text-gray-400 {
+  color: #64748b;
+}
+
+[data-theme="light"] .text-gray-500 {
+  color: #94a3b8;
+}
+
+[data-theme="light"] .hover\:text-white:hover {
+  color: var(--theme-text-primary);
+}
+
+/* Light theme background overrides */
+[data-theme="light"] .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .bg-gray-700 {
+  background-color: #cbd5e1;
+}
+
+[data-theme="light"] .bg-gray-800 {
+  background-color: #e2e8f0;
+}
+
+[data-theme="light"] .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .hover\:bg-gray-800:hover {
+  background-color: #f1f5f9;
+}
+
+/* Light theme border overrides */
+[data-theme="light"] .hover\:border-gray-600:hover {
+  border-color: #94a3b8;
+}
+
+[data-theme="light"] .border-gray-700\/50 {
+  border-color: rgba(203, 213, 225, 0.5);
+}
+
+[data-theme="light"] .border-gray-700\/30 {
+  border-color: rgba(203, 213, 225, 0.3);
+}
+
+/* Light theme gradient overrides for cards */
+[data-theme="light"] .from-gray-900\/90 {
+  --tw-gradient-from: rgba(248, 250, 252, 0.95) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgba(248, 250, 252, 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+[data-theme="light"] .to-gray-800\/50 {
+  --tw-gradient-to: rgba(241, 245, 249, 0.5) var(--tw-gradient-to-position);
+}
+
+[data-theme="light"] .bg-gray-800\/60 {
+  background-color: rgba(241, 245, 249, 0.8);
+}
+
+[data-theme="light"] .bg-gray-800\/30 {
+  background-color: rgba(241, 245, 249, 0.3);
+}
+
+[data-theme="light"] .hover\:bg-gray-800\/80:hover {
+  background-color: rgba(226, 232, 240, 0.8);
+}
+
+[data-theme="light"] .hover\:bg-gray-800\/30:hover {
+  background-color: rgba(241, 245, 249, 0.5);
+}
+
+[data-theme="light"] .bg-gray-900\/90 {
+  background-color: rgba(248, 250, 252, 0.95);
+}
+
+/* Light theme text color overrides for gray shades */
+[data-theme="light"] .text-gray-600 {
+  color: #64748b;
+}
+
+[data-theme="light"] .text-gray-700 {
+  color: #475569;
+}
+
+/* Light theme shadow for better card definition */
+[data-theme="light"] .shadow-lg {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* Light theme loading skeleton colors */
+[data-theme="light"] .bg-gray-700 {
+  background-color: #e2e8f0;
+}
+
+/* Light theme pin button */
+[data-theme="light"] .bg-gray-800\/50 {
+  background-color: rgba(226, 232, 240, 0.7);
+}
+
+[data-theme="light"] .hover\:bg-gray-700:hover {
+  background-color: #cbd5e1;
 }
 
