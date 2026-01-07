@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Star, RefreshCw, Settings } from 'lucide-react';
+import { Star, Settings } from 'lucide-react';
 import { useSettings, FavoriteTeam } from '../context/SettingsContext';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -44,13 +44,11 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
   const { settings } = useSettings();
   const [results, setResults] = useState<TeamResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedGame, setSelectedGame] = useState<{ game: Game; sport: string } | null>(null);
 
   const fetchResults = useCallback(async () => {
     if (settings.favoriteTeams.length === 0) return;
 
-    setRefreshing(true);
     try {
       const teamsToFetch = settings.favoriteTeams.map(t => ({
         id: t.id,
@@ -62,7 +60,6 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
     } catch (error) {
       console.error('Failed to fetch favorite teams results:', error);
     } finally {
-      setRefreshing(false);
       setLoading(false);
     }
   }, [settings.favoriteTeams]);
@@ -95,25 +92,15 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
           <h2 className="text-lg font-semibold text-white">My Teams</h2>
           <span className="text-xs text-gray-500">({settings.favoriteTeams.length})</span>
         </div>
-        <div className="flex items-center gap-2">
+        {onOpenSettings && (
           <button
-            onClick={fetchResults}
-            disabled={refreshing}
-            className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
-            title="Refresh"
+            onClick={onOpenSettings}
+            className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            title="Manage favorite teams"
           >
-            <RefreshCw size={16} className={cn(refreshing && "animate-spin")} />
+            <Settings size={16} />
           </button>
-          {onOpenSettings && (
-            <button
-              onClick={onOpenSettings}
-              className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-              title="Manage favorite teams"
-            >
-              <Settings size={16} />
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {loading ? (

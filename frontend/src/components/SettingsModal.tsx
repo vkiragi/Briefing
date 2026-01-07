@@ -17,11 +17,11 @@ interface TouchDragState {
 // Sports available for team picker
 const TEAM_SPORTS = [
   { id: 'nba', label: 'NBA', icon: '🏀' },
+  { id: 'ncaab', label: 'NCAAB', icon: '🏀' },
   { id: 'nfl', label: 'NFL', icon: '🏈' },
+  { id: 'ncaaf', label: 'NCAAF', icon: '🏈' },
   { id: 'mlb', label: 'MLB', icon: '⚾' },
   { id: 'nhl', label: 'NHL', icon: '🏒' },
-  { id: 'ncaab', label: 'NCAAB', icon: '🏀' },
-  { id: 'ncaaf', label: 'NCAAF', icon: '🏈' },
   { id: 'epl', label: 'Premier League', icon: '⚽' },
   { id: 'laliga', label: 'La Liga', icon: '⚽' },
   { id: 'seriea', label: 'Serie A', icon: '⚽' },

@@ -120,7 +120,7 @@ textarea {
   scrollbar-color: var(--theme-border) var(--theme-card);
 }
 
-/* Custom scrollbar class for specific elements */
+/* Custom scrollbar class for specific elements - hidden by default, shows on hover/scroll */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -131,12 +131,27 @@ textarea {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: transparent;
   border-radius: 3px;
+  transition: background 0.2s ease;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent);
+}
+
+/* Firefox - auto hides when not scrolling */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.custom-scrollbar:hover {
+  scrollbar-color: var(--color-border) transparent;
 }
 
 /* Light theme text color overrides */

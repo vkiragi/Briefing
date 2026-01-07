@@ -2,12 +2,11 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
-import { AVAILABLE_SECTIONS, SectionId } from '../context/SettingsContext';
+import { AVAILABLE_SECTIONS } from '../context/SettingsContext';
 
 interface SportTabsProps {
   selectedSport: string;
   onSelectSport: (sport: string) => void;
-  enabledSections: SectionId[];
 }
 
 interface TabInfo {
@@ -19,7 +18,6 @@ interface TabInfo {
 export const SportTabs: React.FC<SportTabsProps> = ({
   selectedSport,
   onSelectSport,
-  enabledSections,
 }) => {
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -37,15 +35,13 @@ export const SportTabs: React.FC<SportTabsProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Build tabs list from enabled sections
+  // Build tabs list from all available sections (always show all sports)
   const tabs: TabInfo[] = useMemo(() => {
     const homeTab: TabInfo = { id: 'home', label: 'Home', icon: '🏠' };
-    const sportTabs = enabledSections
-      .map(id => AVAILABLE_SECTIONS.find(s => s.id === id))
-      .filter((s): s is typeof AVAILABLE_SECTIONS[number] => !!s)
+    const sportTabs = AVAILABLE_SECTIONS
       .map(s => ({ id: s.id, label: s.label, icon: s.icon }));
     return [homeTab, ...sportTabs];
-  }, [enabledSections]);
+  }, []);
 
   // Determine how many tabs to show on mobile (before "More")
   const mobileVisibleCount = 4; // Home + 3 sports
@@ -59,11 +55,10 @@ export const SportTabs: React.FC<SportTabsProps> = ({
 
   return (
     <div className="mb-4">
-      {/* Desktop: Horizontal scroll */}
+      {/* Desktop: Horizontal scroll with visible scrollbar */}
       <div
         ref={scrollContainerRef}
-        className="hidden md:flex gap-2 overflow-x-auto pb-2 scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="hidden md:flex gap-2 overflow-x-auto pb-2 custom-scrollbar"
       >
         {tabs.map(tab => (
           <button

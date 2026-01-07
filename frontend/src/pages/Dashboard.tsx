@@ -5,7 +5,7 @@ import { PinButton } from "../components/PinButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { useBets } from "../context/BetContext";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings, SectionId } from "../context/SettingsContext";
 import { useAuth } from "../context/AuthContext";
 import { PropTracker } from "../components/PropTracker";
 import { ParlayTracker } from "../components/ParlayTracker";
@@ -359,13 +359,15 @@ export const Dashboard = () => {
   }, [pendingBets, selectedSportFilter]);
 
   // Filter sections to render based on selected sport
-  const sectionsToRender = useMemo(() => {
+  const sectionsToRender = useMemo((): SectionId[] => {
     if (selectedSportFilter === 'home') return settings.homeScreen.sectionOrder;
-    // Only render the selected sport's section if it's enabled
-    return settings.homeScreen.sectionOrder.filter(
-      sectionId => sectionId === selectedSportFilter && isSectionEnabled(sectionId)
-    );
-  }, [selectedSportFilter, settings.homeScreen.sectionOrder, isSectionEnabled]);
+    // When a specific sport is selected, always show it (regardless of home screen settings)
+    // Check if it's a valid sport in LEAGUE_CONFIG
+    if (LEAGUE_CONFIG[selectedSportFilter]) {
+      return [selectedSportFilter as SectionId];
+    }
+    return [];
+  }, [selectedSportFilter, settings.homeScreen.sectionOrder]);
 
   // Combine all props that need tracking
   const allPropsToTrack = useMemo(() =>
@@ -779,11 +781,20 @@ export const Dashboard = () => {
   }, [leagueDates, nflWeekInfo]);
 
   // Fetch leagues in batches to avoid overwhelming the browser
-  // Only fetch leagues that are enabled in settings
+  // Fetch leagues that are either enabled in settings OR currently selected in sport filter
   useEffect(() => {
     const enabledLeagues = settings.homeScreen.sectionOrder.filter(id =>
       isSectionEnabled(id) && LEAGUE_CONFIG[id]
     );
+
+    // Also include the selected sport filter if it's not already in the list
+    const selectedSportId = selectedSportFilter !== 'home' && LEAGUE_CONFIG[selectedSportFilter]
+      ? selectedSportFilter
+      : null;
+
+    const allLeaguesToFetch = selectedSportId && !enabledLeagues.includes(selectedSportId as SectionId)
+      ? [...enabledLeagues, selectedSportId as SectionId]
+      : enabledLeagues;
 
     // Reduced batch size - each league makes 2 API calls, so batch of 2 = 4 concurrent requests
     const BATCH_SIZE = 2;
@@ -804,8 +815,8 @@ export const Dashboard = () => {
       try {
         // Filter to only leagues that need fetching
         const leaguesToFetch = forceRefresh
-          ? enabledLeagues
-          : enabledLeagues.filter(id => !isCacheValid(cache[id]));
+          ? allLeaguesToFetch
+          : allLeaguesToFetch.filter(id => !isCacheValid(cache[id]));
 
         if (leaguesToFetch.length === 0) return;
 
@@ -861,7 +872,7 @@ export const Dashboard = () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [fetchLeagueData, refreshInterval, settings.homeScreen.sectionOrder, isSectionEnabled]);
+  }, [fetchLeagueData, refreshInterval, settings.homeScreen.sectionOrder, isSectionEnabled, selectedSportFilter]);
 
   // Fetch NBA standings when NBA section is enabled
   useEffect(() => {
@@ -1429,7 +1440,6 @@ export const Dashboard = () => {
       <SportTabs
         selectedSport={selectedSportFilter}
         onSelectSport={handleSelectSport}
-        enabledSections={settings.homeScreen.enabledSections}
       />
 
       {/* Pending Bets Section - filtered by selected sport */}
@@ -1573,7 +1583,8 @@ export const Dashboard = () => {
 
       {/* Sports Sections - rendered based on settings order and enabled state */}
       {sectionsToRender.map(sectionId => {
-        if (!isSectionEnabled(sectionId)) return null;
+        // On home page, respect enabled sections; when filtered, always show
+        if (selectedSportFilter === 'home' && !isSectionEnabled(sectionId)) return null;
 
         const config = LEAGUE_CONFIG[sectionId];
 
