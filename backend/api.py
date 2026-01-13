@@ -1330,8 +1330,15 @@ def get_favorite_teams_results(teams: List[FavoriteTeam] = Body(...)):
                     results.append(team_result)
                     continue
 
+                # For soccer teams, use 'soccer/all' to get all competitions (league, cups, etc.)
+                # This ensures we show Champions League, FA Cup, etc. games for favorite teams
+                if sport_path.startswith('soccer/'):
+                    schedule_path = 'soccer/all'
+                else:
+                    schedule_path = sport_path
+
                 # Fetch team schedule (includes past and future games)
-                url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams/{team.id}/schedule"
+                url = f"{sports_fetcher.BASE_URL}/{schedule_path}/teams/{team.id}/schedule"
                 response = sports_fetcher.session.get(url, timeout=10)
 
                 if response.status_code != 200:
@@ -1438,7 +1445,7 @@ def get_favorite_teams_results(teams: List[FavoriteTeam] = Body(...)):
                         date_str = future_date.strftime('%Y%m%d')
 
                         try:
-                            scoreboard_url = f"{sports_fetcher.BASE_URL}/{sport_path}/scoreboard?dates={date_str}"
+                            scoreboard_url = f"{sports_fetcher.BASE_URL}/{schedule_path}/scoreboard?dates={date_str}"
                             scoreboard_response = sports_fetcher.session.get(scoreboard_url, timeout=5)
 
                             if scoreboard_response.status_code != 200:
@@ -1483,7 +1490,7 @@ def get_favorite_teams_results(teams: List[FavoriteTeam] = Body(...)):
                                             opponent_id = opponent_team.get('id', '')
                                             if opponent_id:
                                                 try:
-                                                    team_url = f"{sports_fetcher.BASE_URL}/{sport_path}/teams/{opponent_id}"
+                                                    team_url = f"{sports_fetcher.BASE_URL}/{schedule_path}/teams/{opponent_id}"
                                                     team_response = sports_fetcher.session.get(team_url, timeout=5)
                                                     if team_response.status_code == 200:
                                                         team_data = team_response.json()
