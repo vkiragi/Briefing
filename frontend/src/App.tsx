@@ -14,6 +14,7 @@ const AddBet = lazy(() => import('./pages/AddBet').then(m => ({ default: m.AddBe
 const BetHistory = lazy(() => import('./pages/BetHistory').then(m => ({ default: m.BetHistory })));
 const Analytics = lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
 const Help = lazy(() => import('./pages/Help').then(m => ({ default: m.Help })));
+const Blackjack = lazy(() => import('./pages/Blackjack').then(m => ({ default: m.Blackjack })));
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })));
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })));
 
@@ -50,6 +51,7 @@ function App() {
                                 <Route path="/add" element={<AddBet />} />
                                 <Route path="/history" element={<BetHistory />} />
                                 <Route path="/analytics" element={<Analytics />} />
+                                <Route path="/blackjack" element={<Blackjack />} />
                                 <Route path="/help" element={<Help />} />
                               </Routes>
                             </Suspense>

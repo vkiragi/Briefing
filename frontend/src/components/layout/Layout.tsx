@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, PlusCircle, List, BarChart2, Settings, User, HelpCircle } from "lucide-react";
+import { Home, PlusCircle, List, BarChart2, Settings, User, HelpCircle, Spade } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 import { SettingsModal } from "../SettingsModal";
@@ -12,6 +12,7 @@ const navItems = [
   { path: "/add", label: "Add Bet", icon: PlusCircle, isPrimary: true },
   { path: "/history", label: "History", icon: List },
   { path: "/analytics", label: "Analytics", icon: BarChart2 },
+  { path: "/blackjack", label: "Blackjack", icon: Spade },
 ];
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {

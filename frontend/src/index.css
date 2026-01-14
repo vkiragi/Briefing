@@ -295,3 +295,12 @@ textarea {
   background-color: #cbd5e1;
 }
 
+/* 3D Card Flip Utilities for Blackjack */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
