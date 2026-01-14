@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.0.1",
+    "@capacitor/core": "^8.0.1",
+    "@capacitor/ios": "^8.0.1",
     "@fontsource-variable/inter": "^5.2.8",
     "@supabase/supabase-js": "^2.87.0",
     "clsx": "^2.1.1",
