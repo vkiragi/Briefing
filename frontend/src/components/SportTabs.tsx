@@ -44,7 +44,8 @@ export const SportTabs: React.FC<SportTabsProps> = ({
   }, []);
 
   // Determine how many tabs to show on mobile (before "More")
-  const mobileVisibleCount = 4; // Home + 3 sports
+  // Show Home + 2 sports to leave room for "More" button without overflow
+  const mobileVisibleCount = 3;
   const visibleTabs = tabs.slice(0, mobileVisibleCount);
   const overflowTabs = tabs.slice(mobileVisibleCount);
 

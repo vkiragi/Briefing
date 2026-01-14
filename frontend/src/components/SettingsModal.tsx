@@ -298,15 +298,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-4 overflow-hidden"
       onClick={onClose}
       onWheel={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
     >
-      <Card className="max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <Card className="max-w-2xl w-full h-full md:h-auto md:max-h-[90vh] overflow-hidden flex flex-col rounded-none md:rounded-2xl pt-[calc(1rem+env(safe-area-inset-top))] md:pt-6" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-shrink-0">
-          <h2 className="text-2xl font-bold">Settings</h2>
+        <div className="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
+          <h2 className="text-xl md:text-2xl font-bold">Settings</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -316,44 +316,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 flex-shrink-0 flex-wrap">
+        <div className="flex gap-1.5 md:gap-2 mb-4 md:mb-6 flex-shrink-0">
           <button
             onClick={() => setActiveTab('general')}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 px-2.5 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors",
               activeTab === 'general'
                 ? "bg-accent text-background"
                 : "bg-card border border-border text-gray-400 hover:text-white"
             )}
           >
-            <Clock size={16} />
-            General
+            <Clock size={14} className="md:w-4 md:h-4" />
+            <span className="hidden xs:inline">General</span>
+            <span className="xs:hidden">General</span>
           </button>
           <button
             onClick={() => setActiveTab('homescreen')}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 px-2.5 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors",
               activeTab === 'homescreen'
                 ? "bg-accent text-background"
                 : "bg-card border border-border text-gray-400 hover:text-white"
             )}
           >
-            <LayoutGrid size={16} />
-            Home Screen
+            <LayoutGrid size={14} className="md:w-4 md:h-4" />
+            <span className="hidden xs:inline">Home Screen</span>
+            <span className="xs:hidden">Home</span>
           </button>
           <button
             onClick={() => setActiveTab('teams')}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 px-2.5 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors",
               activeTab === 'teams'
                 ? "bg-accent text-background"
                 : "bg-card border border-border text-gray-400 hover:text-white"
             )}
           >
-            <Star size={16} />
-            My Teams
+            <Star size={14} className="md:w-4 md:h-4" />
+            <span className="hidden xs:inline">My Teams</span>
+            <span className="xs:hidden">Teams</span>
             {settings.favoriteTeams.length > 0 && (
-              <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] md:text-xs bg-white/20 px-1 md:px-1.5 py-0.5 rounded-full">
                 {settings.favoriteTeams.length}
               </span>
             )}
@@ -363,16 +366,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {activeTab === 'general' && (
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {/* Rate Limiting Disclaimer */}
-              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <AlertCircle size={20} className="text-yellow-500 flex-shrink-0 mt-0.5" />
+              <div className="p-3 md:p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <div className="flex items-start gap-2 md:gap-3">
+                  <AlertCircle size={18} className="text-yellow-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-yellow-500 mb-1">API Rate Limiting</h3>
-                    <p className="text-sm text-gray-300 leading-relaxed">
-                      Setting refresh rates too low may result in temporary blocks.
-                      <span className="text-accent ml-1 font-medium">Recommended: 30-60 seconds.</span>
+                    <h3 className="font-semibold text-yellow-500 text-sm md:text-base mb-0.5 md:mb-1">API Rate Limiting</h3>
+                    <p className="text-xs md:text-sm text-gray-300 leading-relaxed">
+                      Low refresh rates may cause temporary blocks.
+                      <span className="text-accent ml-1 font-medium">Recommended: 30-60s</span>
                     </p>
                   </div>
                 </div>
@@ -380,11 +383,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Refresh Rate Setting */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-3">
+                <label className="block text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
                   Auto-Refresh Interval
                 </label>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-2 md:space-y-3">
+                  <div className="grid grid-cols-5 md:flex md:flex-wrap gap-1.5 md:gap-2">
                     {presetIntervals.map((preset) => (
                       <button
                         key={preset.value}
@@ -393,7 +396,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setCustomSeconds('');
                         }}
                         className={cn(
-                          "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+                          "px-2 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-colors border",
                           localInterval === preset.value && !customSeconds
                             ? "bg-accent text-background border-accent"
                             : "bg-card border-border text-gray-400 hover:text-white hover:border-gray-600"
@@ -404,7 +407,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     ))}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-400">Custom:</span>
+                    <span className="text-xs md:text-sm text-gray-400">Custom:</span>
                     <input
                       type="number"
                       min="1"
@@ -417,87 +420,87 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setLocalInterval(parseInt(val) * 1000);
                         }
                       }}
-                      placeholder="seconds"
-                      className="w-24 px-3 py-2 bg-card border border-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent"
+                      placeholder="sec"
+                      className="w-20 md:w-24 px-2 md:px-3 py-1.5 md:py-2 bg-card border border-border rounded-lg text-xs md:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent"
                     />
-                    <span className="text-sm text-gray-500">seconds</span>
+                    <span className="text-xs md:text-sm text-gray-500">sec</span>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Current: {localInterval / 1000} seconds
+                    Current: {localInterval / 1000}s
                   </p>
                 </div>
               </div>
 
               {/* Display Options */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-3">
+                <label className="block text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
                   Display Options
                 </label>
-                <div className="space-y-3">
+                <div className="space-y-2 md:space-y-3">
                   {/* Theme Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between p-2.5 md:p-3 bg-card border border-border rounded-lg">
+                    <div className="flex items-center gap-2 md:gap-3">
                       {settings.theme === 'dark' ? (
-                        <Moon size={18} className="text-gray-400" />
+                        <Moon size={16} className="text-gray-400 md:w-[18px] md:h-[18px]" />
                       ) : (
-                        <Sun size={18} className="text-yellow-500" />
+                        <Sun size={16} className="text-yellow-500 md:w-[18px] md:h-[18px]" />
                       )}
                       <div>
-                        <span className="text-sm font-medium">Theme</span>
-                        <p className="text-xs text-gray-500">Switch between dark and light mode</p>
+                        <span className="text-xs md:text-sm font-medium">Theme</span>
+                        <p className="text-[10px] md:text-xs text-gray-500">Dark / Light mode</p>
                       </div>
                     </div>
                     <button
                       onClick={toggleTheme}
                       className={cn(
-                        "relative w-14 h-8 rounded-full transition-colors",
+                        "relative w-12 md:w-14 h-7 md:h-8 rounded-full transition-colors flex-shrink-0",
                         settings.theme === 'dark' ? "bg-gray-700" : "bg-accent"
                       )}
                     >
                       <span
                         className={cn(
-                          "absolute top-1 flex items-center justify-center w-6 h-6 bg-white rounded-full shadow-md transition-transform",
-                          settings.theme === 'dark' ? "left-1" : "translate-x-6 left-1"
+                          "absolute top-1 flex items-center justify-center w-5 md:w-6 h-5 md:h-6 bg-white rounded-full shadow-md transition-transform",
+                          settings.theme === 'dark' ? "left-1" : "translate-x-5 md:translate-x-6 left-1"
                         )}
                       >
                         {settings.theme === 'dark' ? (
-                          <Moon size={14} className="text-gray-700" />
+                          <Moon size={12} className="text-gray-700 md:w-3.5 md:h-3.5" />
                         ) : (
-                          <Sun size={14} className="text-yellow-500" />
+                          <Sun size={12} className="text-yellow-500 md:w-3.5 md:h-3.5" />
                         )}
                       </span>
                     </button>
                   </div>
 
-                  <label className="flex items-center justify-between p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Eye size={18} className="text-gray-400" />
+                  <label className="flex items-center justify-between p-2.5 md:p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <Eye size={16} className="text-gray-400 md:w-[18px] md:h-[18px]" />
                       <div>
-                        <span className="text-sm font-medium">Show Prop Tracker</span>
-                        <p className="text-xs text-gray-500">Display live prop bet tracking on dashboard</p>
+                        <span className="text-xs md:text-sm font-medium">Show Prop Tracker</span>
+                        <p className="text-[10px] md:text-xs text-gray-500">Live prop tracking</p>
                       </div>
                     </div>
                     <input
                       type="checkbox"
                       checked={settings.showPropTracker}
                       onChange={togglePropTracker}
-                      className="w-5 h-5 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0"
+                      className="w-4 h-4 md:w-5 md:h-5 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0 flex-shrink-0"
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <LayoutGrid size={18} className="text-gray-400" />
+                  <label className="flex items-center justify-between p-2.5 md:p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <LayoutGrid size={16} className="text-gray-400 md:w-[18px] md:h-[18px]" />
                       <div>
-                        <span className="text-sm font-medium">Compact Mode</span>
-                        <p className="text-xs text-gray-500">Show more content with smaller cards</p>
+                        <span className="text-xs md:text-sm font-medium">Compact Mode</span>
+                        <p className="text-[10px] md:text-xs text-gray-500">Smaller cards</p>
                       </div>
                     </div>
                     <input
                       type="checkbox"
                       checked={settings.compactMode}
                       onChange={toggleCompactMode}
-                      className="w-5 h-5 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0"
+                      className="w-4 h-4 md:w-5 md:h-5 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0 flex-shrink-0"
                     />
                   </label>
                 </div>
@@ -506,15 +509,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
 
           {activeTab === 'homescreen' && (
-            <div className="space-y-6">
-              <p className="text-sm text-gray-400">
-                Choose which sports sections to show on your home screen.
+            <div className="space-y-3 md:space-y-6">
+              <p className="text-xs md:text-sm text-gray-400">
+                Choose which sports to show.
                 <span className="hidden md:inline"> Drag to reorder.</span>
-                <span className="md:hidden"> Hold and drag to reorder.</span>
+                <span className="md:hidden"> Hold to reorder.</span>
               </p>
 
               {/* Sports Sections */}
-              <div className="space-y-2">
+              <div className="space-y-1.5 md:space-y-2">
                 {orderedSections.map((section) => (
                   <div
                     key={section.id}
@@ -530,7 +533,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onTouchEnd={handleTouchEnd}
                     onTouchCancel={handleTouchEnd}
                     className={cn(
-                      "flex items-center justify-between p-3 bg-card border rounded-lg transition-all select-none",
+                      "flex items-center justify-between p-2.5 md:p-3 bg-card border rounded-lg transition-all select-none",
                       "cursor-move touch-none",
                       draggedItem === section.id || touchDrag.draggedId === section.id
                         ? "border-accent bg-accent/10 scale-[1.02] shadow-lg z-10"
@@ -542,16 +545,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         : undefined,
                     }}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-3">
                       <GripVertical
-                        size={18}
+                        size={16}
                         className={cn(
-                          "transition-colors",
+                          "transition-colors md:w-[18px] md:h-[18px]",
                           touchDrag.draggedId === section.id ? "text-accent" : "text-gray-500"
                         )}
                       />
-                      <span className="text-lg">{section.icon}</span>
-                      <span className="text-sm font-medium">{section.label}</span>
+                      <span className="text-base md:text-lg">{section.icon}</span>
+                      <span className="text-xs md:text-sm font-medium">{section.label}</span>
                     </div>
                     <label
                       className="relative inline-flex items-center cursor-pointer"
@@ -564,7 +567,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onChange={() => toggleSection(section.id)}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                      <div className="w-10 md:w-11 h-5 md:h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 md:after:h-5 after:w-4 md:after:w-5 after:transition-all peer-checked:bg-accent"></div>
                     </label>
                   </div>
                 ))}
@@ -578,7 +581,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       if (!isSectionEnabled(s.id)) toggleSection(s.id);
                     });
                   }}
-                  className="px-3 py-2 text-xs font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
+                  className="px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
                 >
                   Enable All
                 </button>
@@ -588,7 +591,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       if (isSectionEnabled(s.id)) toggleSection(s.id);
                     });
                   }}
-                  className="px-3 py-2 text-xs font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
+                  className="px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
                 >
                   Disable All
                 </button>
@@ -597,24 +600,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
 
           {activeTab === 'teams' && (
-            <div className="space-y-6">
-              <p className="text-sm text-gray-400">
-                Add your favorite teams to see their latest results and upcoming games at the top of your dashboard.
+            <div className="space-y-4 md:space-y-6">
+              <p className="text-xs md:text-sm text-gray-400">
+                Add favorite teams to see their games first.
               </p>
 
               {/* Team Search */}
               <div className="relative">
                 <div className="relative">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 md:w-[18px] md:h-[18px]" />
                   <input
                     type="text"
                     value={teamSearchQuery}
                     onChange={(e) => setTeamSearchQuery(e.target.value)}
                     placeholder="Search for a team..."
-                    className="w-full pl-10 pr-10 py-3 bg-card border border-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent"
+                    className="w-full pl-9 md:pl-10 pr-9 md:pr-10 py-2.5 md:py-3 bg-card border border-border rounded-lg text-sm md:text-base text-white placeholder-gray-500 focus:outline-none focus:border-accent"
                   />
                   {isSearching && (
-                    <Loader2 size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 animate-spin" />
+                    <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 animate-spin md:w-[18px] md:h-[18px]" />
                   )}
                 </div>
 
@@ -670,21 +673,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Browse by League */}
               <div>
-                <h4 className="text-sm font-medium text-gray-400 mb-3">
+                <h4 className="text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
                   Or browse by league
                 </h4>
 
                 {!selectedSport ? (
                   /* Sport/League Grid */
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 md:grid-cols-3 gap-1.5 md:gap-2">
                     {TEAM_SPORTS.map((sport) => (
                       <button
                         key={sport.id}
                         onClick={() => setSelectedSport(sport.id)}
-                        className="flex flex-col items-center gap-1 p-3 bg-card border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors"
+                        className="flex flex-col items-center gap-0.5 md:gap-1 p-2 md:p-3 bg-card border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors"
                       >
-                        <span className="text-xl">{sport.icon}</span>
-                        <span className="text-xs font-medium text-gray-300 text-center leading-tight">
+                        <span className="text-base md:text-xl">{sport.icon}</span>
+                        <span className="text-[9px] md:text-xs font-medium text-gray-300 text-center leading-tight truncate w-full">
                           {sport.label}
                         </span>
                       </button>
@@ -764,34 +767,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Current Favorite Teams */}
               {settings.favoriteTeams.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">
+                  <h4 className="text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
                     Your Teams ({settings.favoriteTeams.length}/10)
                   </h4>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 md:space-y-2">
                     {settings.favoriteTeams.map((team) => (
                       <div
                         key={`${team.sport}-${team.id}`}
-                        className="flex items-center justify-between p-3 bg-card border border-border rounded-lg"
+                        className="flex items-center justify-between p-2 md:p-3 bg-card border border-border rounded-lg"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 md:gap-3">
                           {team.logo && (
-                            <img src={team.logo} alt="" className="w-8 h-8 object-contain" />
+                            <img src={team.logo} alt="" className="w-6 h-6 md:w-8 md:h-8 object-contain" />
                           )}
                           <div>
-                            <div className="text-sm font-medium text-white">
+                            <div className="text-xs md:text-sm font-medium text-white">
                               {team.name}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-[10px] md:text-xs text-gray-500">
                               {team.sportDisplay}
                             </div>
                           </div>
                         </div>
                         <button
                           onClick={() => removeFavoriteTeam(team.id)}
-                          className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                          className="p-1 md:p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                           title="Remove team"
                         >
-                          <X size={16} />
+                          <X size={14} className="md:w-4 md:h-4" />
                         </button>
                       </div>
                     ))}
@@ -800,10 +803,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
 
               {settings.favoriteTeams.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Star size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No favorite teams yet</p>
-                  <p className="text-xs mt-1">Search above to add your teams</p>
+                <div className="text-center py-6 md:py-8 text-gray-500">
+                  <Star size={28} className="mx-auto mb-2 opacity-50 md:w-8 md:h-8" />
+                  <p className="text-xs md:text-sm">No favorite teams yet</p>
+                  <p className="text-[10px] md:text-xs mt-1">Search above to add your teams</p>
                 </div>
               )}
             </div>
@@ -811,24 +814,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-between gap-3 mt-6 pt-6 border-t border-border flex-shrink-0">
+        <div className="flex flex-col md:flex-row md:justify-between gap-3 mt-4 md:mt-6 pt-4 md:pt-6 border-t border-border flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <button
             onClick={resetToDefaults}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors order-3 md:order-1"
           >
             <RotateCcw size={16} />
             Reset to Defaults
           </button>
-          <div className="flex gap-3">
+          <div className="flex gap-2 md:gap-3 order-1 md:order-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-border text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
+              className="flex-1 md:flex-initial px-4 py-2.5 md:py-2 rounded-lg border border-border text-gray-400 hover:text-white hover:border-gray-600 transition-colors text-sm md:text-base"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 rounded-lg bg-accent text-background font-medium hover:bg-accent/90 transition-colors"
+              className="flex-1 md:flex-initial px-4 py-2.5 md:py-2 rounded-lg bg-accent text-background font-medium hover:bg-accent/90 transition-colors text-sm md:text-base"
             >
               Save Settings
             </button>

@@ -21,7 +21,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen text-white overflow-x-hidden">
       {/* Desktop Sidebar */}
       <nav className="hidden md:flex fixed left-0 top-0 bottom-0 w-24 flex-col items-center py-8 bg-card border-r border-border z-50">
         <div className="mb-8 flex flex-col items-center">
@@ -123,7 +123,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </nav>
 
       {/* Mobile Header with Profile Button */}
-      <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card/80 backdrop-blur-md border-b border-border z-50 flex items-center justify-between px-4">
+      <header className="md:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-50 flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] h-[calc(3.5rem+env(safe-area-inset-top))]">
         <div className="flex items-center">
           <span className="text-lg font-semibold tracking-tight text-white">
             <span className="text-accent">B</span>S<span className="text-accent">B</span>
@@ -157,12 +157,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </header>
 
       {/* Main Content */}
-      <main className="w-full min-h-screen pt-14 pb-32 md:pt-0 md:pb-0 md:pl-36 md:pr-12 relative">
+      <main className="w-full min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-0 md:pb-0 md:pl-36 md:pr-12 relative overflow-x-hidden">
         {children}
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-md border-t border-border z-50 safe-area-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around items-center h-16 px-2">
           {navItems.map((item) => (
             <Link
@@ -176,28 +176,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               )}
             >
               {item.isPrimary ? (
-                <div className={cn(
-                  "flex flex-col items-center justify-center transition-all duration-300",
-                  location.pathname === item.path
-                    ? "shadow-[0_2px_8px_rgba(0,255,133,0.2)]"
-                    : ""
-                )}>
+                <div className="flex flex-col items-center justify-center">
                   <item.icon size={22} className={cn(
                     "mb-1 transition-colors duration-300",
-                    location.pathname === item.path ? "text-green-500" : "text-blue-500"
+                    location.pathname === item.path ? "text-accent" : "text-blue-500"
                   )} />
                   <span className={cn(
                     "text-[10px] font-medium transition-colors duration-300",
-                    location.pathname === item.path ? "text-green-500" : "text-blue-500"
+                    location.pathname === item.path ? "text-accent" : "text-blue-500"
                   )}>{item.label}</span>
                 </div>
               ) : (
-                <div className={cn(
-                  "flex flex-col items-center justify-center transition-all duration-300",
-                  location.pathname === item.path
-                    ? "shadow-[0_2px_8px_rgba(0,255,133,0.2)]"
-                    : ""
-                )}>
+                <div className="flex flex-col items-center justify-center">
                   <item.icon size={22} className="mb-1" />
                   <span className="text-[10px] font-medium">{item.label}</span>
                 </div>

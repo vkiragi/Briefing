@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
   server: {
     // Allow loading from your API server
     allowNavigation: ['*.fly.dev', '*.supabase.co']
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 

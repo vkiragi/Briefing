@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
+import { App } from '@capacitor/app';
 
 type AuthContextType = {
   user: User | null;
@@ -19,6 +22,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
+    // Handle deep link callback from OAuth (native only)
+    const handleDeepLink = async (url: string) => {
+      if (!url.includes('auth/callback')) return;
+
+      // Parse tokens from the URL fragment
+      const hashIndex = url.indexOf('#');
+      if (hashIndex === -1) return;
+
+      const hashParams = new URLSearchParams(url.substring(hashIndex + 1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error) {
+          console.error('Failed to set session from deep link:', error);
+        } else if (isMounted) {
+          setSession(data?.session ?? null);
+        }
+
+        // Close the in-app browser
+        await Browser.close();
+      }
+    };
+
+    // Listen for app URL open events (native)
+    let appUrlListener: { remove: () => void } | undefined;
+    if (Capacitor.isNativePlatform()) {
+      App.addListener('appUrlOpen', ({ url }) => {
+        handleDeepLink(url);
+      }).then((listener) => {
+        appUrlListener = listener;
+      });
+    }
+
     const initAuth = async () => {
       // Set up auth state listener
       const { data: listener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -27,7 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       });
 
-      // Check if we have hash params (OAuth callback)
+      // Check if we have hash params (OAuth callback) - for web
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
@@ -71,23 +113,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       isMounted = false;
       listenerCleanup?.subscription.unsubscribe();
+      appUrlListener?.remove();
     };
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+    try {
+      const isNative = Capacitor.isNativePlatform();
+
+      // Use custom URL scheme for native apps, web origin for browser
+      const redirectTo = isNative
+        ? 'com.briefing.app://auth/callback'
+        : `${window.location.origin}/`;
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: isNative, // Don't auto-redirect on native
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
-      },
-    });
-    if (error) {
-      console.error('Google sign-in failed', error);
-      throw error;
+      });
+
+      if (error) {
+        console.error('Google sign-in failed', error);
+        throw error;
+      }
+
+      // On native, open the OAuth URL in the in-app browser
+      if (isNative && data?.url) {
+        await Browser.open({ url: data.url });
+      }
+    } catch (err) {
+      console.error('Sign in error:', err);
+      // Show error on native for debugging
+      if (Capacitor.isNativePlatform()) {
+        alert(`Sign in error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      throw err;
     }
   }, []);
 

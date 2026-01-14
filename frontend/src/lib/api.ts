@@ -28,10 +28,17 @@ export const api = {
   },
 
   getScores: async (sport: string, limit = 10, live = false, date?: string) => {
-    let url = `${API_BASE_URL}/sports/scores?sport=${sport}&limit=${limit}&live=${live}`;
-    if (date) {
-      url += `&date=${date}`;
+    const params = new URLSearchParams();
+    params.set('sport', sport);
+    params.set('limit', String(limit));
+    // Only add live param if true (false is the default on backend)
+    if (live) {
+      params.set('live', 'true');
     }
+    if (date) {
+      params.set('date', date);
+    }
+    const url = `${API_BASE_URL}/sports/scores?${params.toString()}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to fetch scores for ${sport}`);
     return response.json() as Promise<any[]>;
