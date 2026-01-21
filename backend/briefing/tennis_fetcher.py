@@ -114,7 +114,7 @@ class TennisFetcherMixin:
         if not (sport.lower().startswith('tennis-') or sport.lower() == 'tennis'):
             return super().fetch_scores(sport, limit, date=date)
 
-        return self._fetch_tennis_scores_from_header(sport, limit)
+        return self._fetch_tennis_scores_from_header(sport, limit, date=date)
 
     def fetch_live(self, sport: str, limit: int = 10) -> List[Dict]:
         """
@@ -147,9 +147,9 @@ class TennisFetcherMixin:
             return super().fetch_schedule(sport, limit, date=date)
 
         league = 'wta' if 'wta' in sport.lower() else 'atp'
-        return self._fetch_tennis_upcoming_tournaments(league, limit)
+        return self._fetch_tennis_upcoming_tournaments(league, limit, date=date)
 
-    def _fetch_tennis_scores_from_header(self, sport: str, limit: int = 10) -> List[Dict]:
+    def _fetch_tennis_scores_from_header(self, sport: str, limit: int = 10, date: Optional[str] = None) -> List[Dict]:
         """
         Fetch tennis scores using the header API endpoint.
         Tennis data structure is different from team sports.
@@ -169,6 +169,8 @@ class TennisFetcherMixin:
             match_type_filter = 'doubles'
 
         url = f"https://site.api.espn.com/apis/v2/scoreboard/header?sport=tennis&league={league}"
+        if date:
+            url += f"&dates={date}"
 
         try:
             response = self.session.get(url, timeout=self.timeout)
@@ -269,10 +271,10 @@ class TennisFetcherMixin:
 
             # If no matches found, try to get upcoming tournaments
             if not games:
-                games = self._fetch_tennis_upcoming_tournaments(league, limit)
+                games = self._fetch_tennis_upcoming_tournaments(league, limit, date=date)
             else:
                 # Also fetch upcoming tournaments to show alongside current matches
-                upcoming_tournaments = self._fetch_tennis_upcoming_tournaments(league, limit)
+                upcoming_tournaments = self._fetch_tennis_upcoming_tournaments(league, limit, date=date)
                 if upcoming_tournaments:
                     # Deduplicate by checking tournament name
                     existing_tournaments = {g.get('tournament') for g in games if g.get('tournament')}
@@ -289,12 +291,14 @@ class TennisFetcherMixin:
             print(f"Fetch tennis scores parsing error for {sport}: {e}")
             return []
 
-    def _fetch_tennis_upcoming_tournaments(self, league: str, limit: int = 10) -> List[Dict]:
+    def _fetch_tennis_upcoming_tournaments(self, league: str, limit: int = 10, date: Optional[str] = None) -> List[Dict]:
         """
         Fetch upcoming tennis tournaments.
         """
         sport_path = f"tennis/{league}"
         url = f"{self.BASE_URL}/{sport_path}/scoreboard"
+        if date:
+            url += f"?dates={date}"
 
         try:
             response = self.session.get(url, timeout=self.timeout)
