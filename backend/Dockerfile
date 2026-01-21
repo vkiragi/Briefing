@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the actual project code
 COPY briefing ./briefing
+COPY routes ./routes
 COPY api.py ./
 COPY setup.py ./
 
