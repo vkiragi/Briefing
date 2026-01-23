@@ -820,7 +820,7 @@ export const AddBet = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen overflow-y-auto md:h-screen md:overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
+      className="flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
       {/* Header with Step Indicator */}
       <div className="flex-shrink-0 mb-6">
@@ -897,7 +897,7 @@ export const AddBet = () => {
       </div>
 
       {/* Step Content */}
-      <div className="flex-1 overflow-y-auto md:overflow-hidden">
+      <div>
         <AnimatePresence mode="wait">
           {/* Step 0: Mode Selection (Single vs Parlay) */}
           {currentStep === 'mode' && (
@@ -1011,7 +1011,7 @@ export const AddBet = () => {
                   {loadingGames && <Loader2 className="animate-spin text-accent" size={20} />}
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                <div className="space-y-4">
                   {loadingGames ? (
                     <div className="space-y-3">
                       {[1,2,3,4].map(i => (
@@ -1119,7 +1119,6 @@ export const AddBet = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="h-full overflow-y-auto"
             >
               <Card className="p-6">
                 {/* Selected Game Summary */}

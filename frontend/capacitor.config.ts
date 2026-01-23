@@ -5,13 +5,14 @@ const config: CapacitorConfig = {
   appName: 'Briefing',
   webDir: 'dist',
   ios: {
-    contentInset: 'automatic',
-    backgroundColor: '#000000',
+    contentInset: 'always',
+    backgroundColor: '#141417',
     preferredContentMode: 'mobile'
   },
   server: {
     // Allow loading from your API server
-    allowNavigation: ['*.fly.dev', '*.supabase.co']
+    allowNavigation: ['*.fly.dev', '*.supabase.co'],
+    cleartext: true
   },
   plugins: {
     CapacitorHttp: {

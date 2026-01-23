@@ -1,9 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Gift, Volume2, VolumeX } from 'lucide-react';
-import { PlayingCard, createDeck, shuffleDeck, calculateHandValue, isBlackjack } from './Card';
-import { Hand } from './Hand';
-import { Chip, ChipStack } from './Chip';
+import { RotateCcw } from 'lucide-react';
+import { PlayingCard, Card, createDeck, shuffleDeck, calculateHandValue, isBlackjack } from './Card';
 import { useChips } from '../../context/ChipsContext';
 import { cn } from '../../lib/utils';
 
@@ -11,6 +9,55 @@ type GamePhase = 'betting' | 'playing' | 'dealerTurn' | 'result';
 type GameResult = 'win' | 'lose' | 'push' | 'blackjack' | null;
 
 const BETTING_AMOUNTS = [10, 25, 50, 100];
+
+// Confetti component
+const Confetti = () => {
+  const pieces = useMemo(() =>
+    Array.from({ length: 50 }).map((_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      delay: Math.random() * 0.5,
+      duration: 2 + Math.random() * 2,
+      size: 6 + Math.random() * 8,
+      color: ['#00FF85', '#4ECDC4', '#FFE66D', '#95E1D3', '#00CC6A', '#00FF85', '#FCBAD3'][Math.floor(Math.random() * 7)],
+      rotation: Math.random() * 360,
+      shape: Math.random() > 0.5 ? 'square' : 'circle',
+    }))
+  , []);
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
+      {pieces.map((piece) => (
+        <motion.div
+          key={piece.id}
+          initial={{
+            y: -20,
+            x: `${piece.x}vw`,
+            rotate: 0,
+            opacity: 1
+          }}
+          animate={{
+            y: '100vh',
+            rotate: piece.rotation + 720,
+            opacity: [1, 1, 0]
+          }}
+          transition={{
+            duration: piece.duration,
+            delay: piece.delay,
+            ease: 'linear',
+          }}
+          style={{
+            position: 'absolute',
+            width: piece.size,
+            height: piece.size,
+            backgroundColor: piece.color,
+            borderRadius: piece.shape === 'circle' ? '50%' : '2px',
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 export const BlackjackGame = () => {
   const { chips, addChips, removeChips, resetChips } = useChips();
@@ -21,21 +68,13 @@ export const BlackjackGame = () => {
   const [currentBet, setCurrentBet] = useState(0);
   const [gamePhase, setGamePhase] = useState<GamePhase>('betting');
   const [result, setResult] = useState<GameResult>(null);
-  const [message, setMessage] = useState('Place your bet');
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lastWin, setLastWin] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Initialize deck
   useEffect(() => {
     setDeck(shuffleDeck(createDeck()));
   }, []);
-
-  const drawCard = useCallback((faceUp: boolean = true): PlayingCard | null => {
-    if (deck.length === 0) return null;
-
-    const card = { ...deck[0], faceUp };
-    setDeck(prev => prev.slice(1));
-    return card;
-  }, [deck]);
 
   const placeBet = (amount: number) => {
     if (chips >= amount && gamePhase === 'betting') {
@@ -51,55 +90,46 @@ export const BlackjackGame = () => {
     }
   };
 
-  const allIn = () => {
-    if (gamePhase === 'betting' && chips > 0) {
-      setCurrentBet(prev => prev + chips);
-      removeChips(chips);
-    }
-  };
-
   const startGame = useCallback(() => {
     if (currentBet === 0) return;
 
-    // Ensure we have enough cards
     let currentDeck = deck;
     if (currentDeck.length < 10) {
       currentDeck = shuffleDeck(createDeck());
       setDeck(currentDeck);
     }
 
-    // Deal initial cards
     const pCard1 = { ...currentDeck[0], faceUp: true };
     const dCard1 = { ...currentDeck[1], faceUp: true };
     const pCard2 = { ...currentDeck[2], faceUp: true };
-    const dCard2 = { ...currentDeck[3], faceUp: false }; // Dealer's hole card
+    const dCard2 = { ...currentDeck[3], faceUp: false };
 
     setDeck(currentDeck.slice(4));
     setPlayerHand([pCard1, pCard2]);
     setDealerHand([dCard1, dCard2]);
     setGamePhase('playing');
     setResult(null);
-    setMessage('Your turn');
+    setLastWin(0);
 
-    // Check for blackjack
     const playerCards = [pCard1, pCard2];
     const dealerCards = [dCard1, { ...dCard2, faceUp: true }];
 
     if (isBlackjack(playerCards)) {
-      // Reveal dealer's card
       setTimeout(() => {
         setDealerHand([dCard1, { ...dCard2, faceUp: true }]);
 
         if (isBlackjack(dealerCards)) {
           setGamePhase('result');
           setResult('push');
-          setMessage('Both Blackjack! Push');
           addChips(currentBet);
         } else {
           setGamePhase('result');
           setResult('blackjack');
-          setMessage('Blackjack! You win!');
-          addChips(Math.floor(currentBet * 2.5)); // 3:2 payout
+          const winAmount = Math.floor(currentBet * 2.5);
+          addChips(winAmount);
+          setLastWin(winAmount - currentBet);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 3000);
         }
       }, 800);
     }
@@ -117,8 +147,6 @@ export const BlackjackGame = () => {
     if (handValue > 21) {
       setGamePhase('result');
       setResult('lose');
-      setMessage('Bust! You lose');
-      // Reveal dealer's hole card
       setDealerHand(prev => prev.map(c => ({ ...c, faceUp: true })));
     } else if (handValue === 21) {
       stand();
@@ -129,9 +157,6 @@ export const BlackjackGame = () => {
     if (gamePhase !== 'playing') return;
 
     setGamePhase('dealerTurn');
-    setMessage("Dealer's turn");
-
-    // Reveal dealer's hole card
     setDealerHand(prev => prev.map(c => ({ ...c, faceUp: true })));
   }, [gamePhase]);
 
@@ -139,11 +164,9 @@ export const BlackjackGame = () => {
     if (gamePhase !== 'playing' || playerHand.length !== 2) return;
     if (chips < currentBet) return;
 
-    // Double the bet
     removeChips(currentBet);
     setCurrentBet(prev => prev * 2);
 
-    // Draw one card and stand
     const newCard = { ...deck[0], faceUp: true };
     const newHand = [...playerHand, newCard];
     setDeck(prev => prev.slice(1));
@@ -153,11 +176,9 @@ export const BlackjackGame = () => {
     if (handValue > 21) {
       setGamePhase('result');
       setResult('lose');
-      setMessage('Bust! You lose');
       setDealerHand(prev => prev.map(c => ({ ...c, faceUp: true })));
     } else {
       setGamePhase('dealerTurn');
-      setMessage("Dealer's turn");
       setDealerHand(prev => prev.map(c => ({ ...c, faceUp: true })));
     }
   }, [gamePhase, playerHand, chips, currentBet, deck, removeChips]);
@@ -169,18 +190,16 @@ export const BlackjackGame = () => {
     const dealerValue = calculateHandValue(dealerHand);
 
     if (dealerValue < 17) {
-      // Dealer hits
       const timer = setTimeout(() => {
         if (deck.length === 0) return;
 
         const newCard = { ...deck[0], faceUp: true };
         setDeck(prev => prev.slice(1));
         setDealerHand(prev => [...prev, newCard]);
-      }, 700);
+      }, 600);
 
       return () => clearTimeout(timer);
     } else {
-      // Dealer stands, determine winner
       const playerValue = calculateHandValue(playerHand);
 
       setTimeout(() => {
@@ -188,21 +207,25 @@ export const BlackjackGame = () => {
 
         if (dealerValue > 21) {
           setResult('win');
-          setMessage('Dealer busts! You win!');
-          addChips(currentBet * 2);
+          const winAmount = currentBet * 2;
+          addChips(winAmount);
+          setLastWin(winAmount - currentBet);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 3000);
         } else if (playerValue > dealerValue) {
           setResult('win');
-          setMessage('You win!');
-          addChips(currentBet * 2);
+          const winAmount = currentBet * 2;
+          addChips(winAmount);
+          setLastWin(winAmount - currentBet);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 3000);
         } else if (playerValue < dealerValue) {
           setResult('lose');
-          setMessage('Dealer wins');
         } else {
           setResult('push');
-          setMessage('Push - Tie game');
           addChips(currentBet);
         }
-      }, 500);
+      }, 400);
     }
   }, [gamePhase, dealerHand, playerHand, deck, currentBet, addChips]);
 
@@ -212,196 +235,267 @@ export const BlackjackGame = () => {
     setCurrentBet(0);
     setGamePhase('betting');
     setResult(null);
-    setMessage('Place your bet');
+    setLastWin(0);
 
-    // Reshuffle if low on cards
     if (deck.length < 15) {
       setDeck(shuffleDeck(createDeck()));
     }
   };
 
+  const playerScore = calculateHandValue(playerHand);
+  const dealerScore = calculateHandValue(dealerHand.filter(c => c.faceUp));
   const canDoubleDown = gamePhase === 'playing' && playerHand.length === 2 && chips >= currentBet;
 
+  const getResultMessage = () => {
+    switch (result) {
+      case 'blackjack': return 'BLACKJACK!';
+      case 'win': return 'YOU WIN';
+      case 'lose': return playerScore > 21 ? 'BUST' : 'YOU LOSE';
+      case 'push': return 'PUSH';
+      default: return '';
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-card rounded-2xl overflow-hidden border border-border">
+      {/* Confetti */}
+      {showConfetti && <Confetti />}
+
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black/20 rounded-t-xl">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-yellow-400 text-lg">$</span>
-            <motion.span
-              key={chips}
-              initial={{ scale: 1.2 }}
-              animate={{ scale: 1 }}
-              className="text-xl font-bold text-white"
-            >
-              {chips.toLocaleString()}
-            </motion.span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-accent/10 text-accent px-3 py-1.5 rounded-full">
+            <span className="text-lg">♠</span>
+            <span className="font-bold">{currentBet || '--'}</span>
           </div>
-          {chips === 0 && gamePhase === 'betting' && (
-            <button
-              onClick={resetChips}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
-            >
-              <Gift size={14} />
-              Free Chips
-            </button>
+          {currentBet > 0 && gamePhase === 'betting' && (
+            <div className="bg-accent/20 text-accent text-xs px-2 py-1 rounded-full font-medium">
+              ×2
+            </div>
           )}
         </div>
-        <button
-          onClick={() => setSoundEnabled(!soundEnabled)}
-          className="p-2 text-gray-400 hover:text-white transition-colors"
-        >
-          {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-        </button>
-      </div>
 
-      {/* Game Table */}
-      <div className="flex-1 flex flex-col items-center justify-between py-4 md:py-6 px-2 bg-gradient-to-b from-emerald-900/50 to-emerald-950/50 relative overflow-hidden">
-        {/* Felt pattern overlay */}
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,transparent_0%,black_100%)]" />
-
-        {/* Dealer Section */}
-        <div className="relative z-10 w-full flex flex-col items-center">
-          <Hand
-            cards={dealerHand}
-            label="Dealer"
-            hideScore={gamePhase === 'playing' || gamePhase === 'betting'}
-            isDealer
-          />
+        <div className="text-center">
+          <div className="text-xl font-black text-white tracking-tight">BLK</div>
+          <div className="text-xl font-black text-accent tracking-tight -mt-1">JCK</div>
         </div>
 
-        {/* Current Bet Display */}
-        <div className="relative z-10 flex flex-col items-center gap-2">
-          {currentBet > 0 && (
+        <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-full border border-border">
+          <span className="text-lg text-accent">♠</span>
+          <span className="font-bold text-white">{chips.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Game Area */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-8 relative">
+        {/* Dealer Hand */}
+        {dealerHand.length > 0 && (
+          <div className="relative">
+            <div className="flex items-center justify-center">
+              {dealerHand.map((card, index) => (
+                <div
+                  key={index}
+                  style={{ marginLeft: index > 0 ? '-24px' : '0' }}
+                >
+                  <Card card={card} index={index} />
+                </div>
+              ))}
+            </div>
+            {/* Score badge */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="flex flex-col items-center gap-1"
+              className={cn(
+                "absolute -right-3 top-0 min-w-[32px] h-8 px-2 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm",
+                result === 'win' || result === 'blackjack' ? "bg-red-500 text-white line-through" : "bg-white/10 text-white border border-border"
+              )}
             >
-              <ChipStack amount={currentBet} />
-              <span className="text-sm text-yellow-400 font-medium">${currentBet}</span>
+              {gamePhase === 'playing' || gamePhase === 'betting' ? '?' : dealerScore}
+            </motion.div>
+          </div>
+        )}
+
+        {/* Result Display */}
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className={cn(
+                "text-4xl font-black tracking-tight",
+                result === 'win' || result === 'blackjack' ? "text-accent" :
+                result === 'lose' ? "text-red-500" : "text-gray-400"
+              )}>
+                {getResultMessage()}
+              </span>
+              {lastWin > 0 && (
+                <motion.div
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="bg-accent text-background px-4 py-1 rounded-lg font-bold text-lg"
+                >
+                  +{lastWin}
+                </motion.div>
+              )}
             </motion.div>
           )}
-        </div>
+        </AnimatePresence>
 
-        {/* Player Section */}
-        <div className="relative z-10 w-full flex flex-col items-center">
-          <Hand cards={playerHand} label="Your Hand" />
-        </div>
+        {/* Player Hand */}
+        {playerHand.length > 0 && (
+          <div className="relative">
+            <div className="flex items-center justify-center">
+              {playerHand.map((card, index) => (
+                <div
+                  key={index}
+                  style={{ marginLeft: index > 0 ? '-24px' : '0' }}
+                >
+                  <Card card={card} index={index} />
+                </div>
+              ))}
+            </div>
+            {/* Score badge */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className={cn(
+                "absolute -right-3 top-0 min-w-[32px] h-8 px-2 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm",
+                playerScore > 21 ? "bg-red-500 text-white" : "bg-accent text-background"
+              )}
+            >
+              {playerScore}
+            </motion.div>
+          </div>
+        )}
+
+        {/* Betting Phase - Empty State */}
+        {gamePhase === 'betting' && playerHand.length === 0 && (
+          <div className="text-center text-gray-500">
+            <p className="text-lg font-medium">Place your bet to start</p>
+          </div>
+        )}
       </div>
 
       {/* Controls */}
-      <div className="px-4 py-4 bg-black/30 rounded-b-xl space-y-3">
-        {/* Message */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={message}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className={cn(
-              "text-center font-semibold text-lg",
-              result === 'win' && "text-green-400",
-              result === 'blackjack' && "text-yellow-400",
-              result === 'lose' && "text-red-400",
-              result === 'push' && "text-blue-400",
-              !result && "text-white"
-            )}
-          >
-            {message}
-          </motion.div>
-        </AnimatePresence>
-
+      <div className="px-4 pb-6 pt-2 border-t border-border">
         {/* Betting Phase */}
         {gamePhase === 'betting' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-center gap-2 md:gap-3">
+          <div className="space-y-4">
+            {/* Chip buttons */}
+            <div className="flex items-center justify-center gap-3">
               {BETTING_AMOUNTS.map(amount => (
-                <Chip
+                <motion.button
                   key={amount}
-                  value={amount}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => placeBet(amount)}
                   disabled={chips < amount}
-                />
+                  className={cn(
+                    "w-14 h-14 rounded-full font-bold text-lg shadow-md transition-all border-2",
+                    chips >= amount
+                      ? "bg-white/5 text-white border-border hover:border-accent hover:text-accent"
+                      : "bg-white/5 text-gray-600 border-border cursor-not-allowed"
+                  )}
+                >
+                  {amount}
+                </motion.button>
               ))}
-              <Chip value={500} onClick={allIn} disabled={chips === 0} />
             </div>
+
+            {/* Action buttons */}
             <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={clearBet}
-                disabled={currentBet === 0}
-                className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Clear
-              </button>
-              <button
+              {currentBet > 0 && (
+                <button
+                  onClick={clearBet}
+                  className="px-6 py-3 text-gray-500 font-medium hover:text-white transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+              <motion.button
+                whileTap={{ scale: 0.98 }}
                 onClick={startGame}
                 disabled={currentBet === 0}
                 className={cn(
-                  "px-8 py-3 rounded-xl font-bold text-lg transition-all",
+                  "flex-1 max-w-xs py-4 rounded-2xl font-bold text-lg transition-all",
                   currentBet > 0
-                    ? "bg-accent text-background hover:bg-accent/90 shadow-lg shadow-accent/25"
-                    : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    ? "bg-accent text-background shadow-lg hover:bg-accent/90"
+                    : "bg-white/5 text-gray-600 cursor-not-allowed border border-border"
                 )}
               >
                 Deal
-              </button>
+              </motion.button>
             </div>
+
+            {/* Free chips */}
+            {chips === 0 && (
+              <button
+                onClick={resetChips}
+                className="w-full py-3 text-accent font-medium hover:text-accent/80 transition-colors"
+              >
+                Get Free Chips
+              </button>
+            )}
           </div>
         )}
 
         {/* Playing Phase */}
         {gamePhase === 'playing' && (
           <div className="flex items-center justify-center gap-3">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={hit}
-              className="px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg transition-colors"
+              className="flex-1 max-w-[120px] py-4 rounded-2xl bg-white/10 text-white font-bold text-lg shadow-md hover:bg-white/20 transition-all border border-border"
             >
               Hit
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={stand}
-              className="px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-lg transition-colors"
+              className="flex-1 max-w-[120px] py-4 rounded-2xl bg-white text-background font-bold text-lg shadow-md hover:bg-gray-200 transition-all"
             >
               Stand
-            </button>
-            <button
-              onClick={doubleDown}
-              disabled={!canDoubleDown}
-              className={cn(
-                "px-6 py-3 rounded-xl font-bold text-lg transition-colors",
-                canDoubleDown
-                  ? "bg-purple-500 hover:bg-purple-600 text-white"
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-              )}
-            >
-              Double
-            </button>
+            </motion.button>
+            {canDoubleDown && (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={doubleDown}
+                className="flex-1 max-w-[120px] py-4 rounded-2xl bg-accent text-background font-bold text-lg shadow-md hover:bg-accent/90 transition-all"
+              >
+                Double
+              </motion.button>
+            )}
           </div>
         )}
 
         {/* Dealer Turn */}
         {gamePhase === 'dealerTurn' && (
-          <div className="flex items-center justify-center">
-            <div className="flex items-center gap-2 text-gray-400">
-              <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-              <span>Dealer drawing...</span>
+          <div className="flex items-center justify-center py-4">
+            <div className="flex items-center gap-2 text-gray-500">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full"
+              />
+              <span className="font-medium">Dealer's turn...</span>
             </div>
           </div>
         )}
 
         {/* Result Phase */}
         {gamePhase === 'result' && (
-          <div className="flex items-center justify-center">
-            <button
-              onClick={newGame}
-              className="flex items-center gap-2 px-8 py-3 rounded-xl bg-accent text-background font-bold text-lg hover:bg-accent/90 transition-colors"
-            >
-              <RotateCcw size={20} />
-              New Hand
-            </button>
-          </div>
+          <motion.button
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={newGame}
+            className="w-full py-4 rounded-2xl bg-accent text-background font-bold text-lg shadow-lg hover:bg-accent/90 transition-all flex items-center justify-center gap-2"
+          >
+            <RotateCcw size={20} />
+            Play Again
+          </motion.button>
         )}
       </div>
     </div>

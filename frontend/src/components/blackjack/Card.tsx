@@ -26,8 +26,8 @@ const suitSymbols: Record<Suit, string> = {
 const suitColors: Record<Suit, string> = {
   hearts: 'text-red-500',
   diamonds: 'text-red-500',
-  clubs: 'text-gray-900',
-  spades: 'text-gray-900',
+  clubs: 'text-white',
+  spades: 'text-white',
 };
 
 export const Card = ({ card, index = 0, className }: CardProps) => {
@@ -36,60 +36,38 @@ export const Card = ({ card, index = 0, className }: CardProps) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -50, rotateY: 180 }}
-      animate={{ opacity: 1, y: 0, rotateY: card.faceUp ? 0 : 180 }}
+      initial={{ opacity: 0, scale: 0.8, y: -20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{
-        duration: 0.4,
-        delay: index * 0.15,
+        duration: 0.3,
+        delay: index * 0.1,
         type: 'spring',
-        stiffness: 200,
-        damping: 20,
+        stiffness: 300,
+        damping: 25,
       }}
       className={cn(
-        "relative w-16 h-24 md:w-20 md:h-28 rounded-lg shadow-lg preserve-3d cursor-default select-none",
+        "relative w-14 h-20 md:w-16 md:h-24 rounded-xl shadow-lg",
         className
       )}
-      style={{ perspective: '1000px' }}
     >
-      {/* Card Front */}
-      <div
-        className={cn(
-          "absolute inset-0 rounded-lg bg-white border-2 border-gray-200 flex flex-col justify-between p-1.5 md:p-2 backface-hidden",
-          !card.faceUp && "invisible"
-        )}
-      >
-        {/* Top left */}
-        <div className={cn("flex flex-col items-start leading-none", colorClass)}>
-          <span className="text-sm md:text-base font-bold">{card.value}</span>
-          <span className="text-xs md:text-sm">{symbol}</span>
+      {card.faceUp ? (
+        // Card Face - Dark theme
+        <div className="w-full h-full rounded-xl bg-white/10 border border-white/20 flex flex-col items-center justify-center gap-0.5 backdrop-blur-sm">
+          <span className={cn("text-xl md:text-2xl font-bold", colorClass)}>
+            {card.value}
+          </span>
+          <span className={cn("text-2xl md:text-3xl", colorClass)}>
+            {symbol}
+          </span>
         </div>
-
-        {/* Center */}
-        <div className={cn("text-2xl md:text-3xl text-center", colorClass)}>
-          {symbol}
-        </div>
-
-        {/* Bottom right (rotated) */}
-        <div className={cn("flex flex-col items-end leading-none rotate-180", colorClass)}>
-          <span className="text-sm md:text-base font-bold">{card.value}</span>
-          <span className="text-xs md:text-sm">{symbol}</span>
-        </div>
-      </div>
-
-      {/* Card Back */}
-      <div
-        className={cn(
-          "absolute inset-0 rounded-lg backface-hidden",
-          card.faceUp && "invisible"
-        )}
-        style={{ transform: 'rotateY(180deg)' }}
-      >
-        <div className="w-full h-full rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-900 p-1.5 md:p-2">
-          <div className="w-full h-full rounded border-2 border-blue-400/30 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(255,255,255,0.05)_4px,rgba(255,255,255,0.05)_8px)] flex items-center justify-center">
-            <div className="text-blue-300/50 text-2xl md:text-3xl font-bold">B</div>
+      ) : (
+        // Card Back - Dark theme with accent
+        <div className="w-full h-full rounded-xl bg-accent/20 border border-accent/30 flex items-center justify-center">
+          <div className="w-8 h-12 md:w-10 md:h-14 rounded-lg border-2 border-accent/40 flex items-center justify-center">
+            <span className="text-accent/60 text-xl font-bold">?</span>
           </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 };

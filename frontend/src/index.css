@@ -295,6 +295,12 @@ textarea {
   background-color: #cbd5e1;
 }
 
+/* Mobile Bottom Nav - extends to bottom of screen */
+.mobile-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: constant(safe-area-inset-bottom, 0px); /* iOS 11.0-11.2 */
+}
+
 /* 3D Card Flip Utilities for Blackjack */
 .preserve-3d {
   transform-style: preserve-3d;

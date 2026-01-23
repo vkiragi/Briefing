@@ -163,33 +163,34 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
-        <div className="flex justify-around items-center h-16 px-2">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 mobile-bottom-nav">
+        <div className="flex justify-around items-end px-1 pt-3 pb-2">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center w-full h-full",
+                "flex flex-col items-center justify-end flex-1 touch-manipulation",
                 location.pathname === item.path
                   ? "text-accent"
-                  : "text-gray-400"
+                  : "text-gray-400 active:text-white"
               )}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               {item.isPrimary ? (
-                <div className="flex flex-col items-center justify-center">
-                  <item.icon size={22} className={cn(
-                    "mb-1 transition-colors duration-300",
+                <div className="flex flex-col items-center justify-center pointer-events-none">
+                  <item.icon size={30} className={cn(
+                    "mb-0.5",
                     location.pathname === item.path ? "text-accent" : "text-blue-500"
                   )} />
                   <span className={cn(
-                    "text-[10px] font-medium transition-colors duration-300",
+                    "text-[10px] font-medium",
                     location.pathname === item.path ? "text-accent" : "text-blue-500"
                   )}>{item.label}</span>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center">
-                  <item.icon size={22} className="mb-1" />
+                <div className="flex flex-col items-center justify-center pointer-events-none">
+                  <item.icon size={30} className="mb-0.5" />
                   <span className="text-[10px] font-medium">{item.label}</span>
                 </div>
               )}
@@ -198,10 +199,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           {/* Settings button for mobile */}
           <button
             onClick={() => setSettingsOpen(true)}
-            className="flex flex-col items-center justify-center w-full h-full text-gray-400"
+            className="flex flex-col items-center justify-end flex-1 text-gray-400 active:text-white touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
-            <Settings size={22} className="mb-1" />
-            <span className="text-[10px] font-medium">Settings</span>
+            <div className="flex flex-col items-center justify-center pointer-events-none">
+              <Settings size={30} className="mb-0.5" />
+              <span className="text-[10px] font-medium">Settings</span>
+            </div>
           </button>
         </div>
       </nav>

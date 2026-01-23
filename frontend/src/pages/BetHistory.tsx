@@ -52,7 +52,7 @@ export const BetHistory = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
+      className="flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
       {/* Header with Stats */}
       <div className="flex-shrink-0 mb-6 space-y-4">
@@ -166,7 +166,7 @@ export const BetHistory = () => {
       </div>
 
       {/* Bets Display */}
-      <div className="flex-1 overflow-auto">
+      <div>
         <AnimatePresence mode="popLayout">
           {filteredBets.length === 0 ? (
             <motion.div

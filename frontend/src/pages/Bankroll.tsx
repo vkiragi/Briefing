@@ -33,11 +33,11 @@ export const Bankroll = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="h-screen overflow-hidden flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
+      className="flex flex-col px-2 md:px-4 py-4 md:py-8 max-w-[2400px] mx-auto"
     >
-       <h1 className="text-3xl font-semibold tracking-tight mb-6 flex-shrink-0">Bankroll Management</h1>
+       <h1 className="text-3xl font-semibold tracking-tight mb-6">Bankroll Management</h1>
 
-       <div className="flex-1 overflow-y-auto">
+       <div>
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
          
          {/* Main Bankroll Display & Actions */}
