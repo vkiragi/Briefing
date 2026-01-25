@@ -433,6 +433,47 @@ class SupabaseService:
             'sportDisplay': db_team.get('sport_display', ''),
         }
 
+    def delete_user_data(self, user_id: str) -> Dict[str, Any]:
+        """
+        Delete all user data from the database.
+        This removes: bets, parlay_legs (via cascade), bankroll_transactions,
+        user_stats, pinned_games, favorite_teams, and profile.
+        """
+        deleted = {
+            'bets': 0,
+            'bankroll_transactions': 0,
+            'pinned_games': 0,
+            'favorite_teams': 0,
+            'user_stats': 0,
+            'profile': 0,
+        }
+
+        # Delete bets (parlay_legs will cascade delete)
+        result = self.client.table('bets').delete().eq('user_id', user_id).execute()
+        deleted['bets'] = len(result.data) if result.data else 0
+
+        # Delete bankroll transactions
+        result = self.client.table('bankroll_transactions').delete().eq('user_id', user_id).execute()
+        deleted['bankroll_transactions'] = len(result.data) if result.data else 0
+
+        # Delete pinned games
+        result = self.client.table('pinned_games').delete().eq('user_id', user_id).execute()
+        deleted['pinned_games'] = len(result.data) if result.data else 0
+
+        # Delete favorite teams
+        result = self.client.table('favorite_teams').delete().eq('user_id', user_id).execute()
+        deleted['favorite_teams'] = len(result.data) if result.data else 0
+
+        # Delete user stats
+        result = self.client.table('user_stats').delete().eq('user_id', user_id).execute()
+        deleted['user_stats'] = len(result.data) if result.data else 0
+
+        # Delete profile
+        result = self.client.table('profiles').delete().eq('id', user_id).execute()
+        deleted['profile'] = len(result.data) if result.data else 0
+
+        return deleted
+
 
 # Singleton instance
 supabase_service = SupabaseService()

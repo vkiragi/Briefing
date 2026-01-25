@@ -572,6 +572,32 @@ export const api = {
       sportDisplay: string;
     }>>;
   },
+
+  // ==================== Account ====================
+
+  deleteAccount: async () => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/account`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Not authenticated');
+      throw new Error('Failed to delete account');
+    }
+    return response.json() as Promise<{
+      success: boolean;
+      message: string;
+      deleted: {
+        bets: number;
+        bankroll_transactions: number;
+        pinned_games: number;
+        favorite_teams: number;
+        user_stats: number;
+        profile: number;
+      };
+    }>;
+  },
 };
 
 

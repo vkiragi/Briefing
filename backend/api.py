@@ -8,6 +8,7 @@ from routes.sports import router as sports_router
 from routes.bets import router as bets_router
 from routes.pinned_games import router as pinned_games_router
 from routes.teams import router as teams_router
+from routes.account import router as account_router
 
 app = FastAPI(title="Briefing API")
 
@@ -42,3 +43,4 @@ app.include_router(sports_router)
 app.include_router(bets_router)
 app.include_router(pinned_games_router)
 app.include_router(teams_router)
+app.include_router(account_router)
