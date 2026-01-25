@@ -11,7 +11,7 @@ export const BetHistory = () => {
   const { bets, stats, updateBetStatus, deleteBet } = useBets();
   const [filter, setFilter] = useState<'All' | 'Won' | 'Lost' | 'Pending' | 'Pushed'>('All');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   const handleDeleteBet = (betId: string, betMatchup: string) => {
     if (window.confirm(`Are you sure you want to delete this bet?\n\n${betMatchup}`)) {
