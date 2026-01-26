@@ -24,12 +24,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen text-white overflow-x-hidden">
       {/* Desktop Sidebar */}
-      <nav className="hidden md:flex fixed left-0 top-0 bottom-0 w-24 flex-col items-center py-8 bg-card border-r border-border z-50">
-        <div className="mb-8 flex flex-col items-center">
-          <span className="text-2xl font-semibold tracking-tight text-white">
-            <span className="text-accent">B</span>S<span className="text-accent">B</span>
-          </span>
-          <span className="text-[9px] font-medium tracking-[0.2em] text-gray-500 uppercase mt-0.5">Briefing</span>
+      <nav className="hidden md:flex fixed left-0 top-0 bottom-0 w-32 flex-col items-center bg-card border-r border-border z-50">
+        <div className="flex flex-col items-center">
+          <img src="/logo.png" alt="Briefing" className="w-60 h-60 object-contain -my-12" />
         </div>
         <div className="flex flex-col gap-5 w-full px-3 flex-1">
           {navItems.map((item) => (
@@ -45,7 +42,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 )}
               >
                 <item.icon
-                  size={26}
+                  size={32}
                   className={cn(
                     "transition-transform duration-300",
                     location.pathname === item.path && "scale-110",
@@ -76,10 +73,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 <img
                   src={user.user_metadata.avatar_url}
                   alt="Profile"
-                  className="w-7 h-7 rounded-full border border-accent/50"
+                  className="w-8 h-8 rounded-full border border-accent/50"
                 />
               ) : (
-                <User size={26} />
+                <User size={32} />
               )}
             </button>
             <span className="text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center text-gray-400 opacity-0 group-hover:opacity-100">
@@ -97,7 +94,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   : "text-gray-400 hover:text-white"
               )}
             >
-              <HelpCircle size={26} />
+              <HelpCircle size={32} />
             </Link>
             <span className={cn(
               "text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center",
@@ -114,7 +111,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               onClick={() => setSettingsOpen(true)}
               className="flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 relative w-full hover:bg-white/[0.03] text-gray-400 hover:text-white"
             >
-              <Settings size={26} />
+              <Settings size={32} />
             </button>
             <span className="text-[10px] font-medium mt-1.5 transition-opacity duration-300 whitespace-nowrap text-center text-gray-400 opacity-0 group-hover:opacity-100">
               Settings
@@ -125,10 +122,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Mobile Header with Profile Button */}
       <header className="md:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-50 flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] h-[calc(3.5rem+env(safe-area-inset-top))]">
-        <div className="flex items-center">
-          <span className="text-lg font-semibold tracking-tight text-white">
-            <span className="text-accent">B</span>S<span className="text-accent">B</span>
-          </span>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="Briefing" className="w-14 h-14 object-contain" />
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -158,7 +153,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </header>
 
       {/* Main Content */}
-      <main className="w-full min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-0 md:pb-0 md:pl-36 md:pr-12 relative overflow-x-hidden">
+      <main className="w-full min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-0 md:pb-0 md:pl-44 md:pr-12 relative overflow-x-hidden">
         {children}
       </main>
 
