@@ -117,14 +117,14 @@ export const SignIn = () => {
           className="text-center mb-6 sm:mb-10"
         >
           {/* Animated logo */}
-          <div className="relative inline-flex items-center justify-center mb-5 sm:mb-6">
+          <div className="relative inline-flex items-center justify-center mb-3 sm:mb-4">
             {/* Glow ring */}
-            <div className="absolute inset-0 w-44 h-44 sm:w-36 sm:h-36 bg-gradient-to-br from-green-400 to-emerald-600 rounded-3xl blur-2xl opacity-50 animate-pulse" />
+            <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl blur-xl opacity-50 animate-pulse" />
             {/* Logo container */}
             <img
               src="/logo.png"
               alt="Briefing"
-              className="relative w-44 h-44 sm:w-36 sm:h-36 object-contain drop-shadow-2xl"
+              className="relative w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-2xl"
             />
           </div>
 
