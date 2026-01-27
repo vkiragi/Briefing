@@ -116,15 +116,12 @@ export const SignIn = () => {
           transition={{ delay: 0.1, duration: 0.5 }}
           className="text-center mb-6 sm:mb-10"
         >
-          {/* Animated logo */}
+          {/* Logo */}
           <div className="relative inline-flex items-center justify-center mb-3 sm:mb-4">
-            {/* Glow ring */}
-            <div className="absolute inset-0 w-64 h-64 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl blur-xl opacity-20 animate-pulse" />
-            {/* Logo container */}
             <img
               src="/logo.png"
               alt="Briefing"
-              className="relative w-64 h-64 object-contain drop-shadow-2xl"
+              className="w-64 h-64 object-contain"
             />
           </div>
 
