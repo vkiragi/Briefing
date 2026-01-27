@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export const Privacy = () => {
   return (
-    <div className="min-h-[100dvh] bg-[#030303] text-white px-6 pb-10 overflow-auto" style={{ paddingTop: 'max(env(safe-area-inset-top, 20px) + 16px, 36px)' }}>
+    <div className="min-h-[100dvh] bg-[#030303] text-white px-6 pb-10 overflow-auto pt-[calc(env(safe-area-inset-top,20px)+24px)]">
       <div className="max-w-3xl mx-auto">
         <Link
           to="/"

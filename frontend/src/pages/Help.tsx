@@ -303,8 +303,7 @@ export const Help = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[100dvh] px-4 pb-10 md:p-8 overflow-auto"
-      style={{ paddingTop: 'max(env(safe-area-inset-top, 20px) + 16px, 36px)' }}
+      className="min-h-[100dvh] px-4 pb-10 md:p-8 overflow-auto pt-[calc(env(safe-area-inset-top,20px)+24px)]"
     >
       {/* Header */}
       <div className="max-w-4xl mx-auto mb-8">
