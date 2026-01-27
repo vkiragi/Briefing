@@ -32,7 +32,7 @@ export const SignIn = () => {
   const sports = ['NFL', 'NBA', 'MLB', 'NHL', 'NCAAF', 'NCAAB', 'MLS', 'UFC', 'Boxing', 'F1', 'Tennis', 'Golf'];
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-[#030303] text-white flex flex-col items-center justify-start pt-12 sm:pt-16 sm:justify-center px-4 pb-6 sm:p-6 relative overflow-auto">
       {/* Dynamic background */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Animated gradient mesh */}
@@ -114,22 +114,22 @@ export const SignIn = () => {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1, duration: 0.5 }}
-          className="text-center mb-12"
+          className="text-center mb-6 sm:mb-12"
         >
           {/* Animated logo */}
-          <div className="relative inline-flex items-center justify-center mb-8">
+          <div className="relative inline-flex items-center justify-center mb-4 sm:mb-8">
             {/* Glow ring */}
-            <div className="absolute inset-0 w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl blur-xl opacity-50 animate-pulse" />
+            <div className="absolute inset-0 w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl blur-xl opacity-50 animate-pulse" />
             {/* Logo container */}
-            <div className="relative w-20 h-20 bg-gradient-to-br from-green-400 via-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-500/25">
-              <span className="text-4xl font-black tracking-tight">B</span>
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-400 via-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-emerald-500/25">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight">B</span>
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-white via-white to-gray-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-white via-white to-gray-400 bg-clip-text text-transparent">
             Welcome to Briefing
           </h1>
-          <p className="text-gray-400 text-lg">Your intelligent sports betting companion</p>
+          <p className="text-gray-400 text-base sm:text-lg">Your intelligent sports betting companion</p>
         </motion.div>
 
         {/* Sign in card */}
@@ -137,12 +137,12 @@ export const SignIn = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="relative mb-8"
+          className="relative mb-6 sm:mb-8"
         >
           {/* Card glow */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/20 via-green-500/20 to-teal-500/20 rounded-2xl blur opacity-75" />
 
-          <div className="relative bg-[#0c0c0c]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+          <div className="relative bg-[#0c0c0c]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-8">
             <p className="text-sm text-gray-400 text-center mb-6">
               Sign in to sync your bets and track your performance
             </p>
@@ -169,7 +169,7 @@ export const SignIn = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="mb-8"
+          className="mb-5 sm:mb-8"
         >
           <p className="text-xs text-gray-500 text-center mb-3 uppercase tracking-wider">Supported Sports</p>
           <div className="flex flex-wrap justify-center gap-2">
@@ -205,12 +205,12 @@ export const SignIn = () => {
               {/* Hover glow */}
               <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500/0 to-green-500/0 group-hover:from-emerald-500/20 group-hover:to-green-500/20 rounded-xl blur transition-all duration-500 opacity-0 group-hover:opacity-100" />
 
-              <div className="relative bg-[#0c0c0c]/80 backdrop-blur border border-white/5 group-hover:border-white/10 rounded-xl p-4 transition-all duration-300 group-hover:bg-[#0f0f0f]">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-green-500/10 flex items-center justify-center mb-3 group-hover:from-emerald-500/30 group-hover:to-green-500/20 transition-all duration-300">
-                  <feature.icon className="w-5 h-5 text-emerald-400" />
+              <div className="relative bg-[#0c0c0c]/80 backdrop-blur border border-white/5 group-hover:border-white/10 rounded-xl p-3 sm:p-4 transition-all duration-300 group-hover:bg-[#0f0f0f]">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-green-500/10 flex items-center justify-center mb-2 sm:mb-3 group-hover:from-emerald-500/30 group-hover:to-green-500/20 transition-all duration-300">
+                  <feature.icon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                 </div>
-                <h3 className="font-semibold text-sm mb-1 text-white/90">{feature.title}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">{feature.description}</p>
+                <h3 className="font-semibold text-xs sm:text-sm mb-1 text-white/90">{feature.title}</h3>
+                <p className="text-[10px] sm:text-xs text-gray-500 leading-relaxed">{feature.description}</p>
               </div>
             </motion.div>
           ))}
@@ -221,7 +221,7 @@ export const SignIn = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 0.5 }}
-          className="mt-8 text-center"
+          className="mt-5 sm:mt-8 text-center"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
             <div className="flex -space-x-2">
@@ -238,7 +238,7 @@ export const SignIn = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.1, duration: 0.5 }}
-          className="text-xs text-gray-500 text-center mt-6"
+          className="text-xs text-gray-500 text-center mt-4 sm:mt-6 pb-4"
         >
           By signing in, you agree to our{' '}
           <Link to="/terms" className="text-gray-400 hover:text-emerald-400 underline transition-colors">

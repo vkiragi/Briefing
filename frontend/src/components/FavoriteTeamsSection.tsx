@@ -104,7 +104,13 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className={cn(
+          "grid gap-3",
+          settings.favoriteTeams.length === 1 && "grid-cols-1",
+          settings.favoriteTeams.length === 2 && "grid-cols-2",
+          settings.favoriteTeams.length === 3 && "grid-cols-3",
+          settings.favoriteTeams.length >= 4 && "grid-cols-2 lg:grid-cols-4"
+        )}>
           {settings.favoriteTeams.map((team) => (
             <div
               key={team.id}
@@ -120,7 +126,13 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className={cn(
+          "grid gap-3",
+          results.length === 1 && "grid-cols-1",
+          results.length === 2 && "grid-cols-2",
+          results.length === 3 && "grid-cols-3",
+          results.length >= 4 && "grid-cols-2 lg:grid-cols-4"
+        )}>
           {results.map((result) => {
             const team = settings.favoriteTeams.find(t => t.id === result.team_id);
             return (
