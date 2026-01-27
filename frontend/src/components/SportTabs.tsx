@@ -23,14 +23,19 @@ export const SportTabs: React.FC<SportTabsProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
         setShowMore(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearch(false);
+        setSearchQuery('');
       }
     };
 
@@ -41,7 +46,7 @@ export const SportTabs: React.FC<SportTabsProps> = ({
   // Focus search input when search is shown
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
-      searchInputRef.current.focus();
+      setTimeout(() => searchInputRef.current?.focus(), 100);
     }
   }, [showSearch]);
 
@@ -85,81 +90,96 @@ export const SportTabs: React.FC<SportTabsProps> = ({
       {/* Desktop: Horizontal scroll with search */}
       <div className="hidden md:flex gap-2 items-center">
         {/* Search button/input */}
-        <div className="relative flex-shrink-0">
-          {showSearch ? (
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+        <div className="relative flex-shrink-0" ref={searchRef}>
+          <AnimatePresence mode="wait">
+            {showSearch ? (
+              <motion.div
+                key="search-input"
+                initial={{ width: 40, opacity: 0.5 }}
+                animate={{ width: 220, opacity: 1 }}
+                exit={{ width: 40, opacity: 0.5 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="relative"
+              >
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-accent" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search leagues..."
-                  className="w-48 bg-card border border-border rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent transition-colors"
+                  className="w-full bg-card/80 backdrop-blur-sm border border-accent/50 rounded-xl pl-9 pr-9 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-white/10 rounded transition-colors"
-                  >
-                    <X size={14} className="text-gray-400" />
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setShowSearch(false);
-                  setSearchQuery('');
-                }}
-                className="p-2 text-gray-400 hover:text-white transition-colors"
+                <button
+                  onClick={() => {
+                    setShowSearch(false);
+                    setSearchQuery('');
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <X size={14} className="text-gray-400 hover:text-white" />
+                </button>
+              </motion.div>
+            ) : (
+              <motion.button
+                key="search-button"
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0.5 }}
+                onClick={() => setShowSearch(true)}
+                className="flex items-center justify-center w-10 h-10 rounded-xl text-sm font-medium transition-all border bg-card/80 backdrop-blur-sm border-border text-gray-400 hover:text-accent hover:border-accent/50 hover:bg-accent/5"
               >
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowSearch(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all border bg-card border-border text-gray-400 hover:text-white hover:border-gray-600"
-            >
-              <Search size={14} />
-            </button>
-          )}
+                <Search size={16} />
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           {/* Search results dropdown */}
           <AnimatePresence>
-            {showSearch && searchQuery && filteredTabs.length > 0 && (
+            {showSearch && (searchQuery || !searchQuery) && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full mt-2 left-0 z-50 bg-card border border-border rounded-lg shadow-xl py-1 min-w-[200px] max-h-[300px] overflow-y-auto"
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full mt-2 left-0 z-50 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/20 py-2 min-w-[240px] max-h-[320px] overflow-hidden"
               >
-                {filteredTabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleSearchSelect(tab.id)}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
-                      selectedSport === tab.id
-                        ? "bg-accent/20 text-accent"
-                        : "text-gray-300 hover:bg-white/5"
-                    )}
-                  >
-                    {tab.id === 'home' ? <Home size={14} /> : <span>{tab.icon}</span>}
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </motion.div>
-            )}
-            {showSearch && searchQuery && filteredTabs.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full mt-2 left-0 z-50 bg-card border border-border rounded-lg shadow-xl py-3 px-4 min-w-[200px]"
-              >
-                <p className="text-sm text-gray-500">No leagues found</p>
+                <div className="px-3 pb-2 border-b border-border/50">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+                    {searchQuery ? `${filteredTabs.length} results` : 'All Leagues'}
+                  </p>
+                </div>
+                <div className="max-h-[260px] overflow-y-auto custom-scrollbar py-1">
+                  {filteredTabs.length > 0 ? (
+                    filteredTabs.map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleSearchSelect(tab.id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-all text-left mx-1 rounded-lg",
+                          "hover:bg-white/5",
+                          selectedSport === tab.id
+                            ? "bg-accent/15 text-accent"
+                            : "text-gray-300"
+                        )}
+                        style={{ width: 'calc(100% - 8px)' }}
+                      >
+                        <span className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 text-sm">
+                          {tab.id === 'home' ? <Home size={14} /> : tab.icon}
+                        </span>
+                        <span className="font-medium">{tab.label}</span>
+                        {selectedSport === tab.id && (
+                          <span className="ml-auto w-2 h-2 rounded-full bg-accent" />
+                        )}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-center">
+                      <p className="text-sm text-gray-500">No leagues found</p>
+                      <p className="text-xs text-gray-600 mt-1">Try a different search term</p>
+                    </div>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -195,13 +215,13 @@ export const SportTabs: React.FC<SportTabsProps> = ({
       {/* Mobile: Search + Visible tabs + More dropdown */}
       <div className="flex md:hidden gap-2 items-center">
         {/* Mobile search button */}
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0" ref={searchRef}>
           <button
             onClick={() => setShowSearch(!showSearch)}
             className={cn(
-              "flex items-center justify-center p-1.5 rounded-lg text-xs font-medium transition-all border",
+              "flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all border",
               showSearch
-                ? "bg-accent text-background border-accent"
+                ? "bg-accent/20 text-accent border-accent/50"
                 : "bg-card border-border text-gray-400 hover:text-white hover:border-gray-600"
             )}
           >
@@ -212,12 +232,13 @@ export const SportTabs: React.FC<SportTabsProps> = ({
           <AnimatePresence>
             {showSearch && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full mt-2 left-0 z-50 bg-card border border-border rounded-lg shadow-xl p-2 min-w-[250px]"
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full mt-2 left-0 z-50 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/30 p-3 min-w-[280px]"
               >
-                <div className="relative mb-2">
+                <div className="relative mb-3">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     ref={searchInputRef}
@@ -225,36 +246,48 @@ export const SportTabs: React.FC<SportTabsProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search leagues..."
-                    className="w-full bg-background border border-border rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent transition-colors"
+                    className="w-full bg-background/80 border border-border rounded-lg pl-9 pr-9 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-white/10 rounded transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-colors"
                     >
                       <X size={14} className="text-gray-400" />
                     </button>
                   )}
                 </div>
-                <div className="max-h-[250px] overflow-y-auto">
+                <div className="text-xs text-gray-500 font-medium uppercase tracking-wider px-1 mb-2">
+                  {searchQuery ? `${filteredTabs.length} results` : 'All Leagues'}
+                </div>
+                <div className="max-h-[280px] overflow-y-auto custom-scrollbar -mx-1">
                   {filteredTabs.length > 0 ? (
                     filteredTabs.map(tab => (
                       <button
                         key={tab.id}
                         onClick={() => handleSearchSelect(tab.id)}
                         className={cn(
-                          "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left rounded-lg",
+                          "w-full flex items-center gap-3 px-2 py-2.5 text-sm transition-all text-left rounded-lg mx-1",
+                          "hover:bg-white/5 active:bg-white/10",
                           selectedSport === tab.id
-                            ? "bg-accent/20 text-accent"
-                            : "text-gray-300 hover:bg-white/5"
+                            ? "bg-accent/15 text-accent"
+                            : "text-gray-300"
                         )}
+                        style={{ width: 'calc(100% - 8px)' }}
                       >
-                        {tab.id === 'home' ? <Home size={14} /> : <span>{tab.icon}</span>}
-                        <span>{tab.label}</span>
+                        <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 text-base">
+                          {tab.id === 'home' ? <Home size={14} /> : tab.icon}
+                        </span>
+                        <span className="font-medium">{tab.label}</span>
+                        {selectedSport === tab.id && (
+                          <span className="ml-auto w-2 h-2 rounded-full bg-accent" />
+                        )}
                       </button>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500 px-3 py-2">No leagues found</p>
+                    <div className="px-2 py-4 text-center">
+                      <p className="text-sm text-gray-500">No leagues found</p>
+                    </div>
                   )}
                 </div>
               </motion.div>
