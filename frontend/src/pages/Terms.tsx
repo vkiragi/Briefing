@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export const Terms = () => {
   return (
-    <div className="min-h-screen bg-[#030303] text-white p-6">
+    <div className="min-h-[100dvh] bg-[#030303] text-white px-6 pb-10 overflow-auto" style={{ paddingTop: 'max(env(safe-area-inset-top, 20px) + 16px, 36px)' }}>
       <div className="max-w-3xl mx-auto">
         <Link
           to="/"
