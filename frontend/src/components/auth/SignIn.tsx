@@ -118,10 +118,11 @@ export const SignIn = () => {
         >
           {/* Logo */}
           <div className="relative inline-flex items-center justify-center mb-3 sm:mb-4">
+            <div className="absolute w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
             <img
               src="/logo.png"
               alt="Briefing"
-              className="w-64 h-64 object-contain"
+              className="relative w-64 h-64 object-contain"
             />
           </div>
 
