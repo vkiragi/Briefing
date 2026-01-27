@@ -51,16 +51,32 @@ class TennisFetcherMixin:
         if len(competitors) < 2:
             return {"error": "Invalid match data"}
 
+        # Get status info first
+        full_status = event.get('fullStatus', {})
+        status_type = full_status.get('type', {})
+        current_set = event.get('period', 1)
+        is_completed = status_type.get('completed', False)
+
         # Parse both players/teams
         players = []
         for c in competitors:
             linescores = c.get('linescores', [])
             sets = []
+            sets_won = 0
+
             for i, ls in enumerate(linescores):
+                set_won = ls.get('winner', False)
+                if set_won:
+                    sets_won += 1
+
+                # Determine if this set is in progress (last set without winner and match not completed)
+                is_current_set = (i == len(linescores) - 1) and not is_completed and not set_won
+
                 set_data = {
                     "games": int(ls.get('displayValue', 0)),
-                    "winner": ls.get('winner', False),
-                    "tiebreak": ls.get('tiebreak')
+                    "winner": set_won,
+                    "tiebreak": ls.get('tiebreak'),
+                    "in_progress": is_current_set
                 }
                 sets.append(set_data)
 
@@ -71,7 +87,8 @@ class TennisFetcherMixin:
                 "winner": c.get('winner', False),
                 "score": c.get('score', ''),
                 "sets": sets,
-                "country": c.get('name', ''),  # Sometimes has country code
+                "sets_won": sets_won,
+                "country": c.get('logo', ''),  # Country flag URL
             }
 
             # Get record if available
@@ -86,10 +103,6 @@ class TennisFetcherMixin:
         match_note = notes[0].get('text', '') if notes else ''
         venue = notes[0].get('type', '') if notes else ''
 
-        # Get status
-        full_status = event.get('fullStatus', {})
-        status_type = full_status.get('type', {})
-
         result = {
             "tournament": event.get('name', ''),
             "location": event.get('location', ''),
@@ -97,9 +110,10 @@ class TennisFetcherMixin:
             "competition_type": event.get('competitionType', {}).get('text', 'Singles'),
             "match_note": match_note,
             "venue": venue,
-            "status": status_type.get('description', 'Unknown'),
+            "status": status_type.get('detail', status_type.get('description', 'Unknown')),
             "state": status_type.get('state', 'unknown'),
-            "completed": status_type.get('completed', False),
+            "completed": is_completed,
+            "current_set": current_set,
             "players": players,
             "sport": "tennis"
         }
@@ -209,35 +223,42 @@ class TennisFetcherMixin:
                         home_winner = competitors[0].get('winner', False)
                         away_winner = competitors[1].get('winner', False)
 
-                        # Calculate sets won from score strings (e.g., "7-6(7-4) 7-5" -> 2 sets)
-                        def count_sets_won(score_str):
-                            if not score_str:
-                                return 0
-                            sets = score_str.split()
-                            wins = 0
-                            for s in sets:
-                                # Extract the first number (games won in that set)
-                                # Handle tiebreak format like "7-6(7-4)"
-                                parts = s.split('-')
-                                if len(parts) >= 2:
-                                    try:
-                                        games_won = int(parts[0])
-                                        games_lost = int(parts[1].split('(')[0])
-                                        if games_won > games_lost:
-                                            wins += 1
-                                    except ValueError:
-                                        pass
-                            return wins
+                        # Get linescores for more accurate set tracking
+                        home_linescores = competitors[0].get('linescores', [])
+                        away_linescores = competitors[1].get('linescores', [])
 
-                        home_sets = count_sets_won(home_score_str)
-                        away_sets = count_sets_won(away_score_str)
+                        # Count completed sets won (only sets with winner flag)
+                        home_sets = sum(1 for ls in home_linescores if ls.get('winner', False))
+                        away_sets = sum(1 for ls in away_linescores if ls.get('winner', False))
+
+                        # Get current game score (last set in progress if not completed)
+                        current_game = None
+                        if home_linescores and away_linescores:
+                            last_home = home_linescores[-1]
+                            last_away = away_linescores[-1]
+                            # If last set doesn't have a winner, it's in progress
+                            if not last_home.get('winner') and not last_away.get('winner'):
+                                home_games = last_home.get('displayValue', '0')
+                                away_games = last_away.get('displayValue', '0')
+                                current_game = f"{home_games}-{away_games}"
+
+                        # Get current set number
+                        current_set = event.get('period', len(home_linescores))
+
+                        # Status detail (e.g., "2nd Set" or "Final")
+                        status_detail = status.get('detail', status.get('description', 'Unknown'))
+
+                        # Get match note (contains live match progress text)
+                        notes = event.get('notes', [])
+                        match_note = notes[0].get('text', '') if notes else ''
+                        venue = notes[0].get('type', '') if notes else ''
 
                         game_info = {
                             'home_team': competitors[0].get('displayName', 'Unknown'),
-                            'home_score': str(home_sets) if state != 'pre' else 'TBD',
+                            'home_score': str(home_sets) if state != 'pre' else '-',
                             'away_team': competitors[1].get('displayName', 'Unknown'),
-                            'away_score': str(away_sets) if state != 'pre' else 'TBD',
-                            'status': status.get('description', 'Unknown'),
+                            'away_score': str(away_sets) if state != 'pre' else '-',
+                            'status': status_detail,
                             'completed': completed,
                             'date': event.get('date', 'Unknown date'),
                             'state': state,
@@ -248,6 +269,10 @@ class TennisFetcherMixin:
                             'away_set_scores': away_score_str if state != 'pre' else None,
                             'home_winner': home_winner,
                             'away_winner': away_winner,
+                            'current_game': current_game,
+                            'current_set': current_set,
+                            'match_note': match_note if state == 'in' else None,
+                            'venue': venue,
                         }
 
                         # Add event ID if available - use competitionId for unique match identification

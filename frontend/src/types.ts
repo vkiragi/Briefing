@@ -17,12 +17,14 @@ export interface Game {
   tournament?: string; // For tennis matches
   match_type?: string; // For tennis: 'singles', 'doubles', 'tournament'
   // Tennis-specific fields
-  home_set_scores?: string; // e.g., "6-7(4-7) 5-7"
-  away_set_scores?: string; // e.g., "7-6(7-4) 7-5"
+  home_set_scores?: string; // e.g., "7-5 5-2" (completed sets and current game)
+  away_set_scores?: string; // e.g., "5-7 2-5"
   home_winner?: boolean;
   away_winner?: boolean;
   end_date?: string; // For tournaments
   location?: string; // For tournaments
+  current_game?: string; // Current game score e.g., "5-2"
+  current_set?: number; // Current set number (1-based)
 }
 
 export interface NewsItem {
@@ -168,6 +170,7 @@ export interface TennisSetScore {
   games: number;
   winner: boolean;
   tiebreak?: number;
+  in_progress?: boolean;  // True if this set is currently being played
 }
 
 export interface TennisPlayer {
@@ -177,7 +180,8 @@ export interface TennisPlayer {
   winner: boolean;
   score: string;  // e.g., "7-5 6-3"
   sets: TennisSetScore[];
-  country?: string;
+  sets_won?: number;  // Total sets won
+  country?: string;  // Country flag URL
   record?: string;
 }
 
@@ -188,9 +192,10 @@ export interface TennisMatchData {
   competition_type: string;  // "Men's Singles", "Women's Doubles", etc.
   match_note: string;
   venue: string;
-  status: string;
-  state: string;
+  status: string;  // e.g., "2nd Set", "Final"
+  state: string;  // 'pre', 'in', 'post'
   completed: boolean;
+  current_set?: number;  // Current set number (1-based)
   players: TennisPlayer[];
   sport: 'tennis';
 }

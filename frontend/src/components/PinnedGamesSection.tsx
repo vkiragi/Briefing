@@ -23,6 +23,11 @@ interface GameLiveData {
   home_win_pct?: number | null;
   home_logo?: string | null;
   away_logo?: string | null;
+  // Tennis-specific fields
+  home_set_scores?: string | null;
+  away_set_scores?: string | null;
+  current_game?: string | null;
+  current_set?: number | null;
 }
 
 interface PinnedGamesSectionProps {
@@ -140,8 +145,13 @@ export const PinnedGamesSection: React.FC<PinnedGamesSectionProps> = ({ onGameCl
               status: matchingScore.status,
               display_clock: matchingScore.display_clock,
               period: matchingScore.period,
-              is_live: matchingScore.status === 'in' || matchingScore.status === 'In Progress',
-              is_final: matchingScore.status === 'post' || matchingScore.status === 'Final',
+              is_live: matchingScore.state === 'in' || matchingScore.status === 'In Progress',
+              is_final: matchingScore.state === 'post' || matchingScore.status === 'Final',
+              // Tennis-specific fields
+              home_set_scores: matchingScore.home_set_scores,
+              away_set_scores: matchingScore.away_set_scores,
+              current_game: matchingScore.current_game,
+              current_set: matchingScore.current_set,
             });
           }
         }
@@ -226,6 +236,7 @@ interface PinnedGameCardProps {
 const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin, onClick }) => {
   const isLive = liveData?.is_live;
   const isFinal = liveData?.is_final;
+  const isTennis = game.sport.startsWith('tennis');
 
   const formatPeriod = (period?: number) => {
     if (!period) return '';
@@ -234,6 +245,16 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
     if (period === 3) return '3rd';
     if (period === 4) return '4th';
     return `${period}th`;
+  };
+
+  const formatTennisSet = (setNum?: number | null) => {
+    if (!setNum) return '';
+    if (setNum === 1) return '1st Set';
+    if (setNum === 2) return '2nd Set';
+    if (setNum === 3) return '3rd Set';
+    if (setNum === 4) return '4th Set';
+    if (setNum === 5) return '5th Set';
+    return `Set ${setNum}`;
   };
 
   // Parse scores as numbers for comparison
@@ -250,6 +271,138 @@ const PinnedGameCard: React.FC<PinnedGameCardProps> = ({ game, liveData, onUnpin
     ? (homeWinPct >= 50 ? 'home' : 'away')
     : null;
 
+  // Render tennis-specific card
+  if (isTennis) {
+    const hasScores = homeScore !== undefined && awayScore !== undefined;
+    const homeLeading = hasScores && homeScore > awayScore;
+    const awayLeading = hasScores && awayScore > homeScore;
+
+    return (
+      <div
+        onClick={onClick}
+        className={cn(
+          "relative bg-gradient-to-br from-gray-900/90 to-gray-800/50 border rounded-xl p-4 transition-all shadow-lg",
+          isLive ? "border-red-500/40" : isFinal ? "border-gray-600/50" : "border-gray-700/50",
+          onClick && "cursor-pointer hover:border-accent/50"
+        )}
+      >
+        {/* Header: Status and unpin button */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {isLive && (
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            )}
+            {isLive && (
+              <span className="text-xs uppercase font-bold text-red-500">LIVE</span>
+            )}
+            <span className={cn(
+              "text-sm font-mono font-semibold",
+              isLive ? "text-red-400" : "text-gray-400"
+            )}>
+              {isLive
+                ? (liveData?.status || formatTennisSet(liveData?.current_set))
+                : isFinal ? 'Final' : 'Scheduled'}
+            </span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnpin();
+            }}
+            className="p-1 hover:bg-red-500/20 text-gray-600 hover:text-red-500 rounded transition-colors"
+            title="Unpin game"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Tennis Players and Scores */}
+        <div className="space-y-2 mb-3">
+          {/* Player 1 (home) */}
+          <div className="flex items-center justify-between">
+            <span className={cn(
+              "text-base font-semibold truncate flex-1",
+              homeLeading ? "text-white" : "text-gray-300"
+            )}>
+              {liveData?.home_team || game.home_team || 'Player 1'}
+            </span>
+            <div className="flex items-center gap-3 shrink-0 ml-2">
+              {/* Sets won */}
+              <span className={cn(
+                "text-2xl font-mono font-bold",
+                homeLeading ? "text-white" : "text-gray-500"
+              )}>
+                {homeScore ?? '-'}
+              </span>
+            </div>
+          </div>
+
+          {/* Player 2 (away) */}
+          <div className="flex items-center justify-between">
+            <span className={cn(
+              "text-base font-semibold truncate flex-1",
+              awayLeading ? "text-white" : "text-gray-300"
+            )}>
+              {liveData?.away_team || game.away_team || 'Player 2'}
+            </span>
+            <div className="flex items-center gap-3 shrink-0 ml-2">
+              {/* Sets won */}
+              <span className={cn(
+                "text-2xl font-mono font-bold",
+                awayLeading ? "text-white" : "text-gray-500"
+              )}>
+                {awayScore ?? '-'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Current game score for live matches */}
+        {isLive && liveData?.current_game && (
+          <div className="bg-yellow-500/10 rounded-lg px-3 py-2 mb-3 text-center">
+            <span className="text-xs text-gray-400 uppercase">Current Game</span>
+            <div className="text-lg font-mono font-bold text-yellow-400">
+              {liveData.current_game}
+            </div>
+          </div>
+        )}
+
+        {/* Sport tag */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-accent/80 bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-wide">
+            Tennis
+          </span>
+          {isFinal && (
+            <span className="text-xs text-gray-500 uppercase">Final</span>
+          )}
+        </div>
+
+        {/* Match note for live tennis */}
+        <AnimatePresence>
+          {isLive && liveData?.last_play && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-3 pt-3 border-t border-border/30"
+            >
+              <motion.p
+                key={liveData.last_play}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-xs text-gray-400 text-center italic"
+              >
+                {liveData.last_play}
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // Regular sports card (non-tennis)
   return (
     <div
       onClick={onClick}

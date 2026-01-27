@@ -913,6 +913,11 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
     const player1 = match.players[0];
     const player2 = match.players[1];
     const numSets = Math.max(player1?.sets.length || 0, player2?.sets.length || 0);
+    const isLive = match.state === 'in';
+
+    // Calculate sets won from sets_won field or fallback to counting
+    const player1SetsWon = player1?.sets_won ?? player1?.sets.filter(s => s.winner).length ?? 0;
+    const player2SetsWon = player2?.sets_won ?? player2?.sets.filter(s => s.winner).length ?? 0;
 
     return (
       <div className="flex flex-col h-full">
@@ -937,117 +942,111 @@ export const GameDetailModal: React.FC<GameDetailModalProps> = ({
           <div className="text-center mb-4">
             <span className={cn(
               "px-3 py-1 rounded-full text-xs font-medium",
-              match.completed ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"
+              match.completed ? "bg-green-500/20 text-green-400" :
+              isLive ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"
             )}>
+              {isLive && <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse" />}
               {match.status}
             </span>
           </div>
 
-          {/* Set-by-set breakdown table */}
-          <div className="overflow-x-auto mb-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 font-medium text-gray-400 min-w-[180px]">Player</th>
-                  {Array.from({ length: numSets }, (_, i) => (
-                    <th key={i} className="text-center py-2 px-3 font-medium text-gray-400 w-16">
-                      Set {i + 1}
-                    </th>
-                  ))}
-                  <th className="text-center py-2 px-3 font-medium text-gray-400 w-16">Sets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Player 1 */}
-                <tr className={cn("border-b border-border/30", player1?.winner && "bg-accent/5")}>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      {player1?.winner && <Trophy size={14} className="text-accent" />}
-                      <div>
-                        <div className="font-medium text-white">{player1?.name || 'Unknown'}</div>
-                        <div className="text-xs text-gray-500">
-                          {player1?.seed && <span className="mr-2">Seed: {player1.seed}</span>}
-                          {player1?.rank && <span>Rank: #{player1.rank}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  {Array.from({ length: numSets }, (_, i) => {
-                    const set = player1?.sets[i];
-                    return (
-                      <td key={i} className={cn(
-                        "text-center py-3 px-3 font-mono",
-                        set?.winner ? "text-white font-bold" : "text-gray-400"
-                      )}>
-                        {set ? (
-                          <div>
-                            <span>{set.games}</span>
-                            {set.tiebreak !== undefined && set.tiebreak !== null && (
-                              <sup className="text-xs text-accent ml-0.5">{set.tiebreak}</sup>
-                            )}
-                          </div>
-                        ) : '-'}
-                      </td>
-                    );
-                  })}
-                  <td className="text-center py-3 px-3 text-white font-bold text-lg">
-                    {player1?.sets.filter(s => s.winner).length || 0}
-                  </td>
-                </tr>
+          {/* Main Score Display - Sets Won */}
+          <div className="flex justify-center items-center gap-8 mb-6">
+            {/* Player 1 */}
+            <div className={cn("text-center", player1?.winner && "text-accent")}>
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {player1?.country && (
+                  <img src={player1.country} alt="" className="w-5 h-5 object-contain" />
+                )}
+                <span className="font-medium text-white text-sm">{player1?.name}</span>
+                {player1?.winner && <Trophy size={14} className="text-accent" />}
+              </div>
+              {(player1?.seed || player1?.rank) && (
+                <div className="text-xs text-gray-500 mb-2">
+                  {player1?.seed && <span>({player1.seed})</span>}
+                  {player1?.rank && <span className="ml-1">#{player1.rank}</span>}
+                </div>
+              )}
+              <div className="text-4xl font-bold text-white">{player1SetsWon}</div>
+            </div>
 
-                {/* Player 2 */}
-                <tr className={cn(player2?.winner && "bg-accent/5")}>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      {player2?.winner && <Trophy size={14} className="text-accent" />}
-                      <div>
-                        <div className="font-medium text-white">{player2?.name || 'Unknown'}</div>
-                        <div className="text-xs text-gray-500">
-                          {player2?.seed && <span className="mr-2">Seed: {player2.seed}</span>}
-                          {player2?.rank && <span>Rank: #{player2.rank}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  {Array.from({ length: numSets }, (_, i) => {
-                    const set = player2?.sets[i];
-                    return (
-                      <td key={i} className={cn(
-                        "text-center py-3 px-3 font-mono",
-                        set?.winner ? "text-white font-bold" : "text-gray-400"
-                      )}>
-                        {set ? (
-                          <div>
-                            <span>{set.games}</span>
-                            {set.tiebreak !== undefined && set.tiebreak !== null && (
-                              <sup className="text-xs text-accent ml-0.5">{set.tiebreak}</sup>
-                            )}
-                          </div>
-                        ) : '-'}
-                      </td>
-                    );
-                  })}
-                  <td className="text-center py-3 px-3 text-white font-bold text-lg">
-                    {player2?.sets.filter(s => s.winner).length || 0}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="text-2xl text-gray-500">-</div>
+
+            {/* Player 2 */}
+            <div className={cn("text-center", player2?.winner && "text-accent")}>
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {player2?.country && (
+                  <img src={player2.country} alt="" className="w-5 h-5 object-contain" />
+                )}
+                <span className="font-medium text-white text-sm">{player2?.name}</span>
+                {player2?.winner && <Trophy size={14} className="text-accent" />}
+              </div>
+              {(player2?.seed || player2?.rank) && (
+                <div className="text-xs text-gray-500 mb-2">
+                  {player2?.seed && <span>({player2.seed})</span>}
+                  {player2?.rank && <span className="ml-1">#{player2.rank}</span>}
+                </div>
+              )}
+              <div className="text-4xl font-bold text-white">{player2SetsWon}</div>
+            </div>
           </div>
 
-          {/* Full Score Display */}
-          <div className="text-center text-gray-400 text-sm mb-4">
-            <div className="font-mono">
-              {player1?.name}: <span className="text-white">{player1?.score || '-'}</span>
+          {/* Set-by-set breakdown */}
+          <div className="bg-gray-900/50 rounded-lg p-4 mb-4">
+            <div className="text-xs text-gray-400 uppercase tracking-wide mb-3 text-center">Set Scores</div>
+            <div className="flex justify-center gap-4 flex-wrap">
+              {Array.from({ length: numSets }, (_, i) => {
+                const p1Set = player1?.sets[i];
+                const p2Set = player2?.sets[i];
+                const isCurrentSet = p1Set?.in_progress || p2Set?.in_progress;
+                const p1Won = p1Set?.winner;
+                const p2Won = p2Set?.winner;
+
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex flex-col items-center px-4 py-2 rounded-lg",
+                      isCurrentSet ? "bg-yellow-500/20 ring-1 ring-yellow-500/50" : "bg-gray-800/50"
+                    )}
+                  >
+                    <div className="text-xs text-gray-400 mb-1">
+                      Set {i + 1}
+                      {isCurrentSet && <span className="ml-1 text-yellow-400">*</span>}
+                    </div>
+                    <div className="flex items-center gap-2 font-mono text-lg">
+                      <span className={cn(
+                        p1Won ? "text-white font-bold" : isCurrentSet ? "text-yellow-400" : "text-gray-400"
+                      )}>
+                        {p1Set?.games ?? '-'}
+                        {p1Set?.tiebreak !== undefined && p1Set?.tiebreak !== null && (
+                          <sup className="text-xs text-accent">{p1Set.tiebreak}</sup>
+                        )}
+                      </span>
+                      <span className="text-gray-600">-</span>
+                      <span className={cn(
+                        p2Won ? "text-white font-bold" : isCurrentSet ? "text-yellow-400" : "text-gray-400"
+                      )}>
+                        {p2Set?.games ?? '-'}
+                        {p2Set?.tiebreak !== undefined && p2Set?.tiebreak !== null && (
+                          <sup className="text-xs text-accent">{p2Set.tiebreak}</sup>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="font-mono">
-              {player2?.name}: <span className="text-white">{player2?.score || '-'}</span>
-            </div>
+            {isLive && (
+              <div className="text-xs text-gray-500 text-center mt-2">
+                * Current set in progress
+              </div>
+            )}
           </div>
 
           {/* Match Note */}
           {match.match_note && (
-            <div className="text-center text-xs text-gray-500 italic border-t border-border pt-4">
+            <div className="text-center text-sm text-gray-400 italic border-t border-border pt-4">
               {match.match_note}
             </div>
           )}

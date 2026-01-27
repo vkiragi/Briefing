@@ -429,6 +429,13 @@ def get_pinned_games_live(games: List[Dict] = Body(...)):
                         result["away_logo"] = matching_score.get("away_logo")
                         result["display_clock"] = matching_score.get("display_clock")
                         result["period"] = matching_score.get("period")
+                        # Tennis-specific fields
+                        if sport.startswith('tennis'):
+                            result["home_set_scores"] = matching_score.get("home_set_scores")
+                            result["away_set_scores"] = matching_score.get("away_set_scores")
+                            result["current_game"] = matching_score.get("current_game")
+                            result["current_set"] = matching_score.get("current_set")
+                            result["last_play"] = matching_score.get("match_note")  # Use match note as "play-by-play"
 
             except Exception as e:
                 print(f"Error fetching live data for {sport}/{event_id}: {e}")
