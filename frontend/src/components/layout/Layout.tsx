@@ -121,9 +121,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </nav>
 
       {/* Mobile Header with Profile Button */}
-      <header className="md:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-50 flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] h-[calc(3.5rem+env(safe-area-inset-top))]">
+      <header className="md:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-50 flex items-end justify-between px-4 pb-2 pt-[env(safe-area-inset-top,0px)]" style={{ minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="Briefing" className="w-14 h-14 object-contain" />
+          <img src="/logo.png" alt="Briefing" className="w-12 h-12 object-contain" />
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -153,55 +153,50 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </header>
 
       {/* Main Content */}
-      <main className="w-full min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-0 md:pb-0 md:pl-44 md:pr-12 relative overflow-x-hidden">
+      <main className="w-full min-h-screen pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-24 md:pt-0 md:pb-0 md:pl-44 md:pr-12 overflow-x-hidden">
         {children}
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 mobile-bottom-nav">
-        <div className="flex justify-around items-end px-1 pt-3 pb-2">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border pb-[env(safe-area-inset-bottom,8px)]"
+        style={{ zIndex: 9999 }}
+      >
+        <div className="flex justify-around items-center px-2 py-2">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-end flex-1 touch-manipulation",
+                "flex flex-col items-center justify-center flex-1 py-3",
                 location.pathname === item.path
                   ? "text-accent"
                   : "text-gray-400 active:text-white"
               )}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              {item.isPrimary ? (
-                <div className="flex flex-col items-center justify-center pointer-events-none">
-                  <item.icon size={30} className={cn(
-                    "mb-0.5",
-                    location.pathname === item.path ? "text-accent" : "text-blue-500"
-                  )} />
-                  <span className={cn(
-                    "text-[10px] font-medium",
-                    location.pathname === item.path ? "text-accent" : "text-blue-500"
-                  )}>{item.label}</span>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center pointer-events-none">
-                  <item.icon size={30} className="mb-0.5" />
-                  <span className="text-[10px] font-medium">{item.label}</span>
-                </div>
-              )}
+              <item.icon size={28} className={cn(
+                "mb-1",
+                item.isPrimary && location.pathname !== item.path && "text-blue-500"
+              )} />
+              <span className={cn(
+                "text-[11px] font-medium",
+                item.isPrimary && location.pathname !== item.path && "text-blue-500"
+              )}>{item.label}</span>
             </Link>
           ))}
-          {/* Settings button for mobile */}
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="flex flex-col items-center justify-end flex-1 text-gray-400 active:text-white touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
+          {/* Settings button for mobile - navigates to settings page */}
+          <Link
+            to="/settings"
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-3",
+              location.pathname === "/settings"
+                ? "text-accent"
+                : "text-gray-400 active:text-white"
+            )}
           >
-            <div className="flex flex-col items-center justify-center pointer-events-none">
-              <Settings size={30} className="mb-0.5" />
-              <span className="text-[10px] font-medium">Settings</span>
-            </div>
-          </button>
+            <Settings size={28} className="mb-1" />
+            <span className="text-[11px] font-medium">Settings</span>
+          </Link>
         </div>
       </nav>
 

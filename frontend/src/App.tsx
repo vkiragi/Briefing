@@ -17,6 +17,7 @@ const Help = lazy(() => import('./pages/Help').then(m => ({ default: m.Help })))
 // const Blackjack = lazy(() => import('./pages/Blackjack').then(m => ({ default: m.Blackjack })));
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })));
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })));
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -53,6 +54,7 @@ function App() {
                                 <Route path="/analytics" element={<Analytics />} />
                                 {/* <Route path="/blackjack" element={<Blackjack />} /> */}
                                 <Route path="/help" element={<Help />} />
+                                <Route path="/settings" element={<Settings />} />
                               </Routes>
                             </Suspense>
                           </Layout>

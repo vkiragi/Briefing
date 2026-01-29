@@ -104,44 +104,46 @@ export const FavoriteTeamsSection: React.FC<FavoriteTeamsSectionProps> = ({ onOp
       </div>
 
       {loading ? (
-        <div className={cn(
-          "grid gap-3",
-          settings.favoriteTeams.length === 1 && "grid-cols-1",
-          settings.favoriteTeams.length === 2 && "grid-cols-2",
-          settings.favoriteTeams.length === 3 && "grid-cols-3",
-          settings.favoriteTeams.length >= 4 && "grid-cols-2 lg:grid-cols-4"
-        )}>
-          {settings.favoriteTeams.map((team) => (
-            <div
-              key={team.id}
-              className="bg-gradient-to-br from-gray-900/90 to-gray-800/50 border border-gray-700/50 rounded-xl p-4 animate-pulse"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-gray-700" />
-                <div className="h-5 w-24 bg-gray-700 rounded" />
+        <div className="grid grid-cols-2 gap-3">
+          {settings.favoriteTeams.map((team, index) => {
+            const isLastItem = index === settings.favoriteTeams.length - 1;
+            const isOddTotal = settings.favoriteTeams.length % 2 === 1;
+            const shouldSpanFull = isLastItem && isOddTotal;
+
+            return (
+              <div
+                key={team.id}
+                className={cn(
+                  "bg-gradient-to-br from-gray-900/90 to-gray-800/50 border border-gray-700/50 rounded-xl p-3 animate-pulse",
+                  shouldSpanFull && "col-span-2"
+                )}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-gray-700 flex-shrink-0" />
+                  <div className="h-4 w-16 bg-gray-700 rounded" />
+                </div>
+                <div className="h-3 w-full bg-gray-700 rounded mb-2" />
+                <div className="h-3 w-3/4 bg-gray-700 rounded" />
               </div>
-              <div className="h-4 w-32 bg-gray-700 rounded mb-2" />
-              <div className="h-4 w-28 bg-gray-700 rounded" />
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        <div className={cn(
-          "grid gap-3",
-          results.length === 1 && "grid-cols-1",
-          results.length === 2 && "grid-cols-2",
-          results.length === 3 && "grid-cols-3",
-          results.length >= 4 && "grid-cols-2 lg:grid-cols-4"
-        )}>
-          {results.map((result) => {
+        <div className="grid grid-cols-2 gap-3">
+          {results.map((result, index) => {
             const team = settings.favoriteTeams.find(t => t.id === result.team_id);
+            const isLastItem = index === results.length - 1;
+            const isOddTotal = results.length % 2 === 1;
+            const shouldSpanFull = isLastItem && isOddTotal;
+
             return (
-              <FavoriteTeamCard
-                key={result.team_id}
-                result={result}
-                team={team}
-                onGameClick={(game, sport) => setSelectedGame({ game, sport })}
-              />
+              <div key={result.team_id} className={shouldSpanFull ? "col-span-2" : ""}>
+                <FavoriteTeamCard
+                  result={result}
+                  team={team}
+                  onGameClick={(game, sport) => setSelectedGame({ game, sport })}
+                />
+              </div>
             );
           })}
         </div>
@@ -246,25 +248,21 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
   const isLive = nextGame?.state === 'in';
 
   return (
-    <div className="relative bg-gradient-to-br from-gray-900/90 to-gray-800/50 border border-gray-700/50 rounded-xl p-4 transition-all hover:border-accent/40 shadow-lg">
-      {/* Sport badge */}
-      <div className="absolute top-3 right-3">
-        <span className="text-[10px] font-medium text-accent/80 bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-wide">
-          {team?.sportDisplay || result.sport}
-        </span>
-      </div>
-
-      {/* Team Header with logo */}
-      <div className="flex items-center gap-3 mb-4">
+    <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/50 border border-gray-700/50 rounded-xl p-3 transition-all hover:border-accent/40 shadow-lg">
+      {/* Team Header with logo and sport badge */}
+      <div className="flex items-center gap-2 mb-1">
         {result.logo && (
           <img
             src={result.logo}
             alt=""
-            className="w-10 h-10 object-contain"
+            className="w-8 h-8 object-contain flex-shrink-0"
           />
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg text-white font-bold truncate leading-tight">{result.team_name}</h3>
+          <h3 className="text-sm text-white font-bold truncate leading-tight">{result.team_name}</h3>
+          <span className="text-[9px] font-medium text-accent/80 uppercase tracking-wide">
+            {team?.sportDisplay || result.sport}
+          </span>
         </div>
       </div>
 
@@ -275,40 +273,30 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
           <button
             onClick={() => handleGameClick(nextGame, false)}
             className={cn(
-              "w-full rounded-lg p-3 mb-3 text-left transition-colors cursor-pointer",
+              "w-full rounded-lg p-2 mb-2 text-left transition-colors cursor-pointer",
               isLive ? "bg-red-500/10 border border-red-500/30" : "bg-accent/10 border border-accent/30"
             )}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                {isLive && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
-                <span className={cn(
-                  "text-[10px] uppercase tracking-wide font-semibold",
-                  isLive ? "text-red-400" : "text-accent"
-                )}>
-                  {isLive ? 'LIVE' : 'Today'}
-                </span>
-              </div>
+            <div className="flex items-center gap-1 mb-1">
+              {isLive && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
               <span className={cn(
-                "text-xs font-medium",
+                "text-[9px] uppercase tracking-wide font-semibold",
                 isLive ? "text-red-400" : "text-accent"
               )}>
-                {formatDate(nextGame.date)}
+                {isLive ? 'LIVE' : 'Today'}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {nextGame.opponent_logo && (
-                  <img
-                    src={nextGame.opponent_logo}
-                    alt=""
-                    className="w-7 h-7 object-contain"
-                  />
-                )}
-                <span className="text-base text-white font-medium">
-                  {nextGame.is_home ? 'vs' : '@'} {nextGame.opponent_name}
-                </span>
-              </div>
+            <div className="flex items-center gap-1.5">
+              {nextGame.opponent_logo && (
+                <img
+                  src={nextGame.opponent_logo}
+                  alt=""
+                  className="w-5 h-5 object-contain flex-shrink-0"
+                />
+              )}
+              <span className="text-xs text-white font-medium truncate">
+                {nextGame.is_home ? 'vs' : '@'} {nextGame.opponent_abbreviation || nextGame.opponent_name}
+              </span>
             </div>
           </button>
 
@@ -316,25 +304,22 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
           {lastGame && (
             <button
               onClick={() => handleGameClick(lastGame, true)}
-              className="w-full flex items-center justify-between pt-2 border-t border-gray-700/30 hover:bg-gray-800/30 rounded px-1 -mx-1 transition-colors"
+              className="w-full flex items-center justify-between pt-1.5 border-t border-gray-700/30 hover:bg-gray-800/30 rounded transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last</span>
-                {lastGame.opponent_logo && (
-                  <img src={lastGame.opponent_logo} alt="" className="w-4 h-4 object-contain" />
-                )}
-                <span className="text-xs text-gray-400">
-                  {lastGame.is_home ? 'vs' : '@'} {lastGame.opponent_abbreviation}
-                </span>
-              </div>
               <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-gray-500 uppercase">Last</span>
+                {lastGame.opponent_logo && (
+                  <img src={lastGame.opponent_logo} alt="" className="w-4 h-4 object-contain flex-shrink-0" />
+                )}
+              </div>
+              <div className="flex items-center gap-1">
                 <span className={cn(
-                  "text-xs font-bold",
+                  "text-[10px] font-bold",
                   lastGame.result === 'W' ? "text-green-400" : lastGame.result === 'L' ? "text-red-400" : "text-gray-400"
                 )}>
                   {lastGame.result}
                 </span>
-                <span className="text-xs text-gray-400 font-mono">
+                <span className="text-[10px] text-gray-400 font-mono">
                   {lastGame.our_score}-{lastGame.opponent_score}
                 </span>
               </div>
@@ -347,45 +332,45 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
           {lastGame && (
             <button
               onClick={() => handleGameClick(lastGame, true)}
-              className="w-full bg-gray-800/60 rounded-lg p-3 mb-3 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
+              className="w-full bg-gray-800/60 rounded-lg p-2 mb-2 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wide">Last Game</span>
-                  <span className="text-[10px] text-gray-600">{formatLastGameDate(lastGame.date)}</span>
-                </div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] text-gray-500 uppercase">Last Game</span>
+                <span className="text-[9px] text-gray-600">{formatLastGameDate(lastGame.date)}</span>
+              </div>
+              <div className="flex items-center justify-between mb-1">
                 <span className={cn(
-                  "text-xs font-bold px-2 py-0.5 rounded-full",
-                  lastGame.result === 'W' ? "bg-green-500/20 text-green-400 border border-green-500/30" :
-                  lastGame.result === 'L' ? "bg-red-500/20 text-red-400 border border-red-500/30" :
-                  "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                  lastGame.result === 'W' ? "bg-green-500/20 text-green-400" :
+                  lastGame.result === 'L' ? "bg-red-500/20 text-red-400" :
+                  "bg-gray-500/20 text-gray-400"
                 )}>
                   {lastGame.result === 'W' ? 'WIN' : lastGame.result === 'L' ? 'LOSS' : 'TIE'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   {lastGame.opponent_logo && (
                     <img
                       src={lastGame.opponent_logo}
                       alt=""
-                      className="w-6 h-6 object-contain"
+                      className="w-5 h-5 object-contain flex-shrink-0"
                     />
                   )}
-                  <span className="text-sm text-gray-300">
-                    {lastGame.is_home ? 'vs' : '@'} {lastGame.opponent_abbreviation || lastGame.opponent_name}
+                  <span className="text-[10px] text-gray-400">
+                    {lastGame.is_home ? 'vs' : '@'} {lastGame.opponent_abbreviation}
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   <span className={cn(
-                    "text-xl font-bold font-mono",
+                    "text-base font-bold font-mono",
                     lastGame.result === 'W' ? "text-white" : "text-gray-400"
                   )}>
                     {lastGame.our_score}
                   </span>
-                  <span className="text-gray-600 text-lg">-</span>
+                  <span className="text-gray-600 text-sm">-</span>
                   <span className={cn(
-                    "text-xl font-bold font-mono",
+                    "text-base font-bold font-mono",
                     lastGame.result === 'L' ? "text-white" : "text-gray-400"
                   )}>
                     {lastGame.opponent_score}
@@ -398,26 +383,26 @@ const FavoriteTeamCard: React.FC<FavoriteTeamCardProps> = ({ result, team, onGam
           {/* Next Game - Small insight when no game today */}
           {nextGame && (
             <div className={cn(
-              "flex items-center justify-between",
-              lastGame && "pt-2 border-t border-gray-700/30"
+              "space-y-1",
+              lastGame && "pt-1.5 border-t border-gray-700/30"
             )}>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide">Next</span>
-                <span className="text-sm text-gray-400">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-gray-500 uppercase">Next</span>
+                <span className="text-[10px] text-gray-400">
                   {nextGame.is_home ? 'vs' : '@'}
                 </span>
                 {nextGame.opponent_logo && (
                   <img
                     src={nextGame.opponent_logo}
                     alt=""
-                    className="w-5 h-5 object-contain"
+                    className="w-4 h-4 object-contain flex-shrink-0"
                   />
                 )}
-                <span className="text-sm text-gray-300 font-medium">
+                <span className="text-[10px] text-gray-300 font-medium truncate">
                   {nextGame.opponent_abbreviation || nextGame.opponent_name}
                 </span>
               </div>
-              <span className="text-xs text-accent font-medium">
+              <span className="text-[9px] text-accent font-medium block">
                 {formatDate(nextGame.date)}
               </span>
             </div>

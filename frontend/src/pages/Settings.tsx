@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2, ChevronLeft, Sun, Moon } from 'lucide-react';
-import { Card } from './ui/Card';
+import { useNavigate } from 'react-router-dom';
+import { AlertCircle, LayoutGrid, Clock, Eye, RotateCcw, GripVertical, Star, Search, Loader2, ChevronLeft, Sun, Moon } from 'lucide-react';
+import { Card } from '../components/ui/Card';
 import { cn } from '../lib/utils';
 import { useSettings, AVAILABLE_SECTIONS, SectionId, FavoriteTeam } from '../context/SettingsContext';
 import { api } from '../lib/api';
@@ -31,15 +32,8 @@ const TEAM_SPORTS = [
   { id: 'mls', label: 'MLS', icon: '⚽' },
 ] as const;
 
-interface SettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export const SettingsModal: React.FC<SettingsModalProps> = ({
-  isOpen,
-  onClose,
-}) => {
+export const Settings = () => {
+  const navigate = useNavigate();
   const {
     settings,
     updateRefreshInterval,
@@ -65,7 +59,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     draggedId: null,
     startY: 0,
     currentY: 0,
-    itemHeight: 56, // approximate height of each item
+    itemHeight: 56,
   });
   const touchStartYRef = useRef<number>(0);
   const itemRefs = useRef<Map<SectionId, HTMLDivElement>>(new Map());
@@ -140,34 +134,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setLocalInterval(settings.refreshInterval);
   }, [settings.refreshInterval]);
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = originalOverflow;
-      };
-    }
-  }, [isOpen]);
-
-  // Close on escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   const handleSave = () => {
     updateRefreshInterval(localInterval);
-    onClose();
+    navigate(-1);
+  };
+
+  const handleCancel = () => {
+    navigate(-1);
   };
 
   const presetIntervals = [
@@ -207,11 +180,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const touch = e.touches[0];
     const itemEl = itemRefs.current.get(sectionId);
     const itemHeight = itemEl?.offsetHeight || 56;
-    // Store touch position immediately (touch object becomes invalid after event)
     const startY = touch.clientY;
     touchStartYRef.current = startY;
 
-    // Start a long press timer - only start dragging after 150ms hold
     longPressTimerRef.current = setTimeout(() => {
       setTouchDrag({
         isDragging: true,
@@ -220,7 +191,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         currentY: startY,
         itemHeight,
       });
-      // Haptic feedback if available
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
@@ -228,7 +198,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    // If not dragging yet, cancel the long press if user moved significantly
     if (!touchDrag.isDragging && longPressTimerRef.current) {
       const touch = e.touches[0];
       const moveDistance = Math.abs(touch.clientY - touchStartYRef.current);
@@ -241,13 +210,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     if (!touchDrag.isDragging || !touchDrag.draggedId) return;
 
-    e.preventDefault(); // Prevent scrolling while dragging
+    e.preventDefault();
 
     const touch = e.touches[0];
     const deltaY = touch.clientY - touchDrag.startY;
     const moveThreshold = touchDrag.itemHeight * 0.6;
 
-    // Calculate how many positions to move
     const positionsToMove = Math.round(deltaY / touchDrag.itemHeight);
 
     if (Math.abs(deltaY) > moveThreshold && positionsToMove !== 0) {
@@ -260,7 +228,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         currentOrder.splice(targetIndex, 0, touchDrag.draggedId);
         setSectionOrder(currentOrder);
 
-        // Reset the start position to current touch position
         setTouchDrag(prev => ({
           ...prev,
           startY: touch.clientY,
@@ -276,7 +243,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleTouchEnd = () => {
-    // Clear long press timer if it hasn't fired yet
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
@@ -297,67 +263,60 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     .filter(Boolean) as typeof AVAILABLE_SECTIONS[number][];
 
   return (
-    <div
-      className="fixed top-0 left-0 right-0 bg-black/50 backdrop-blur-sm flex flex-col md:items-center md:justify-center p-0 md:p-4 overflow-hidden md:bottom-0"
-      style={{ zIndex: 10000, bottom: 'calc(5rem + env(safe-area-inset-bottom, 8px))' }}
-      onClick={onClose}
-      onWheel={(e) => e.stopPropagation()}
-      onTouchMove={(e) => e.stopPropagation()}
-    >
-      <Card className="max-w-2xl w-full max-h-full md:max-h-[90vh] overflow-hidden flex flex-col rounded-t-2xl md:rounded-2xl mt-auto md:mt-0 md:my-auto pt-4 md:pt-6" onClick={(e) => e.stopPropagation()}>
+    <div className="min-h-screen px-4 py-6">
+      <Card className="w-full overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
-          <h2 className="text-xl md:text-2xl font-bold">Settings</h2>
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            onClick={handleCancel}
+            className="flex items-center gap-2 text-accent hover:text-accent/80 transition-colors"
           >
-            <X size={20} />
+            <ChevronLeft size={20} />
+            <span className="text-sm font-medium">Back</span>
           </button>
+          <h2 className="text-xl font-bold">Settings</h2>
+          <div className="w-16" /> {/* Spacer for centering */}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1.5 md:gap-2 mb-4 md:mb-6 flex-shrink-0">
+        <div className="flex gap-1.5 mb-4 flex-shrink-0">
           <button
             onClick={() => setActiveTab('general')}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors",
               activeTab === 'general'
                 ? "bg-accent text-background"
                 : "bg-card border border-border text-gray-400 hover:text-white"
             )}
           >
-            <Clock size={14} className="md:w-4 md:h-4" />
-            <span className="hidden xs:inline">General</span>
-            <span className="xs:hidden">General</span>
+            <Clock size={14} />
+            <span>General</span>
           </button>
           <button
             onClick={() => setActiveTab('homescreen')}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors",
               activeTab === 'homescreen'
                 ? "bg-accent text-background"
                 : "bg-card border border-border text-gray-400 hover:text-white"
             )}
           >
-            <LayoutGrid size={14} className="md:w-4 md:h-4" />
-            <span className="hidden xs:inline">Home Screen</span>
-            <span className="xs:hidden">Home</span>
+            <LayoutGrid size={14} />
+            <span>Home</span>
           </button>
           <button
             onClick={() => setActiveTab('teams')}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors",
               activeTab === 'teams'
                 ? "bg-accent text-background"
                 : "bg-card border border-border text-gray-400 hover:text-white"
             )}
           >
-            <Star size={14} className="md:w-4 md:h-4" />
-            <span className="hidden xs:inline">My Teams</span>
-            <span className="xs:hidden">Teams</span>
+            <Star size={14} />
+            <span>Teams</span>
             {settings.favoriteTeams.length > 0 && (
-              <span className="text-[10px] md:text-xs bg-white/20 px-1 md:px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] bg-white/20 px-1 py-0.5 rounded-full">
                 {settings.favoriteTeams.length}
               </span>
             )}
@@ -367,14 +326,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {activeTab === 'general' && (
-            <div className="space-y-4 md:space-y-6">
+            <div className="space-y-4">
               {/* Rate Limiting Disclaimer */}
-              <div className="p-3 md:p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                <div className="flex items-start gap-2 md:gap-3">
+              <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <div className="flex items-start gap-2">
                   <AlertCircle size={18} className="text-yellow-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-yellow-500 text-sm md:text-base mb-0.5 md:mb-1">API Rate Limiting</h3>
-                    <p className="text-xs md:text-sm text-gray-300 leading-relaxed">
+                    <h3 className="font-semibold text-yellow-500 text-sm mb-0.5">API Rate Limiting</h3>
+                    <p className="text-xs text-gray-300 leading-relaxed">
                       Low refresh rates may cause temporary blocks.
                       <span className="text-accent ml-1 font-medium">Recommended: 30-60s</span>
                     </p>
@@ -384,11 +343,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Refresh Rate Setting */}
               <div>
-                <label className="block text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
+                <label className="block text-xs font-medium text-gray-400 mb-2">
                   Auto-Refresh Interval
                 </label>
-                <div className="space-y-2 md:space-y-3">
-                  <div className="grid grid-cols-5 md:flex md:flex-wrap gap-1.5 md:gap-2">
+                <div className="space-y-2">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {presetIntervals.map((preset) => (
                       <button
                         key={preset.value}
@@ -397,7 +356,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setCustomSeconds('');
                         }}
                         className={cn(
-                          "px-2 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition-colors border",
+                          "px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border",
                           localInterval === preset.value && !customSeconds
                             ? "bg-accent text-background border-accent"
                             : "bg-card border-border text-gray-400 hover:text-white hover:border-gray-600"
@@ -408,7 +367,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     ))}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs md:text-sm text-gray-400">Custom:</span>
+                    <span className="text-xs text-gray-400">Custom:</span>
                     <input
                       type="number"
                       min="1"
@@ -422,9 +381,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }
                       }}
                       placeholder="sec"
-                      className="w-20 md:w-24 px-2 md:px-3 py-1.5 md:py-2 bg-card border border-border rounded-lg text-xs md:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent"
+                      className="w-20 px-2 py-1.5 bg-card border border-border rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-accent"
                     />
-                    <span className="text-xs md:text-sm text-gray-500">sec</span>
+                    <span className="text-xs text-gray-500">sec</span>
                   </div>
                   <p className="text-xs text-gray-500">
                     Current: {localInterval / 1000}s
@@ -434,74 +393,74 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Display Options */}
               <div>
-                <label className="block text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
+                <label className="block text-xs font-medium text-gray-400 mb-2">
                   Display Options
                 </label>
-                <div className="space-y-2 md:space-y-3">
+                <div className="space-y-2">
                   {/* Theme Toggle */}
-                  <div className="flex items-center justify-between p-2.5 md:p-3 bg-card border border-border rounded-lg">
-                    <div className="flex items-center gap-2 md:gap-3">
+                  <div className="flex items-center justify-between p-2.5 bg-card border border-border rounded-lg">
+                    <div className="flex items-center gap-2">
                       {settings.theme === 'dark' ? (
-                        <Moon size={16} className="text-gray-400 md:w-[18px] md:h-[18px]" />
+                        <Moon size={16} className="text-gray-400" />
                       ) : (
-                        <Sun size={16} className="text-yellow-500 md:w-[18px] md:h-[18px]" />
+                        <Sun size={16} className="text-yellow-500" />
                       )}
                       <div>
-                        <span className="text-xs md:text-sm font-medium">Theme</span>
-                        <p className="text-[10px] md:text-xs text-gray-500">Dark / Light mode</p>
+                        <span className="text-xs font-medium">Theme</span>
+                        <p className="text-[10px] text-gray-500">Dark / Light mode</p>
                       </div>
                     </div>
                     <button
                       onClick={toggleTheme}
                       className={cn(
-                        "relative w-12 md:w-14 h-7 md:h-8 rounded-full transition-colors flex-shrink-0",
+                        "relative w-12 h-7 rounded-full transition-colors flex-shrink-0",
                         settings.theme === 'dark' ? "bg-gray-700" : "bg-accent"
                       )}
                     >
                       <span
                         className={cn(
-                          "absolute top-1 flex items-center justify-center w-5 md:w-6 h-5 md:h-6 bg-white rounded-full shadow-md transition-transform",
-                          settings.theme === 'dark' ? "left-1" : "translate-x-5 md:translate-x-6 left-1"
+                          "absolute top-1 flex items-center justify-center w-5 h-5 bg-white rounded-full shadow-md transition-transform",
+                          settings.theme === 'dark' ? "left-1" : "translate-x-5 left-1"
                         )}
                       >
                         {settings.theme === 'dark' ? (
-                          <Moon size={12} className="text-gray-700 md:w-3.5 md:h-3.5" />
+                          <Moon size={12} className="text-gray-700" />
                         ) : (
-                          <Sun size={12} className="text-yellow-500 md:w-3.5 md:h-3.5" />
+                          <Sun size={12} className="text-yellow-500" />
                         )}
                       </span>
                     </button>
                   </div>
 
-                  <label className="flex items-center justify-between p-2.5 md:p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <Eye size={16} className="text-gray-400 md:w-[18px] md:h-[18px]" />
+                  <label className="flex items-center justify-between p-2.5 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Eye size={16} className="text-gray-400" />
                       <div>
-                        <span className="text-xs md:text-sm font-medium">Show Prop Tracker</span>
-                        <p className="text-[10px] md:text-xs text-gray-500">Live prop tracking</p>
+                        <span className="text-xs font-medium">Show Prop Tracker</span>
+                        <p className="text-[10px] text-gray-500">Live prop tracking</p>
                       </div>
                     </div>
                     <input
                       type="checkbox"
                       checked={settings.showPropTracker}
                       onChange={togglePropTracker}
-                      className="w-4 h-4 md:w-5 md:h-5 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0 flex-shrink-0"
+                      className="w-4 h-4 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0 flex-shrink-0"
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-2.5 md:p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <LayoutGrid size={16} className="text-gray-400 md:w-[18px] md:h-[18px]" />
+                  <label className="flex items-center justify-between p-2.5 bg-card border border-border rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid size={16} className="text-gray-400" />
                       <div>
-                        <span className="text-xs md:text-sm font-medium">Compact Mode</span>
-                        <p className="text-[10px] md:text-xs text-gray-500">Smaller cards</p>
+                        <span className="text-xs font-medium">Compact Mode</span>
+                        <p className="text-[10px] text-gray-500">Smaller cards</p>
                       </div>
                     </div>
                     <input
                       type="checkbox"
                       checked={settings.compactMode}
                       onChange={toggleCompactMode}
-                      className="w-4 h-4 md:w-5 md:h-5 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0 flex-shrink-0"
+                      className="w-4 h-4 rounded bg-background border-border text-accent focus:ring-accent focus:ring-offset-0 flex-shrink-0"
                     />
                   </label>
                 </div>
@@ -510,15 +469,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
 
           {activeTab === 'homescreen' && (
-            <div className="space-y-3 md:space-y-6">
-              <p className="text-xs md:text-sm text-gray-400">
-                Choose which sports to show.
-                <span className="hidden md:inline"> Drag to reorder.</span>
-                <span className="md:hidden"> Hold to reorder.</span>
+            <div className="space-y-3">
+              <p className="text-xs text-gray-400">
+                Choose which sports to show. Hold to reorder.
               </p>
 
               {/* Sports Sections */}
-              <div className="space-y-1.5 md:space-y-2">
+              <div className="space-y-1.5">
                 {orderedSections.map((section) => (
                   <div
                     key={section.id}
@@ -534,7 +491,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onTouchEnd={handleTouchEnd}
                     onTouchCancel={handleTouchEnd}
                     className={cn(
-                      "flex items-center justify-between p-2.5 md:p-3 bg-card border rounded-lg transition-all select-none",
+                      "flex items-center justify-between p-2.5 bg-card border rounded-lg transition-all select-none",
                       "cursor-move touch-none",
                       draggedItem === section.id || touchDrag.draggedId === section.id
                         ? "border-accent bg-accent/10 scale-[1.02] shadow-lg z-10"
@@ -546,16 +503,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         : undefined,
                     }}
                   >
-                    <div className="flex items-center gap-2 md:gap-3">
+                    <div className="flex items-center gap-2">
                       <GripVertical
                         size={16}
                         className={cn(
-                          "transition-colors md:w-[18px] md:h-[18px]",
+                          "transition-colors",
                           touchDrag.draggedId === section.id ? "text-accent" : "text-gray-500"
                         )}
                       />
-                      <span className="text-base md:text-lg">{section.icon}</span>
-                      <span className="text-xs md:text-sm font-medium">{section.label}</span>
+                      <span className="text-base">{section.icon}</span>
+                      <span className="text-xs font-medium">{section.label}</span>
                     </div>
                     <label
                       className="relative inline-flex items-center cursor-pointer"
@@ -568,7 +525,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onChange={() => toggleSection(section.id)}
                         className="sr-only peer"
                       />
-                      <div className="w-10 md:w-11 h-5 md:h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 md:after:h-5 after:w-4 md:after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                      <div className="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"></div>
                     </label>
                   </div>
                 ))}
@@ -582,7 +539,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       if (!isSectionEnabled(s.id)) toggleSection(s.id);
                     });
                   }}
-                  className="px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
+                  className="px-2.5 py-1.5 text-[10px] font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
                 >
                   Enable All
                 </button>
@@ -592,7 +549,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       if (isSectionEnabled(s.id)) toggleSection(s.id);
                     });
                   }}
-                  className="px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
+                  className="px-2.5 py-1.5 text-[10px] font-medium text-gray-400 hover:text-white border border-border rounded-lg hover:border-gray-600 transition-colors"
                 >
                   Disable All
                 </button>
@@ -601,24 +558,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
 
           {activeTab === 'teams' && (
-            <div className="space-y-4 md:space-y-6">
-              <p className="text-xs md:text-sm text-gray-400">
+            <div className="space-y-4">
+              <p className="text-xs text-gray-400">
                 Add favorite teams to see their games first.
               </p>
 
               {/* Team Search */}
               <div className="relative">
                 <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 md:w-[18px] md:h-[18px]" />
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
                     value={teamSearchQuery}
                     onChange={(e) => setTeamSearchQuery(e.target.value)}
                     placeholder="Search for a team..."
-                    className="w-full pl-9 md:pl-10 pr-9 md:pr-10 py-2.5 md:py-3 bg-card border border-border rounded-lg text-sm md:text-base text-white placeholder-gray-500 focus:outline-none focus:border-accent"
+                    className="w-full pl-9 pr-9 py-2.5 bg-card border border-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent"
                   />
                   {isSearching && (
-                    <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 animate-spin md:w-[18px] md:h-[18px]" />
+                    <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 animate-spin" />
                   )}
                 </div>
 
@@ -674,21 +631,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Browse by League */}
               <div>
-                <h4 className="text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
+                <h4 className="text-xs font-medium text-gray-400 mb-2">
                   Or browse by league
                 </h4>
 
                 {!selectedSport ? (
                   /* Sport/League Grid */
-                  <div className="grid grid-cols-4 md:grid-cols-3 gap-1.5 md:gap-2">
+                  <div className="grid grid-cols-4 gap-1.5">
                     {TEAM_SPORTS.map((sport) => (
                       <button
                         key={sport.id}
                         onClick={() => setSelectedSport(sport.id)}
-                        className="flex flex-col items-center gap-0.5 md:gap-1 p-2 md:p-3 bg-card border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors"
+                        className="flex flex-col items-center gap-0.5 p-2 bg-card border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors"
                       >
-                        <span className="text-base md:text-xl">{sport.icon}</span>
-                        <span className="text-[9px] md:text-xs font-medium text-gray-300 text-center leading-tight truncate w-full">
+                        <span className="text-base">{sport.icon}</span>
+                        <span className="text-[9px] font-medium text-gray-300 text-center leading-tight truncate w-full">
                           {sport.label}
                         </span>
                       </button>
@@ -768,34 +725,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Current Favorite Teams */}
               {settings.favoriteTeams.length > 0 && (
                 <div>
-                  <h4 className="text-xs md:text-sm font-medium text-gray-400 mb-2 md:mb-3">
+                  <h4 className="text-xs font-medium text-gray-400 mb-2">
                     Your Teams ({settings.favoriteTeams.length}/10)
                   </h4>
-                  <div className="space-y-1.5 md:space-y-2">
+                  <div className="space-y-1.5">
                     {settings.favoriteTeams.map((team) => (
                       <div
                         key={`${team.sport}-${team.id}`}
-                        className="flex items-center justify-between p-2 md:p-3 bg-card border border-border rounded-lg"
+                        className="flex items-center justify-between p-2 bg-card border border-border rounded-lg"
                       >
-                        <div className="flex items-center gap-2 md:gap-3">
+                        <div className="flex items-center gap-2">
                           {team.logo && (
-                            <img src={team.logo} alt="" className="w-6 h-6 md:w-8 md:h-8 object-contain" />
+                            <img src={team.logo} alt="" className="w-6 h-6 object-contain" />
                           )}
                           <div>
-                            <div className="text-xs md:text-sm font-medium text-white">
+                            <div className="text-xs font-medium text-white">
                               {team.name}
                             </div>
-                            <div className="text-[10px] md:text-xs text-gray-500">
+                            <div className="text-[10px] text-gray-500">
                               {team.sportDisplay}
                             </div>
                           </div>
                         </div>
                         <button
                           onClick={() => removeFavoriteTeam(team.id)}
-                          className="p-1 md:p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                          className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                           title="Remove team"
                         >
-                          <X size={14} className="md:w-4 md:h-4" />
+                          <span className="text-xs">✕</span>
                         </button>
                       </div>
                     ))}
@@ -804,10 +761,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
 
               {settings.favoriteTeams.length === 0 && (
-                <div className="text-center py-6 md:py-8 text-gray-500">
-                  <Star size={28} className="mx-auto mb-2 opacity-50 md:w-8 md:h-8" />
-                  <p className="text-xs md:text-sm">No favorite teams yet</p>
-                  <p className="text-[10px] md:text-xs mt-1">Search above to add your teams</p>
+                <div className="text-center py-6 text-gray-500">
+                  <Star size={28} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">No favorite teams yet</p>
+                  <p className="text-[10px] mt-1">Search above to add your teams</p>
                 </div>
               )}
             </div>
@@ -815,28 +772,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col md:flex-row md:justify-between gap-3 mt-4 md:mt-6 pt-4 md:pt-6 border-t border-border flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
-          <button
-            onClick={resetToDefaults}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors order-3 md:order-1"
-          >
-            <RotateCcw size={16} />
-            Reset to Defaults
-          </button>
-          <div className="flex gap-2 md:gap-3 order-1 md:order-2">
+        <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-border flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <div className="flex gap-2">
             <button
-              onClick={onClose}
-              className="flex-1 md:flex-initial px-4 py-2.5 md:py-2 rounded-lg border border-border text-gray-400 hover:text-white hover:border-gray-600 transition-colors text-sm md:text-base"
+              onClick={handleCancel}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-border text-gray-400 hover:text-white hover:border-gray-600 transition-colors text-sm"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 md:flex-initial px-4 py-2.5 md:py-2 rounded-lg bg-accent text-background font-medium hover:bg-accent/90 transition-colors text-sm md:text-base"
+              className="flex-1 px-4 py-2.5 rounded-lg bg-accent text-background font-medium hover:bg-accent/90 transition-colors text-sm"
             >
               Save Settings
             </button>
           </div>
+          <button
+            onClick={resetToDefaults}
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors"
+          >
+            <RotateCcw size={16} />
+            Reset to Defaults
+          </button>
         </div>
       </Card>
     </div>

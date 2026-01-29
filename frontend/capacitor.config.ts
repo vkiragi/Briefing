@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Briefing',
   webDir: 'dist',
   ios: {
-    contentInset: 'always',
+    contentInset: 'never',
     backgroundColor: '#141417',
     preferredContentMode: 'mobile'
   },
