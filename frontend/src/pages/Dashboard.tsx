@@ -88,8 +88,8 @@ export const Dashboard = () => {
       transition={{ duration: 0.5 }}
       className="px-2 md:px-4 pt-6 md:pt-8 pb-2 md:pb-4 max-w-[2400px] mx-auto space-y-6"
     >
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+      {/* Header - Hidden on mobile since it's in the top bar */}
+      <div className="hidden md:flex flex-col md:flex-row md:items-center md:justify-between gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
             {firstName ? `${firstName}'s` : 'Your'} <span className="text-accent">Briefing</span>
@@ -115,6 +115,25 @@ export const Dashboard = () => {
             <span className="text-gray-500">Active</span>
             <span className="font-semibold text-white">{stats.pending}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Stats Strip */}
+      <div className="flex md:hidden items-center justify-between text-sm">
+        <div className="flex items-center gap-1">
+          <span className="text-gray-500">Record</span>
+          <span className="font-semibold text-white">{stats.wins}W-{stats.losses}L</span>
+          <span className="text-gray-600">({stats.winRate.toFixed(0)}%)</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-gray-500">ROI</span>
+          <span className={cn("font-semibold", stats.roi >= 0 ? "text-accent" : "text-red-500")}>
+            {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-gray-500">Active</span>
+          <span className="font-semibold text-white">{stats.pending}</span>
         </div>
       </div>
 

@@ -122,8 +122,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Mobile Header with Profile Button */}
       <header className="md:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-50 flex items-end justify-between px-4 pb-2 pt-[env(safe-area-inset-top,0px)]" style={{ minHeight: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
-        <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="Briefing" className="w-12 h-12 object-contain" />
+        <div className="flex items-center gap-1">
+          <img src="/logo.png" alt="Briefing" className="w-10 h-10 object-contain" />
+          <h1 className="text-xl font-bold tracking-tight">
+            {user?.user_metadata?.full_name ? `${user.user_metadata.full_name.split(' ')[0]}'s` : 'Your'}{' '}
+            <span className="text-accent">Briefing</span>
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           <Link
