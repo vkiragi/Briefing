@@ -49,6 +49,7 @@ htmlcov/
 
 # Config
 config.json
+CLAUDE.md
 
 # Personal notes
 features.txt

@@ -31,9 +31,13 @@ class SupabaseService:
                         line = line.strip()
                         if line and not line.startswith('#') and '=' in line:
                             key, value = line.split('=', 1)
+                            # Load VITE_ prefixed keys (strip prefix)
                             if key.startswith('VITE_'):
                                 clean_key = key.replace('VITE_', '')
                                 os.environ[clean_key] = value
+                            # Also load non-prefixed keys directly (e.g., SUPABASE_SERVICE_ROLE_KEY)
+                            elif key.startswith('SUPABASE_'):
+                                os.environ[key] = value
 
         url = os.getenv('SUPABASE_URL')
         # Use service role key for backend (bypasses RLS)

@@ -75,8 +75,8 @@ export const SportTabs: React.FC<SportTabsProps> = ({
   };
 
   // Determine how many tabs to show on mobile (before "More")
-  // Show Home + 2 sports to leave room for "More" button without overflow
-  const mobileVisibleCount = 3;
+  // Show Home + 1 sport to leave room for "More" button without overflow
+  const mobileVisibleCount = 2;
   const visibleTabs = tabs.slice(0, mobileVisibleCount);
   const overflowTabs = tabs.slice(mobileVisibleCount);
 
@@ -213,7 +213,7 @@ export const SportTabs: React.FC<SportTabsProps> = ({
       </div>
 
       {/* Mobile: Search + Visible tabs + More dropdown */}
-      <div className="flex md:hidden gap-2 items-center">
+      <div className="flex md:hidden gap-1.5 items-center max-w-[calc(100vw-1rem)]">
         {/* Mobile search button */}
         <div className="relative flex-shrink-0" ref={searchRef}>
           <button
@@ -246,7 +246,7 @@ export const SportTabs: React.FC<SportTabsProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search leagues..."
-                    className="w-full bg-background/80 border border-border rounded-lg pl-9 pr-9 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
+                    className="w-full bg-background/80 border border-border rounded-lg pl-9 pr-9 py-2.5 text-base text-white placeholder-gray-500 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
                   />
                   {searchQuery && (
                     <button
@@ -300,7 +300,7 @@ export const SportTabs: React.FC<SportTabsProps> = ({
             key={tab.id}
             onClick={() => handleSelectSport(tab.id)}
             className={cn(
-              "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border whitespace-nowrap",
+              "flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all border whitespace-nowrap flex-shrink-0",
               selectedSport === tab.id
                 ? "bg-accent text-background border-accent"
                 : "bg-card border-border text-gray-400 hover:text-white hover:border-gray-600"
@@ -317,11 +317,11 @@ export const SportTabs: React.FC<SportTabsProps> = ({
 
         {/* More dropdown */}
         {overflowTabs.length > 0 && (
-          <div className="relative" ref={moreRef}>
+          <div className="relative flex-shrink-0" ref={moreRef}>
             <button
               onClick={() => setShowMore(!showMore)}
               className={cn(
-                "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border whitespace-nowrap",
+                "flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all border whitespace-nowrap",
                 overflowTabs.some(t => t.id === selectedSport)
                   ? "bg-accent text-background border-accent"
                   : "bg-card border-border text-gray-400 hover:text-white hover:border-gray-600"
