@@ -41,7 +41,7 @@ interface BetSlipPanelProps {
   onComplete: () => void;
 }
 
-type SubmitMode = 'new_parlay' | 'add_to_existing';
+type SubmitMode = 'straight_bet' | 'new_parlay' | 'add_to_existing';
 
 export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
   isOpen,
@@ -55,10 +55,25 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
   matchup,
   onComplete,
 }) => {
-  const { addParlayLeg, parlayBuilder, clearParlayBuilder } = useBets();
-  const [submitMode, setSubmitMode] = useState<SubmitMode>(
-    parlayBuilder.isActive ? 'add_to_existing' : 'new_parlay'
-  );
+  const { addBet, addParlayLeg, parlayBuilder, clearParlayBuilder } = useBets();
+  const [stake, setStake] = useState<number>(10);
+
+  // Determine default mode based on context
+  const getDefaultMode = (): SubmitMode => {
+    if (selections.length === 1 && !parlayBuilder.isActive) {
+      return 'straight_bet';
+    }
+    return parlayBuilder.isActive ? 'add_to_existing' : 'new_parlay';
+  };
+
+  const [submitMode, setSubmitMode] = useState<SubmitMode>(getDefaultMode);
+
+  // Update mode when selections change
+  useEffect(() => {
+    if (isOpen) {
+      setSubmitMode(getDefaultMode());
+    }
+  }, [selections.length, parlayBuilder.isActive, isOpen]);
 
   const hasExistingParlay = parlayBuilder.isActive && parlayBuilder.legs.length > 0;
 
@@ -91,8 +106,63 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
 
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
+  // Calculate potential payout for straight bet
+  const calculatePayout = (odds: number, stakeAmount: number): number => {
+    if (odds > 0) {
+      return stakeAmount + (stakeAmount * odds) / 100;
+    } else {
+      return stakeAmount + (stakeAmount * 100) / Math.abs(odds);
+    }
+  };
+
+  const handleSubmit = async () => {
     setError(null);
+
+    // Handle straight bet mode
+    if (submitMode === 'straight_bet' && selections.length === 1) {
+      const selection = selections[0];
+      const displayLabel = MARKET_LABELS[selection.market] || selection.marketLabel;
+      const odds = selection.odds || -110;
+
+      try {
+        if (selection.isMoneyline) {
+          await addBet({
+            sport,
+            type: 'Moneyline',
+            matchup,
+            selection: `${selection.teamName} ML`,
+            odds,
+            stake,
+            date: new Date().toISOString(),
+            potentialPayout: calculatePayout(odds, stake),
+            event_id: eventId,
+            team_name: selection.teamName,
+            market_type: 'moneyline',
+          });
+        } else {
+          await addBet({
+            sport,
+            type: 'Prop',
+            matchup,
+            selection: `${selection.player.name} ${selection.side === 'over' ? 'Over' : 'Under'} ${selection.line} ${displayLabel}`,
+            odds,
+            stake,
+            date: new Date().toISOString(),
+            potentialPayout: calculatePayout(odds, stake),
+            event_id: eventId,
+            player_name: selection.player.name,
+            team_name: selection.teamName,
+            market_type: selection.market,
+            line: selection.line || 0,
+            side: selection.side || 'over',
+          });
+        }
+        onComplete();
+      } catch (e) {
+        setError('Failed to place bet');
+      }
+      return;
+    }
 
     // If starting a new parlay and there's an existing one, clear it first
     if (submitMode === 'new_parlay' && hasExistingParlay) {
@@ -344,31 +414,72 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
 
               {/* Footer Actions */}
               <div className="p-4 border-t border-border space-y-3" style={{ flexShrink: 0 }}>
-                {/* Submit Mode Selection */}
-                {hasExistingParlay && (
-                  <div className="flex gap-3 mb-3">
+                {/* Bet Type Selection */}
+                <div className="flex gap-2 mb-3">
+                  {/* Straight bet option - only for single selection */}
+                  {selections.length === 1 && (
+                    <button
+                      onClick={() => setSubmitMode('straight_bet')}
+                      className={cn(
+                        "flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors border",
+                        submitMode === 'straight_bet'
+                          ? "bg-accent/20 text-accent border-accent"
+                          : "bg-card text-gray-400 border-border hover:border-gray-600"
+                      )}
+                    >
+                      Straight Bet
+                    </button>
+                  )}
+                  {/* Add to existing parlay */}
+                  {hasExistingParlay && (
                     <button
                       onClick={() => setSubmitMode('add_to_existing')}
                       className={cn(
-                        "flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors border",
+                        "flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors border",
                         submitMode === 'add_to_existing'
                           ? "bg-accent/20 text-accent border-accent"
                           : "bg-card text-gray-400 border-border hover:border-gray-600"
                       )}
                     >
-                      Add to existing ({parlayBuilder.legs.length})
+                      Add to Parlay ({parlayBuilder.legs.length})
                     </button>
-                    <button
-                      onClick={() => setSubmitMode('new_parlay')}
-                      className={cn(
-                        "flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors border",
-                        submitMode === 'new_parlay'
-                          ? "bg-accent/20 text-accent border-accent"
-                          : "bg-card text-gray-400 border-border hover:border-gray-600"
-                      )}
-                    >
-                      New parlay
-                    </button>
+                  )}
+                  {/* New parlay */}
+                  <button
+                    onClick={() => setSubmitMode('new_parlay')}
+                    className={cn(
+                      "flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors border",
+                      submitMode === 'new_parlay'
+                        ? "bg-accent/20 text-accent border-accent"
+                        : "bg-card text-gray-400 border-border hover:border-gray-600"
+                    )}
+                  >
+                    {selections.length === 1 ? 'Start Parlay' : 'New Parlay'}
+                  </button>
+                </div>
+
+                {/* Stake input - only for straight bet */}
+                {submitMode === 'straight_bet' && selections.length === 1 && (
+                  <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                    <label className="text-sm text-gray-400">Stake</label>
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-gray-500">$</span>
+                      <input
+                        type="number"
+                        value={stake}
+                        onChange={(e) => setStake(parseFloat(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
+                        className="w-24 bg-card border border-border rounded-lg px-3 py-2 text-center text-sm font-medium text-white focus:outline-none focus:border-accent"
+                        min="0"
+                        step="5"
+                      />
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">To Win</div>
+                      <div className="text-sm font-semibold text-accent">
+                        ${(calculatePayout(selections[0]?.odds || -110, stake) - stake).toFixed(2)}
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -392,15 +503,21 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
                     className="flex-1 py-3 bg-accent text-background text-sm font-semibold rounded-lg hover:bg-accent/90 transition-colors flex items-center justify-center gap-2"
                   >
                     <Plus size={18} />
-                    Add {selections.length} to Parlay
+                    {submitMode === 'straight_bet'
+                      ? `Place $${stake} Bet`
+                      : `Add ${selections.length} to Parlay`
+                    }
                   </button>
                 </div>
 
                 {/* Info text */}
                 <p className="text-center text-xs text-gray-500 pt-1">
-                  {hasExistingParlay && submitMode === 'add_to_existing'
-                    ? `Adding to your ${parlayBuilder.legs.length}-leg parlay`
-                    : 'Starting a new parlay'}
+                  {submitMode === 'straight_bet'
+                    ? 'Placing as a single straight bet'
+                    : submitMode === 'add_to_existing'
+                      ? `Adding to your ${parlayBuilder.legs.length}-leg parlay`
+                      : 'Starting a new parlay'
+                  }
                 </p>
               </div>
             </Card>
