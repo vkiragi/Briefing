@@ -413,6 +413,13 @@ export const AddBet = () => {
       alert("Please make a selection");
       return;
     }
+
+    // Player name is required for player props
+    if (formData.type === 'player_prop' && !formData.playerName.trim()) {
+      setPlayerValidation({ status: 'invalid', message: 'Player name is required' });
+      return;
+    }
+
     const currentSportInfo = SPORTS.find(s => s.id === formData.sport);
 
     // Build tracking data based on bet type
@@ -589,7 +596,13 @@ export const AddBet = () => {
     let validatedPlayerName = formData.playerName;
     let validatedTeamName = '';
 
-    if (supportsPlayerProps() && formData.type === 'player_prop' && formData.playerName.trim()) {
+    // Player name is required for player props
+    if (supportsPlayerProps() && formData.type === 'player_prop') {
+      if (!formData.playerName.trim()) {
+        setPlayerValidation({ status: 'invalid', message: 'Player name is required' });
+        return;
+      }
+
       if (!selectedGame) {
         setPlayerValidation({ status: 'invalid', message: 'Please select a game first' });
         return;
