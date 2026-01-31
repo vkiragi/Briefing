@@ -89,7 +89,11 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
     onUpdateSelection(id, { line: Math.max(0, +(currentLine + delta).toFixed(1)) });
   };
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = () => {
+    setError(null);
+
     // If starting a new parlay and there's an existing one, clear it first
     if (submitMode === 'new_parlay' && hasExistingParlay) {
       clearParlayBuilder();
@@ -113,7 +117,11 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
           line: undefined,
           side: undefined,
         };
-        addParlayLeg(leg);
+        const result = addParlayLeg(leg);
+        if (!result.success) {
+          setError(result.error || 'Failed to add leg');
+          return;
+        }
       } else {
         const leg: ParlayLeg = {
           sport,
@@ -127,7 +135,11 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
           line: selection.line || 0,
           side: selection.side || 'over',
         };
-        addParlayLeg(leg);
+        const result = addParlayLeg(leg);
+        if (!result.success) {
+          setError(result.error || 'Failed to add leg');
+          return;
+        }
       }
     }
     onComplete();
@@ -357,6 +369,13 @@ export const BetSlipPanel: React.FC<BetSlipPanelProps> = ({
                     >
                       New parlay
                     </button>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm text-center">
+                    {error}
                   </div>
                 )}
 

@@ -29,7 +29,7 @@ interface BetContextType {
   refreshBets: () => Promise<void>;
   // Parlay builder
   parlayBuilder: ParlayBuilder;
-  addParlayLeg: (leg: ParlayLeg) => void;
+  addParlayLeg: (leg: ParlayLeg) => { success: boolean; error?: string };
   removeParlayLeg: (index: number) => void;
   clearParlayBuilder: () => void;
 }
@@ -205,11 +205,29 @@ export const BetProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Parlay builder methods
-  const addParlayLeg = (leg: ParlayLeg) => {
+  const addParlayLeg = (leg: ParlayLeg): { success: boolean; error?: string } => {
+    // Check for conflicting moneyline bets (can't bet on both teams to win the same game)
+    if (leg.market_type === 'moneyline' && leg.event_id) {
+      const conflictingLeg = parlayBuilder.legs.find(
+        existing =>
+          existing.event_id === leg.event_id &&
+          existing.market_type === 'moneyline' &&
+          existing.team_name !== leg.team_name
+      );
+
+      if (conflictingLeg) {
+        return {
+          success: false,
+          error: `Cannot add ${leg.team_name} ML - you already have ${conflictingLeg.team_name} ML from the same game`
+        };
+      }
+    }
+
     setParlayBuilder(prev => ({
       legs: [...prev.legs, leg],
       isActive: true,
     }));
+    return { success: true };
   };
 
   const removeParlayLeg = (index: number) => {
